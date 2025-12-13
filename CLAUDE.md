@@ -1,1 +1,3 @@
 - Prefer using functional cast over static cast. Defer to static_cast only when absolutely necessary.
+- Instead of the word "oracle", use "golden value"
+- Never update code while we are talking before asking me

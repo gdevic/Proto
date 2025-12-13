@@ -24,13 +24,18 @@ struct BCD
     array<uint8_t, MAX_EXP> exp {}; // Exponent nibbles
     bool sign {}; // The number sign, true for negative numbers
     bool esign {}; // The exponent sign, true for negative exponents
+    Real value {}; // Original value for verification (stored as Real for precision)
 
     // Default constructor
     BCD() = default;
 
     // Constructor that initializes the BCD number using a floating point value
-    explicit BCD(Real value);
+    explicit BCD(double v);
 
     // Convert BCD back to Real for verification
     Real toReal() const;
 };
+
+// Arithmetic operations
+BCD add(const BCD& a, const BCD& b);
+BCD subtract(const BCD& a, const BCD& b);

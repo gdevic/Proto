@@ -21,6 +21,9 @@
     <ClCompile Include="bcd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="addsub.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">

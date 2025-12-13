@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O2
 TARGET = proto
-SRCS = proto.cpp bcd.cpp
+SRCS = proto.cpp bcd.cpp addsub.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 .PHONY: all clean long-double

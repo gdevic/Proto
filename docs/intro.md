@@ -10,21 +10,33 @@ struct BCD {
     array<uint8_t, 2> exp;    // 2-digit exponent (0-99)
     bool sign;                 // Number sign
     bool esign;                // Exponent sign
+    Real value;                // Original input value (for verification)
 };
 ```
 
 This gives us exactly 16 decimal digits of precision with an exponent range of 10^-99 to 10^99--similar to classic HP and TI calculators.
+
+The `value` member stores the original input, promoted to `Real` (long double on Linux). This enables high-precision verification without cluttering test code.
 
 ## The Verification Problem
 
 To verify BCD arithmetic, we compare results against IEEE 754 floating-point. The verification workflow looks like this:
 
 ```
-Long Double A ──────────────────────► Long Double Result (reference)
-      |            FPU operation              ^
-      v                                       | compare
+BCD A.value + BCD B.value ─────────► Long Double Result (reference)
+                                              ^
+                                              | compare
     BCD A ──────────────────────────► BCD Result ──► Long Double
              BCD operation (to verify)
+```
+
+Since each BCD stores its original input as `Real`, the golden value computation uses long double precision automatically:
+
+```cpp
+BCD a(123.456), b(789.012);           // Plain double literals
+Real expected = a.value + b.value;    // Computed at long double precision
+Real actual = add(a, b).toReal();     // BCD result converted back
+withinTolerance(expected, actual);    // Compare
 ```
 
 The critical insight: **we need a reference more precise than what we're testing**. If the reference has equal or less precision than our BCD, we can't distinguish BCD bugs from reference limitations.
@@ -32,13 +44,13 @@ The critical insight: **we need a reference more precise than what we're testing
 | Reference Type | Precision | vs BCD (16 digits) | Verdict |
 |----------------|-----------|---------------------|---------|
 | double | ~15.9 digits | Less precise | Ambiguous results |
-| long double | ~18.9 digits | 3 extra digits | Trustworthy oracle |
+| long double | ~18.9 digits | 3 extra digits | Trustworthy golden value |
 
 With `double`, if a BCD result differs at digit 16, you can't tell who's wrong. With `long double`, you can--it has headroom beyond BCD's precision, making any significant difference definitively a BCD bug.
 
 ## Why Tolerance Still Matters
 
-Even with `long double` as our oracle, we can't expect exact equality. Converting between BCD and binary floating-point unavoidably introduces small errors.
+Even with `long double` as our golden value, we can't expect exact equality. Converting between BCD and binary floating-point unavoidably introduces small errors.
 
 ### The Source of Conversion Noise
 
@@ -100,11 +112,11 @@ bool withinTolerance(Real a, Real b, Real relTol = 1e-15) {
 
 Microsoft chose to make `long double` identical to `double`. GCC on x86-64 uses the full 80-bit extended precision available in hardware.
 
-**The implication:** On Linux, `long double` provides a trustworthy oracle exceeding BCD's 16-digit precision. On Windows, you'd need an arbitrary-precision library (GMP, MPFR) for the same confidence.
+**The implication:** On Linux, `long double` provides a trustworthy golden value exceeding BCD's 16-digit precision. On Windows, you'd need an arbitrary-precision library (GMP, MPFR) for the same confidence.
 
 ## Portable Precision
 
-We solved this with a compile-time type alias:
+We use a compile-time type alias for the reference type:
 
 ```cpp
 #ifdef USE_LONG_DOUBLE
@@ -116,14 +128,44 @@ We solved this with a compile-time type alias:
 #endif
 ```
 
-The `REAL_LITERAL` macro is crucial--a cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast. The `L` suffix must be part of the literal itself.
+The `REAL_LITERAL` macro is used internally (e.g., in `pow10()` lookup tables) where we need literals at full `Real` precision. A cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast.
+
+## Why Test Inputs Use Plain Doubles
+
+For test values, we deliberately use plain `double` literals:
+
+```cpp
+BCD a(123.456), b(789.012);  // double literals, not REAL_LITERAL
+```
+
+**Rationale:**
+
+1. **Test inputs never exceed 15 digits** -- We don't need to specify values with more precision than `double` can represent. Real-world calculator inputs are typed by humans, not generated with 19-digit precision.
+
+2. **Automatic promotion preserves precision** -- The BCD constructor takes `double` but immediately stores it as `Real`:
+   ```cpp
+   BCD::BCD(double v) : value(v) { ... }  // v promoted to Real
+   ```
+   The stored `value` has full long double precision for golden value computations.
+
+3. **Cleaner test code** -- Compare:
+   ```cpp
+   // Cluttered
+   { REAL_LITERAL(123.456), REAL_LITERAL(789.012) }
+
+   // Clean
+   { 123.456, 789.012 }
+   ```
+
+4. **Separation of concerns** -- `REAL_LITERAL` is an implementation detail for internal precision. Test code focuses on behavior, not floating-point mechanics.
 
 ## Key Takeaways
 
 1. **BCD trades speed for exactness**--no more 0.1 + 0.2 != 0.3 surprises
 2. **The reference must exceed the implementation's precision**--use long double (~19 digits) to verify 16-digit BCD
-3. **Tolerance absorbs conversion noise, not algorithm errors**--1e-15 filters IEEE artifacts while catching real bugs
-4. **Platform differences matter**--Linux `long double` gives a trustworthy oracle; Windows needs external libraries
-5. **Literal suffixes aren't optional**--casts can't recover lost precision; use the `L` suffix
+3. **Store original values for verification**--the `value` member enables golden value computations at full precision
+4. **Test inputs can be plain doubles**--automatic promotion to `Real` happens at construction; no need for literal suffixes in test code
+5. **Tolerance absorbs conversion noise, not algorithm errors**--1e-15 filters IEEE artifacts while catching real bugs
+6. **Platform differences matter**--Linux `long double` gives a trustworthy golden value; Windows needs external libraries
 
 For applications requiring exact decimal arithmetic--financial calculations, scientific instruments, or calculator emulators--BCD remains relevant even in 2025.

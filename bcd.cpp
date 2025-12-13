@@ -17,25 +17,27 @@ static Real pow10(int n)
     return pow(REAL_LITERAL(10.0), n);
 }
 
-BCD::BCD(Real value)
+BCD::BCD(double v) : value(v)
 {
+    Real val = Real(v);
+
     // Handle sign
-    if (value < REAL_LITERAL(0.0)) {
+    if (val < REAL_LITERAL(0.0)) {
         sign = true;
-        value = -value;
+        val = -val;
     }
 
     // Handle zero - all members already zero-initialized
-    if (value == REAL_LITERAL(0.0)) {
+    if (val == REAL_LITERAL(0.0)) {
         return;
     }
 
     // Calculate base-10 exponent
     // We want mantissa in range [0.1, 1.0), so add 1 to floor(log10)
-    int e = int(floor(log10(value))) + 1;
+    int e = int(floor(log10(val))) + 1;
 
     // Normalize mantissa to [0.1, 1.0)
-    Real m = value / pow10(e);
+    Real m = val / pow10(e);
 
     // Handle exponent sign
     if (e < 0) {

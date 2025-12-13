@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="addsub.cpp" />
     <ClCompile Include="bcd.cpp" />
     <ClCompile Include="proto.cpp" />
   </ItemGroup>
