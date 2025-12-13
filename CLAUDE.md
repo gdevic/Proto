@@ -1,0 +1,1 @@
+- Prefer using functional cast over static cast. Defer to static_cast only when absolutely necessary.
