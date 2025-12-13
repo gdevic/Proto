@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <utility>
 
 // Tolerance of 1e-15 absorbs conversion noise while catching actual BCD bugs.
 // Long double (~19 digits) serves as trustworthy golden value for 16-digit BCD.
@@ -31,7 +32,7 @@ void testConversion()
 void testAddition()
 {
     std::cout << "\n=== Addition Tests ===\n";
-    struct { double a, b; } tests[] = {
+    std::pair<double, double> tests[] = {
         {1.0, 2.0},
         {123.456, 789.012},
         {0.001, 0.002},
@@ -44,12 +45,12 @@ void testAddition()
         {1.0, -1.0},
     };
 
-    for (const auto& t : tests) {
-        BCD a(t.a), b(t.b);
+    for (auto [x, y] : tests) {
+        BCD a(x), b(y);
         Real expected = a.value + b.value;  // Long double precision golden value
         Real actual = add(a, b).toReal();
         bool ok = withinTolerance(expected, actual);
-        std::cout << std::setw(12) << t.a << " + " << std::setw(12) << t.b
+        std::cout << std::setw(12) << x << " + " << std::setw(12) << y
                   << " = " << std::setw(14) << actual
                   << "  " << (ok ? "OK" : "FAIL") << "\n";
     }
@@ -58,7 +59,7 @@ void testAddition()
 void testSubtraction()
 {
     std::cout << "\n=== Subtraction Tests ===\n";
-    struct { double a, b; } tests[] = {
+    std::pair<double, double> tests[] = {
         {5.0, 3.0},
         {3.0, 5.0},
         {100.0, 0.001},
@@ -66,12 +67,12 @@ void testSubtraction()
         {1.0, 1.0},
     };
 
-    for (const auto& t : tests) {
-        BCD a(t.a), b(t.b);
+    for (auto [x, y] : tests) {
+        BCD a(x), b(y);
         Real expected = a.value - b.value;  // Long double precision golden value
         Real actual = subtract(a, b).toReal();
         bool ok = withinTolerance(expected, actual);
-        std::cout << std::setw(12) << t.a << " - " << std::setw(12) << t.b
+        std::cout << std::setw(12) << x << " - " << std::setw(12) << y
                   << " = " << std::setw(14) << actual
                   << "  " << (ok ? "OK" : "FAIL") << "\n";
     }
