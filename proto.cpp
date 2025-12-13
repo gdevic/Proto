@@ -81,7 +81,12 @@ void testSubtraction()
 int main()
 {
     std::cout << std::setprecision(15);
-    std::cout << "Tolerance: " << DEFAULT_TOL << "\n\n";
+#ifdef USE_LONG_DOUBLE
+    std::cout << "Verification: using long double" << "\n\n";
+#else
+    std::cout << "Verification: using double" << "\n\n";
+#endif
+    std::cout << "Tolerance: " << DEFAULT_TOL << "\n";
 
     testConversion();
     testAddition();
