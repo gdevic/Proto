@@ -1,4 +1,15 @@
 #include "bcd.h"
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <utility>
+
+bool withinTolerance(Real a, Real b, Real relTol)
+{
+    if (a == b) return true;  // Handles zero case
+    Real maxAbs = std::max(std::fabs(a), std::fabs(b));
+    return std::fabs(a - b) <= relTol * maxAbs;
+}
 
 // Get exponent as signed integer
 static int getExp(const BCD& x)
@@ -192,4 +203,53 @@ BCD subtract(const BCD& a, const BCD& b)
         negB.sign = !b.sign;
     }
     return add(a, negB);
+}
+
+void testAddition()
+{
+    std::cout << "\n=== Addition Tests ===\n";
+    std::pair<double, double> tests[] = {
+        {1.0, 2.0},
+        {123.456, 789.012},
+        {0.001, 0.002},
+        {999.0, 1.0},
+        {-5.0, 3.0},
+        {5.0, -3.0},
+        {-5.0, -3.0},
+        {1e10, 1e-10},
+        {0.0, 42.0},
+        {1.0, -1.0},
+    };
+
+    for (auto [x, y] : tests) {
+        BCD a(x), b(y);
+        Real expected = a.value + b.value;  // Long double precision golden value
+        Real actual = add(a, b).toReal();
+        bool ok = withinTolerance(expected, actual);
+        std::cout << std::setw(12) << x << " + " << std::setw(12) << y
+                  << " = " << std::setw(14) << actual
+                  << "  " << (ok ? "OK" : "FAIL") << "\n";
+    }
+}
+
+void testSubtraction()
+{
+    std::cout << "\n=== Subtraction Tests ===\n";
+    std::pair<double, double> tests[] = {
+        {5.0, 3.0},
+        {3.0, 5.0},
+        {100.0, 0.001},
+        {-5.0, -3.0},
+        {1.0, 1.0},
+    };
+
+    for (auto [x, y] : tests) {
+        BCD a(x), b(y);
+        Real expected = a.value - b.value;  // Long double precision golden value
+        Real actual = subtract(a, b).toReal();
+        bool ok = withinTolerance(expected, actual);
+        std::cout << std::setw(12) << x << " - " << std::setw(12) << y
+                  << " = " << std::setw(14) << actual
+                  << "  " << (ok ? "OK" : "FAIL") << "\n";
+    }
 }

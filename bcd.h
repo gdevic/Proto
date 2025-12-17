@@ -39,3 +39,11 @@ struct BCD
 // Arithmetic operations
 BCD add(const BCD& a, const BCD& b);
 BCD subtract(const BCD& a, const BCD& b);
+
+// Tolerance for verification
+constexpr Real DEFAULT_TOL = REAL_LITERAL(1e-15);
+bool withinTolerance(Real a, Real b, Real relTol = DEFAULT_TOL);
+
+// Test functions
+void testAddition();
+void testSubtraction();
