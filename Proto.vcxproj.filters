@@ -24,12 +24,27 @@
     <ClCompile Include="addsub.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="exponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mantissa.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mult.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="testbench.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="exponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mantissa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="testbench.h">
