@@ -154,7 +154,7 @@ bool runCombTests(const char* opName,
         }
     }
 
-    std::cerr << opName << " comb: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    std::cerr << "= " << opName << " comb: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
     return true;
 }
 
@@ -190,6 +190,6 @@ bool runRandomTests(const char* opName,
         }
     }
 
-    std::cerr << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    std::cerr << "= " << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
     return true;
 }
