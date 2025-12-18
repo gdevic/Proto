@@ -1,5 +1,58 @@
-- Prefer using functional cast over static cast. Defer to static_cast only when absolutely necessary.
-- Instead of the word "oracle", use "golden value"
-- Never update code while we are talking before asking me
-- Do not put brackets for single line statements in C/C++
-- Be explicit with parentheses in C/C++ expressions; use them always unless they would enclose a complete expression
+# Proto - BCD Arithmetic Reference Implementation
+
+## Goal
+Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardware verification (Verilog + microcode). 16-digit decimal precision, outputs test vectors for HW comparison.
+
+## Coding Style
+- Prefer functional cast over static_cast
+- Use "golden value" instead of "oracle"
+- Never update code without asking first
+- No brackets for single-line statements in C/C++
+- Explicit parentheses in expressions (unless enclosing complete expression)
+
+## Current State
+
+### BCD Structure (`bcd.h`)
+- 16-digit mantissa, 2-digit exponent (00-99), sign flags
+- Internal format: `d₁.d₂d₃...d₁₆ × 10^exp` (e.g., mant=1234, exp=0 → 1.234)
+- Single constructor: `BCD(std::string_view str)`
+
+### Files
+- `bcd.h/cpp` - BCD struct, string constructor, toReal()
+- `addsub.cpp` - add(), subtract(), testAddition()
+- `testbench.h/cpp` - formatBCD(), printTestResult(), checkTolerance(), generateRandomBCD()
+- `proto.cpp` - main(), argument parsing (-h, -t, -v)
+
+### Output Format
+One test per line, fixed columns for HW parsing:
+```
+ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
+```
+- `-t`: Print all lines (for HW file)
+- `-v`: Print IEEE value on OK lines
+- Default: Only APPROX/FAIL lines (debugging)
+
+### Tolerance System
+- OK: ≤1e-14 (14+ correct digits)
+- APPROX: ≤1e-13 (13-14 digits)
+- FAIL: >1e-13
+
+### RandomBCDOptions Presets
+Domain constraints for different operations:
+- OPTS_ADDSUB (maxExp=50)
+- OPTS_MUL, OPTS_DIV (maxExp=49)
+- OPTS_SQRT, OPTS_LN, OPTS_LOG (positiveOnly)
+- OPTS_EXP, OPTS_TAN (smallValue)
+- OPTS_ATAN (maxExp=99)
+
+## Next Steps
+- Implement mul(), div(), sqrt(), ln(), log(), exp(), tan(), atan()
+- Add corresponding test functions
+- Each operation uses appropriate RandomBCDOptions preset
+
+## Build
+```bash
+make              # Linux, long double
+./proto -h        # Help
+./proto -t > hw.txt  # Generate HW test file
+```
