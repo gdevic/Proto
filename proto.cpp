@@ -13,6 +13,7 @@ static void printHelp(const char* prog)
               << "\n"
               << "Options:\n"
               << "  -h       Show this help message\n"
+              << "  -i       Show test index (1-based) at start of each line\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
               << "  -v       Verbose: print IEEE value even on OK lines\n"
               << "\n"
@@ -34,6 +35,8 @@ int main(int argc, char* argv[])
             printHelp(argv[0]);
             return 0;
         }
+        else if (strcmp(argv[i], "-i") == 0)
+            g_showIndex = true;
         else if (strcmp(argv[i], "-v") == 0)
             g_verbose = true;
         else if (strcmp(argv[i], "-t") == 0)
@@ -54,7 +57,7 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    std::cerr << "Flags: " << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n\n";
+    std::cerr << "Flags: " << (g_showIndex ? "-i " : "") << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n\n";
 
     testAddition();
 }

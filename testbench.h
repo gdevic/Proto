@@ -9,8 +9,10 @@
 #endif
 
 // Output control flags (set from command line)
-extern bool g_verbose;  // -v: Print IEEE value even on OK
-extern bool g_traceAll; // -t: Print all lines including OK
+inline bool g_verbose = false;   // -v: Print IEEE value even on OK
+inline bool g_traceAll = false;  // -t: Print all lines including OK
+inline bool g_showIndex = false; // -i: Print test index before each line
+inline int g_testIndex = 0;      // Global test counter
 
 // Tolerance levels for verification (13-14 correct digits required)
 constexpr Real TIGHT_TOL = REAL_LITERAL(1e-14);  // 14 correct digits

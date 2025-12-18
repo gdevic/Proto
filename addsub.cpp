@@ -235,6 +235,7 @@ void testAddition()
             BCD result = add(a, b);
             MatchLevel level = checkTolerance(ieee, result.toReal());
 
+            g_testIndex++;
             printTestResult("ADD", a, b, result, level, ieee);
 
             switch (level) {
@@ -257,6 +258,7 @@ void testAddition()
         BCD result = add(a, b);
         MatchLevel level = checkTolerance(ieee, result.toReal());
 
+        g_testIndex++;
         printTestResult("ADD", a, b, result, level, ieee);
 
         switch (level) {

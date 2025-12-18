@@ -4,10 +4,6 @@
 #include <iomanip>
 #include <sstream>
 
-// Global flags (default: debug mode, show only problems)
-bool g_verbose = false;
-bool g_traceAll = false;
-
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars, fixed width for HW parsing)
 // Internal format: d₁.d₂d₃...d₁₆ × 10^exp
 std::string formatBCD(const BCD& x)
@@ -35,6 +31,9 @@ void printTestResult(const char* op, const BCD& a, const BCD& b,
     // Skip OK lines unless traceAll is set
     if ((level == MatchLevel::OK) && !g_traceAll)
         return;
+
+    if (g_showIndex)
+        std::cout << std::setw(5) << g_testIndex << " ";
 
     std::cout << op << " "
               << formatBCD(a) << " "
