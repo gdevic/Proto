@@ -69,7 +69,7 @@ BCD bcdDiv(const BCD& a, const BCD& b)
         for (int trial = 9; trial >= 1; trial--) {
             int carry = multiplyByDigit(divisor17, trial, temp, DIVLEN);
             // If carry > 0, product overflows, definitely > partial
-            if (carry == 0 && compareMant(temp, partial, DIVLEN) <= 0) {
+            if ((carry == 0) && (compareMant(temp, partial, DIVLEN) <= 0)) {
                 q = trial;
                 break;
             }
@@ -82,7 +82,7 @@ BCD bcdDiv(const BCD& a, const BCD& b)
             (void)multiplyByDigit(divisor17, q, temp, DIVLEN);
             int borrow = 0;
             for (int j = DIVLEN - 1; j >= 0; j--) {
-                int diff = partial[j] - temp[j] - borrow;
+                int diff = (partial[j] - temp[j]) - borrow;
                 if (diff < 0) {
                     diff += 10;
                     borrow = 1;
