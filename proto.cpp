@@ -1,33 +1,30 @@
 #include "bcd.h"
+#include "testbench.h"
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <cstring>
 
-void testConversion()
+int main(int argc, char* argv[])
 {
-    std::cout << "=== Conversion Tests ===\n";
-    double testValues[] = {123.456, -0.00789, 1.0, -999.999, 0.0, 3.14159265358979};
-
-    for (double val : testValues) {
-        BCD bcd(val);
-        Real result = bcd.toReal();
-        bool ok = withinTolerance(bcd.value, result);
-        std::cout << std::setw(24) << bcd.value << " -> " << std::setw(24) << result
-                  << "  " << (ok ? "OK" : "FAIL") << "\n";
+    // Parse command line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0)
+            g_verbose = true;
+        else if (strcmp(argv[i], "-t") == 0)
+            g_traceAll = true;
     }
-}
 
-int main()
-{
     std::cout << std::setprecision(15);
-#ifdef USE_LONG_DOUBLE
-    std::cout << "Verification: using long double" << "\n";
-#else
-    std::cout << "Verification: using double" << "\n";
-#endif
-    std::cout << "Tolerance: " << DEFAULT_TOL << "\n\n";
+    std::cerr << std::setprecision(15);
 
-    testConversion();
+#ifdef USE_LONG_DOUBLE
+    std::cerr << "Verification: using long double\n";
+#else
+    std::cerr << "Verification: using double\n";
+#endif
+    std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
+    std::cerr << "Flags: " << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n\n";
+
     testAddition();
-    testSubtraction();
 }

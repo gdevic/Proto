@@ -1,5 +1,9 @@
 #include "bcd.h"
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <string>
 
 // Precomputed exact powers of 10 to avoid pow() rounding errors
 static const Real POW10[] = {
@@ -12,14 +16,14 @@ static const Real POW10[] = {
 
 static Real pow10(int n)
 {
-    if (n >= 0 && n < 20) return POW10[n];
-    if (n < 0 && n > -20) return REAL_LITERAL(1.0) / POW10[-n];
+    if ((n >= 0) && (n < 20)) return POW10[n];
+    if ((n < 0) && (n > -20)) return REAL_LITERAL(1.0) / POW10[-n];
     return pow(REAL_LITERAL(10.0), n);
 }
 
-BCD::BCD(double v) : value(v)
+BCD::BCD(Real v) : value(v)
 {
-    Real val = Real(v);
+    Real val = v;
 
     // Handle sign
     if (val < REAL_LITERAL(0.0)) {
@@ -28,9 +32,8 @@ BCD::BCD(double v) : value(v)
     }
 
     // Handle zero - all members already zero-initialized
-    if (val == REAL_LITERAL(0.0)) {
+    if (val == REAL_LITERAL(0.0))
         return;
-    }
 
     // Calculate base-10 exponent
     // We want mantissa in range [0.1, 1.0), so add 1 to floor(log10)
@@ -45,9 +48,10 @@ BCD::BCD(double v) : value(v)
         e = -e;
     }
 
-    // Clamp exponent to 99 max (overflow)
+    // Exponent overflow is a test generation error - abort immediately
     if (e > 99) {
-        e = 99;
+        std::cerr << "FATAL: BCD exponent overflow (e=" << e << ", value=" << v << ")\n";
+        std::exit(1);
     }
 
     // Store exponent digits (tens, units)
@@ -71,22 +75,105 @@ Real BCD::toReal() const
     // Reconstruct mantissa using exact integer operations
     // Multiply by 10 (exact in binary) instead of 0.1 (inexact)
     Real m = REAL_LITERAL(0.0);
-    for (size_t i = 0; i < MAX_MANT; i++) {
-        m = m * REAL_LITERAL(10.0) + mant[i];
-    }
+    for (size_t i = 0; i < MAX_MANT; i++)
+        m = (m * REAL_LITERAL(10.0)) + mant[i];
 
     // Reconstruct exponent and combine with mantissa scaling
     // Single pow10 call: 10^(e - MAX_MANT) instead of separate divide and multiply
-    int e = exp[0] * 10 + exp[1];
-    if (esign) {
+    int e = (exp[0] * 10) + exp[1];
+    if (esign)
         e = -e;
-    }
     Real result = m * pow10(e - int(MAX_MANT));
 
     // Apply sign
-    if (sign) {
-        result = -result;
-    }
+    if (sign) result = -result;
 
     return result;
+}
+
+BCD::BCD(std::string_view str)
+{
+    size_t pos = 0;
+
+    // 1. Parse optional sign
+    if ((pos < str.size()) && (str[pos] == '-')) { sign = true; pos++; }
+    else if ((pos < str.size()) && (str[pos] == '+')) { pos++; }
+
+    // 2. Parse mantissa digits (store temporarily, skip leading zeros)
+    uint8_t digits[16];
+    int digit_count = 0;
+    int digits_before_decimal = 0;
+    bool seen_decimal = false;
+    bool seen_nonzero = false;
+    int leading_zeros_after_decimal = 0;
+
+    while ((pos < str.size()) && (str[pos] != 'e') && (str[pos] != 'E')) {
+        char c = str[pos];
+        if (c == '.') {
+            seen_decimal = true;
+            digits_before_decimal = digit_count;
+            pos++;
+            continue;
+        }
+        if ((c >= '0') && (c <= '9')) {
+            int d = c - '0';
+            if ((d == 0) && !seen_nonzero) {
+                // Leading zero - track for exponent adjustment
+                if (seen_decimal) leading_zeros_after_decimal++;
+                pos++;
+                continue;
+            }
+            seen_nonzero = true;
+            if (digit_count >= 16)
+                throw std::invalid_argument("BCD: more than 16 mantissa digits");
+            digits[digit_count++] = uint8_t(d);
+        }
+        pos++;
+    }
+
+    // Adjust digits_before_decimal if we hadn't seen decimal yet
+    if (!seen_decimal)
+        digits_before_decimal = digit_count;
+
+    // 3. Parse optional exponent
+    int parsed_exp = 0;
+    bool exp_negative = false;
+    if ((pos < str.size()) && ((str[pos] == 'e') || (str[pos] == 'E'))) {
+        pos++;
+        if ((pos < str.size()) && (str[pos] == '-')) { exp_negative = true; pos++; }
+        else if ((pos < str.size()) && (str[pos] == '+')) { pos++; }
+        while ((pos < str.size()) && (str[pos] >= '0') && (str[pos] <= '9')) {
+            parsed_exp = (parsed_exp * 10) + (str[pos] - '0');
+            pos++;
+        }
+        if (exp_negative) parsed_exp = -parsed_exp;
+    }
+
+    // 4. Copy digits to mant[], zero-pad remainder
+    for (int i = 0; i < 16; i++)
+        mant[i] = (i < digit_count) ? digits[i] : 0;
+
+    // 5. Calculate effective exponent
+    int effective_exp = parsed_exp + digits_before_decimal - leading_zeros_after_decimal;
+
+    // 6. Set exp[] and esign
+    if (effective_exp < 0) {
+        esign = true;
+        effective_exp = -effective_exp;
+    }
+    // Exponent overflow is a test generation error - abort immediately
+    if (effective_exp > 99) {
+        std::cerr << "FATAL: BCD exponent overflow (exp=" << effective_exp << ", input=\"" << str << "\")\n";
+        std::exit(1);
+    }
+    exp[0] = uint8_t(effective_exp / 10);
+    exp[1] = uint8_t(effective_exp % 10);
+
+    // 7. Compute value field via sscanf (needs null-terminated string)
+    std::string tmp(str);
+#ifdef USE_LONG_DOUBLE
+    sscanf(tmp.c_str(), "%Lf", &value);
+#else
+    sscanf(tmp.c_str(), "%lf", &value);
+#endif
 }

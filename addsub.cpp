@@ -1,20 +1,12 @@
 #include "bcd.h"
+#include "testbench.h"
 #include <iostream>
-#include <iomanip>
 #include <cmath>
-#include <utility>
-
-bool withinTolerance(Real a, Real b, Real relTol)
-{
-    if (a == b) return true;  // Handles zero case
-    Real maxAbs = std::max(std::fabs(a), std::fabs(b));
-    return std::fabs(a - b) <= relTol * maxAbs;
-}
 
 // Get exponent as signed integer
 static int getExp(const BCD& x)
 {
-    int e = x.exp[0] * 10 + x.exp[1];
+    int e = (x.exp[0] * 10) + x.exp[1];
     return x.esign ? -e : e;
 }
 
@@ -54,18 +46,16 @@ static void normalize(BCD& x)
 
     // Find first non-zero digit
     size_t shift = 0;
-    while (shift < MAX_MANT && x.mant[shift] == 0) {
+    while ((shift < MAX_MANT) && (x.mant[shift] == 0))
         shift++;
-    }
 
     if (shift > 0) {
         int e = getExp(x);
         e -= int(shift);
 
         // Shift mantissa left
-        for (size_t i = 0; i < MAX_MANT; i++) {
-            x.mant[i] = (i + shift < MAX_MANT) ? x.mant[i + shift] : 0;
-        }
+        for (size_t i = 0; i < MAX_MANT; i++)
+            x.mant[i] = ((i + shift) < MAX_MANT) ? x.mant[i + shift] : 0;
 
         setExp(x, e);
     }
@@ -77,7 +67,7 @@ static int addAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r)
 {
     int carry = 0;
     for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int sum = a[i] + b[i] + carry;
+        int sum = (a[i] + b[i]) + carry;
         r[i] = uint8_t(sum % 10);
         carry = sum / 10;
     }
@@ -89,7 +79,7 @@ static void subtractAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_
 {
     int borrow = 0;
     for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int diff = a[i] - b[i] - borrow;
+        int diff = (a[i] - b[i]) - borrow;
         if (diff < 0) {
             diff += 10;
             borrow = 1;
@@ -125,6 +115,7 @@ static bool shiftRight(uint8_t* mant, int n)
     return lost;
 }
 
+// Add two BCD numbers, handling sign, exponent alignment, and normalization
 BCD add(const BCD& a, const BCD& b)
 {
     // Handle zero cases
@@ -195,61 +186,85 @@ BCD add(const BCD& a, const BCD& b)
     return result;
 }
 
+// Subtract two BCD numbers: a - b = a + (-b)
 BCD subtract(const BCD& a, const BCD& b)
 {
     // a - b = a + (-b)
     BCD negB = b;
-    if (!isZero(b)) {
+    if (!isZero(b))
         negB.sign = !b.sign;
-    }
     return add(a, negB);
 }
 
+// Run combinatorial and random addition tests, output results via printTestResult()
 void testAddition()
 {
-    std::cout << "\n=== Addition Tests ===\n";
-    std::pair<double, double> tests[] = {
-        {1.0, 2.0},
-        {123.456, 789.012},
-        {0.001, 0.002},
-        {999.0, 1.0},
-        {-5.0, 3.0},
-        {5.0, -3.0},
-        {-5.0, -3.0},
-        {1e10, 1e-10},
-        {0.0, 42.0},
-        {1.0, -1.0},
+    std::string val[] = {
+        // Basic values
+        "0",
+        "1",
+        "-1",
+        // Full 16-digit mantissa (tests precision limits)
+        "1234567890123456",
+        "-1234567890123456",
+        // Near-overflow addition (9s that cause carry)
+        "9999999999999999",
+        "9999999999999999e10",
+        // Very small (tests alignment with large shifts)
+        "1e-50",
+        "-1e-50",
+        // Mixed magnitudes (tests mantissa alignment)
+        "1e10",
+        "1e-10",
+        // Numbers that cancel (catastrophic cancellation test)
+        "1.000000000000001",
+        "1.000000000000000",
+        // Decimal precision
+        ".1234567890123456",
+        "-.9999999999999999",
     };
 
-    for (auto [x, y] : tests) {
-        BCD a(x), b(y);
-        Real expected = a.value + b.value;  // Long double precision golden value
-        Real actual = add(a, b).toReal();
-        bool ok = withinTolerance(expected, actual);
-        std::cout << std::setw(12) << x << " + " << std::setw(12) << y
-                  << " = " << std::setw(14) << actual
-                  << "  " << (ok ? "OK" : "FAIL") << "\n";
-    }
-}
+    int ok = 0, approx = 0, fail = 0;
 
-void testSubtraction()
-{
-    std::cout << "\n=== Subtraction Tests ===\n";
-    std::pair<double, double> tests[] = {
-        {5.0, 3.0},
-        {3.0, 5.0},
-        {100.0, 0.001},
-        {-5.0, -3.0},
-        {1.0, 1.0},
-    };
+    // Combinatorial tests
+    size_t n = sizeof(val) / sizeof(val[0]);
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            BCD a(val[i]), b(val[j]);
+            Real ieee = a.value + b.value;
+            BCD result = add(a, b);
+            MatchLevel level = checkTolerance(ieee, result.toReal());
 
-    for (auto [x, y] : tests) {
-        BCD a(x), b(y);
-        Real expected = a.value - b.value;  // Long double precision golden value
-        Real actual = subtract(a, b).toReal();
-        bool ok = withinTolerance(expected, actual);
-        std::cout << std::setw(12) << x << " - " << std::setw(12) << y
-                  << " = " << std::setw(14) << actual
-                  << "  " << (ok ? "OK" : "FAIL") << "\n";
+            printTestResult("ADD", a, b, result, level, ieee);
+
+            switch (level) {
+                case MatchLevel::OK: ok++; break;
+                case MatchLevel::APPROX: approx++; break;
+                case MatchLevel::FAIL: fail++; break;
+            }
+        }
     }
+
+    // Random tests
+    std::mt19937 rng(42);  // Fixed seed for reproducibility
+
+    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
+        std::string strA = generateRandomBCD(rng);
+        std::string strB = generateRandomBCD(rng);
+
+        BCD a(strA), b(strB);
+        Real ieee = a.value + b.value;
+        BCD result = add(a, b);
+        MatchLevel level = checkTolerance(ieee, result.toReal());
+
+        printTestResult("ADD", a, b, result, level, ieee);
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << "ADD: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
 }

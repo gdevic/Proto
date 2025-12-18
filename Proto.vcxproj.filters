@@ -24,9 +24,15 @@
     <ClCompile Include="addsub.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="testbench.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="testbench.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

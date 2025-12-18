@@ -1,3 +1,5 @@
 - Prefer using functional cast over static cast. Defer to static_cast only when absolutely necessary.
 - Instead of the word "oracle", use "golden value"
 - Never update code while we are talking before asking me
+- Do not put brackets for single line statements in C/C++
+- Be explicit with parentheses in C/C++ expressions; use them always unless they would enclose a complete expression

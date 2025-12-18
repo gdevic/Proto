@@ -3,6 +3,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
+#include <string_view>
 
 using std::array;
 using std::size_t;
@@ -30,7 +32,10 @@ struct BCD
     BCD() = default;
 
     // Constructor that initializes the BCD number using a floating point value
-    explicit BCD(double v);
+    explicit BCD(Real v);
+
+    // Constructor that parses a string representation
+    explicit BCD(std::string_view str);
 
     // Convert BCD back to Real for verification
     Real toReal() const;
@@ -40,10 +45,5 @@ struct BCD
 BCD add(const BCD& a, const BCD& b);
 BCD subtract(const BCD& a, const BCD& b);
 
-// Tolerance for verification
-constexpr Real DEFAULT_TOL = REAL_LITERAL(1e-15);
-bool withinTolerance(Real a, Real b, Real relTol = DEFAULT_TOL);
-
 // Test functions
 void testAddition();
-void testSubtraction();

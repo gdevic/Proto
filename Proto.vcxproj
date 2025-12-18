@@ -146,9 +146,11 @@
     <ClCompile Include="addsub.cpp" />
     <ClCompile Include="bcd.cpp" />
     <ClCompile Include="proto.cpp" />
+    <ClCompile Include="testbench.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />
+    <ClInclude Include="testbench.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
