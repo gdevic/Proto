@@ -21,62 +21,6 @@ static Real pow10(int n)
     return pow(REAL_LITERAL(10.0), n);
 }
 
-BCD::BCD(Real v) : value(v)
-{
-    Real val = v;
-
-    // Handle sign
-    if (val < REAL_LITERAL(0.0)) {
-        sign = true;
-        val = -val;
-    }
-
-    // Handle zero - all members already zero-initialized
-    if (val == REAL_LITERAL(0.0))
-        return;
-
-    // Calculate base-10 exponent
-    // Normalize mantissa to range [1.0, 10.0), so e = floor(log10)
-    int e = int(floor(log10(val)));
-
-    // Normalize mantissa to [1.0, 10.0)
-    Real m = val / pow10(e);
-
-    // Handle exponent sign
-    if (e < 0) {
-        esign = true;
-        e = -e;
-    }
-
-    // Exponent overflow is a test generation error - abort immediately
-    if (e > 99) {
-        std::cerr << "FATAL: BCD exponent overflow (e=" << e << ", value=" << v << ")\n";
-        std::exit(1);
-    }
-
-    // Store exponent digits (tens, units)
-    exp[0] = uint8_t(e / 10);
-    exp[1] = uint8_t(e % 10);
-
-    // Extract mantissa digits (m is in [1.0, 10.0))
-    // First digit is integer part of m
-    int digit = int(m);
-    if (digit > 9) digit = 9;
-    if (digit < 1) digit = 1;
-    mant[0] = uint8_t(digit);
-    m -= digit;
-
-    // Remaining 15 digits
-    for (size_t i = 1; i < MAX_MANT; i++) {
-        m *= REAL_LITERAL(10.0);
-        digit = int(m);
-        if (digit > 9) digit = 9;
-        if (digit < 0) digit = 0;
-        mant[i] = uint8_t(digit);
-        m -= digit;
-    }
-}
-
 Real BCD::toReal() const
 {
     // Reconstruct mantissa using exact integer operations

@@ -31,9 +31,6 @@ struct BCD
     // Default constructor
     BCD() = default;
 
-    // Constructor that initializes the BCD number using a floating point value
-    explicit BCD(Real v);
-
     // Constructor that parses a string representation
     explicit BCD(std::string_view str);
 

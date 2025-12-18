@@ -22,9 +22,8 @@ Representation: `±d₁.d₂d₃...d₁₆ × 10^(±exp)`
 
 Example: mantissa=1234..., exp=0 represents 1.234
 
-## Constructors
+## Constructor
 
-- `BCD(Real v)` - Initialize from floating-point value (`double` or `long double`)
 - `BCD(std::string_view str)` - Parse string representation
   - Format: `[±]digits[.digits][E[±]exp]`
   - Examples: `"123"`, `"-1.5"`, `".001"`, `"1.23e-5"`
