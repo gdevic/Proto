@@ -10,6 +10,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - Assume code might have changed externally at any time
 - No brackets for single-line statements in C/C++
 - Explicit parentheses in expressions (unless enclosing complete expression)
+- After every major change or addition of new functionality, update readme
 
 ## Current State
 

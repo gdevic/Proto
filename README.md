@@ -124,7 +124,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Addition | `add(a, b)` | Implemented |
 | Subtraction | `subtract(a, b)` | Implemented |
 | Multiplication | `mul(a, b)` | Implemented |
-| Division | `div(a, b)` | Planned |
+| Division | `bcdDiv(a, b)` | Implemented |
 | Square Root | `sqrt(a)` | Planned |
 | Logarithm | `log(a)`, `ln(a)` | Planned |
 | Exponential | `exp(a)` | Planned |
@@ -140,6 +140,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | `mantissa.h/cpp` | Mantissa utilities: isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes() |
 | `addsub.cpp` | add(), subtract(), testAddition() |
 | `mult.cpp` | mul(), testMultiplication() |
+| `div.cpp` | bcdDiv(), testDivision() |
 | `testbench.h/cpp` | Test infrastructure: formatBCD(), printTestResult(), checkTolerance(), runCombTests(), runRandomTests() |
 | `proto.cpp` | Main driver, command-line parsing |
 
@@ -216,6 +217,8 @@ ADD comb: 225 OK, 0 APPROX, 0 FAIL
 ADD rand: 2 OK, 0 APPROX, 0 FAIL
 MUL comb: 144 OK, 0 APPROX, 0 FAIL
 MUL rand: 2 OK, 0 APPROX, 0 FAIL
+DIV comb: 144 OK, 0 APPROX, 0 FAIL
+DIV rand: 2 OK, 0 APPROX, 0 FAIL
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
