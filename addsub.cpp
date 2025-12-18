@@ -108,12 +108,15 @@ void testAddition()
         // Mixed magnitudes (tests mantissa alignment)
         "1e10",
         "1e-10",
-        // Numbers that cancel (catastrophic cancellation test)
-        "1.000000000000001",
-        "1.000000000000000",
-        // Decimal precision
+        // Decimal precision and catastrophic cancellations
         ".1234567890123456",
         "-.9999999999999999",
+        "1.0000000000001",
+        "1.00000000000001",
+        "1.000000000000001",
+        "1.0000000000009",
+        "1.00000000000009",
+        "1.000000000000009",
     };
 
     if (!runCombTests("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
@@ -122,6 +125,7 @@ void testAddition()
 }
 
 // Run minimal combinatorial and random subtraction tests
+// Here we only want to test a small "sub" stub that inverts the sign of the subtrahend
 void testSubtraction()
 {
     static const std::string val[] = {
