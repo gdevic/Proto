@@ -2,8 +2,6 @@
 #include "testbench.h"
 #include "exponent.h"
 #include "mantissa.h"
-#include <iostream>
-#include <cmath>
 
 // Multiply two BCD numbers
 BCD mul(const BCD& a, const BCD& b)
@@ -52,10 +50,13 @@ BCD mul(const BCD& a, const BCD& b)
     return result;
 }
 
+// IEEE multiplication for test runner
+static Real ieeeMul(Real a, Real b) { return a * b; }
+
 // Run combinatorial and random multiplication tests
 void testMultiplication()
 {
-    std::string val[] = {
+    static const std::string val[] = {
         // Basic values
         "0",
         "1",
@@ -76,51 +77,7 @@ void testMultiplication()
         "-.9999999999999999",
     };
 
-    int ok = 0, approx = 0, fail = 0;
-
-    // Combinatorial tests
-    size_t n = sizeof(val) / sizeof(val[0]);
-    for (size_t i = 0; i < n; i++) {
-        for (size_t j = 0; j < n; j++) {
-            BCD a(val[i]), b(val[j]);
-            Real ieee = a.value * b.value;
-            BCD result = mul(a, b);
-            MatchLevel level = checkTolerance(ieee, result.toReal());
-
-            g_testIndex++;
-            if (printTestResult("MUL", a, b, result, level, ieee))
-                return;
-
-            switch (level) {
-                case MatchLevel::OK: ok++; break;
-                case MatchLevel::APPROX: approx++; break;
-                case MatchLevel::FAIL: fail++; break;
-            }
-        }
-    }
-
-    // Random tests
-    std::mt19937 rng(43);  // Different seed from addition
-
-    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
-        std::string strA = generateRandomBCD(rng, OPTS_MUL);
-        std::string strB = generateRandomBCD(rng, OPTS_MUL);
-
-        BCD a(strA), b(strB);
-        Real ieee = a.value * b.value;
-        BCD result = mul(a, b);
-        MatchLevel level = checkTolerance(ieee, result.toReal());
-
-        g_testIndex++;
-        if (printTestResult("MUL", a, b, result, level, ieee))
-            return;
-
-        switch (level) {
-            case MatchLevel::OK: ok++; break;
-            case MatchLevel::APPROX: approx++; break;
-            case MatchLevel::FAIL: fail++; break;
-        }
-    }
-
-    std::cerr << "MUL: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    if (!runCombTests("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))
+        return;
+    runRandomTests("MUL", mul, ieeeMul, OPTS_MUL, 43);
 }

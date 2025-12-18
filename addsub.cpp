@@ -2,8 +2,6 @@
 #include "testbench.h"
 #include "exponent.h"
 #include "mantissa.h"
-#include <iostream>
-#include <cmath>
 
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
 BCD add(const BCD& a, const BCD& b)
@@ -86,10 +84,13 @@ BCD subtract(const BCD& a, const BCD& b)
     return add(a, negB);
 }
 
-// Run combinatorial and random addition tests, output results via printTestResult()
+// IEEE addition for test runner
+static Real ieeeAdd(Real a, Real b) { return a + b; }
+
+// Run combinatorial and random addition tests
 void testAddition()
 {
-    std::string val[] = {
+    static const std::string val[] = {
         // Basic values
         "0",
         "1",
@@ -114,51 +115,7 @@ void testAddition()
         "-.9999999999999999",
     };
 
-    int ok = 0, approx = 0, fail = 0;
-
-    // Combinatorial tests
-    size_t n = sizeof(val) / sizeof(val[0]);
-    for (size_t i = 0; i < n; i++) {
-        for (size_t j = 0; j < n; j++) {
-            BCD a(val[i]), b(val[j]);
-            Real ieee = a.value + b.value;
-            BCD result = add(a, b);
-            MatchLevel level = checkTolerance(ieee, result.toReal());
-
-            g_testIndex++;
-            if (printTestResult("ADD", a, b, result, level, ieee))
-                return;
-
-            switch (level) {
-                case MatchLevel::OK: ok++; break;
-                case MatchLevel::APPROX: approx++; break;
-                case MatchLevel::FAIL: fail++; break;
-            }
-        }
-    }
-
-    // Random tests
-    std::mt19937 rng(42);  // Fixed seed for reproducibility
-
-    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
-        std::string strA = generateRandomBCD(rng);
-        std::string strB = generateRandomBCD(rng);
-
-        BCD a(strA), b(strB);
-        Real ieee = a.value + b.value;
-        BCD result = add(a, b);
-        MatchLevel level = checkTolerance(ieee, result.toReal());
-
-        g_testIndex++;
-        if (printTestResult("ADD", a, b, result, level, ieee))
-            return;
-
-        switch (level) {
-            case MatchLevel::OK: ok++; break;
-            case MatchLevel::APPROX: approx++; break;
-            case MatchLevel::FAIL: fail++; break;
-        }
-    }
-
-    std::cerr << "ADD: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    if (!runCombTests("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
+        return;
+    runRandomTests("ADD", add, ieeeAdd, OPTS_ADDSUB, 42);
 }

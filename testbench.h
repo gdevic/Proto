@@ -50,3 +50,23 @@ constexpr RandomBCDOptions OPTS_TAN    = { 1,  false, true  };
 constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
 
 std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts = {});
+
+// Function pointer types for generic test runners
+using BcdBinaryOp = BCD (*)(const BCD&, const BCD&);
+using IeeeBinaryOp = Real (*)(Real, Real);
+
+// Combinatorial test runner - tests all pairs from values array
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runCombTests(const char* opName,
+                  BcdBinaryOp bcdOp,
+                  IeeeBinaryOp ieeeOp,
+                  const std::string* values,
+                  size_t valueCount);
+
+// Random test runner - generates random test pairs
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomTests(const char* opName,
+                    BcdBinaryOp bcdOp,
+                    IeeeBinaryOp ieeeOp,
+                    const RandomBCDOptions& opts,
+                    unsigned seed);

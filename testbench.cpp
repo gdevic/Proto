@@ -124,3 +124,72 @@ MatchLevel checkTolerance(Real expected, Real actual)
     if (relErr <= LOOSE_TOL) return MatchLevel::APPROX;
     return MatchLevel::FAIL;
 }
+
+// Combinatorial test runner - tests all pairs from values array
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runCombTests(const char* opName,
+                  BcdBinaryOp bcdOp,
+                  IeeeBinaryOp ieeeOp,
+                  const std::string* values,
+                  size_t valueCount)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    for (size_t i = 0; i < valueCount; i++) {
+        for (size_t j = 0; j < valueCount; j++) {
+            BCD a(values[i]), b(values[j]);
+            Real ieee = ieeeOp(a.value, b.value);
+            BCD result = bcdOp(a, b);
+            MatchLevel level = checkTolerance(ieee, result.toReal());
+
+            g_testIndex++;
+            if (printTestResult(opName, a, b, result, level, ieee))
+                return false;
+
+            switch (level) {
+                case MatchLevel::OK: ok++; break;
+                case MatchLevel::APPROX: approx++; break;
+                case MatchLevel::FAIL: fail++; break;
+            }
+        }
+    }
+
+    std::cerr << opName << " comb: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}
+
+// Random test runner - generates random test pairs
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomTests(const char* opName,
+                    BcdBinaryOp bcdOp,
+                    IeeeBinaryOp ieeeOp,
+                    const RandomBCDOptions& opts,
+                    unsigned seed)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    std::mt19937 rng(seed);
+
+    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
+        std::string strA = generateRandomBCD(rng, opts);
+        std::string strB = generateRandomBCD(rng, opts);
+
+        BCD a(strA), b(strB);
+        Real ieee = ieeeOp(a.value, b.value);
+        BCD result = bcdOp(a, b);
+        MatchLevel level = checkTolerance(ieee, result.toReal());
+
+        g_testIndex++;
+        if (printTestResult(opName, a, b, result, level, ieee))
+            return false;
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}

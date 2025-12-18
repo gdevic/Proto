@@ -117,22 +117,53 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | 10 | 6 |
 | 15 | 1 |
 
+## Operations
+
+| Operation | Function | Status |
+|-----------|----------|--------|
+| Addition | `add(a, b)` | Implemented |
+| Subtraction | `subtract(a, b)` | Implemented |
+| Multiplication | `mul(a, b)` | Implemented |
+| Division | `div(a, b)` | Planned |
+| Square Root | `sqrt(a)` | Planned |
+| Logarithm | `log(a)`, `ln(a)` | Planned |
+| Exponential | `exp(a)` | Planned |
+| Trigonometric | `tan(a)`, `atan(a)` | Planned |
+
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `bcd.h` | BCD struct, constants, function declarations |
-| `bcd.cpp` | Constructors, toReal() conversion |
+| `bcd.cpp` | Constructor, toReal() conversion |
+| `exponent.h/cpp` | Exponent utilities: getExp(), setExp() |
+| `mantissa.h/cpp` | Mantissa utilities: isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes() |
 | `addsub.cpp` | add(), subtract(), testAddition() |
-| `testbench.h` | Test utilities, tolerance constants, output flags |
-| `testbench.cpp` | formatBCD(), printTestResult(), checkTolerance() |
+| `mult.cpp` | mul(), testMultiplication() |
+| `testbench.h/cpp` | Test infrastructure: formatBCD(), printTestResult(), checkTolerance(), runCombTests(), runRandomTests() |
 | `proto.cpp` | Main driver, command-line parsing |
 
 ## Building
 
+### Linux (GCC)
+
 ```bash
-make        # Build with long double (Linux default)
+make        # Build with long double
 ./proto     # Run tests (debug mode: show only APPROX/FAIL)
+```
+
+### Windows (Visual Studio 2022)
+
+From Developer Command Prompt for VS 2022:
+```cmd
+msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
+x64\Release\Proto.exe
+```
+
+Or from regular command prompt, first initialize the environment:
+```cmd
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
+msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 ```
 
 ## Command Line Flags
@@ -177,4 +208,14 @@ ADD +1.234567890123456e+50 +9.876543210987654e+10 +1.234567890123456e+50 OK
 SUB +1.000000000000001e+00 +1.000000000000000e+00 +9.999999999999980e-16 APPROX 1e-15 err=2e-16
 ```
 
-Summary is printed to stderr so it doesn't interfere with stdout redirection.
+### Test Summary
+
+Summary is printed to stderr (doesn't interfere with stdout redirection):
+```
+ADD comb: 225 OK, 0 APPROX, 0 FAIL
+ADD rand: 2 OK, 0 APPROX, 0 FAIL
+MUL comb: 144 OK, 0 APPROX, 0 FAIL
+MUL rand: 2 OK, 0 APPROX, 0 FAIL
+```
+
+Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
