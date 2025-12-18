@@ -7,6 +7,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - Prefer functional cast over static_cast
 - Use "golden value" instead of "oracle"
 - Never update code without asking first
+- Assume code might have changed externally at any time
 - No brackets for single-line statements in C/C++
 - Explicit parentheses in expressions (unless enclosing complete expression)
 
@@ -28,9 +29,6 @@ One test per line, fixed columns for HW parsing:
 ```
 ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 ```
-- `-t`: Print all lines (for HW file)
-- `-v`: Print IEEE value on OK lines
-- Default: Only APPROX/FAIL lines (debugging)
 
 ### Tolerance System
 - OK: ≤1e-14 (14+ correct digits)
@@ -54,5 +52,5 @@ Domain constraints for different operations:
 ```bash
 make              # Linux, long double
 ./proto -h        # Help
-./proto -t > hw.txt  # Generate HW test file
+./proto           # Silently run tests
 ```
