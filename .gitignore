@@ -1,0 +1,15 @@
+# Linux build artifacts
+*.o
+proto
+
+# Windows/MSVC build artifacts
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.user
+Debug/
+Release/
+x64/
+build/
+.vs/
