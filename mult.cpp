@@ -79,5 +79,5 @@ void testMultiplication()
 
     if (!runCombTests("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("MUL", mul, ieeeMul, OPTS_MUL, 43);
+    runRandomTests("MUL", mul, ieeeMul, OPTS_MUL);
 }

@@ -141,5 +141,5 @@ void testDivision()
 
     if (!runCombTests("DIV", bcdDiv, ieeeDiv, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("DIV", bcdDiv, ieeeDiv, OPTS_DIV, 44);
+    runRandomTests("DIV", bcdDiv, ieeeDiv, OPTS_DIV);
 }

@@ -118,7 +118,7 @@ void testAddition()
 
     if (!runCombTests("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("ADD", add, ieeeAdd, OPTS_ADDSUB, 42);
+    runRandomTests("ADD", add, ieeeAdd, OPTS_ADDSUB);
 }
 
 // Run minimal combinatorial and random subtraction tests
@@ -135,5 +135,5 @@ void testSubtraction()
 
     if (!runCombTests("SUB", subtract, ieeeSub, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("SUB", subtract, ieeeSub, OPTS_ADDSUB, 45);
+    runRandomTests("SUB", subtract, ieeeSub, OPTS_ADDSUB);
 }

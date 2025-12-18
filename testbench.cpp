@@ -163,11 +163,12 @@ bool runCombTests(const char* opName,
 bool runRandomTests(const char* opName,
                     BcdBinaryOp bcdOp,
                     IeeeBinaryOp ieeeOp,
-                    const RandomBCDOptions& opts,
-                    unsigned seed)
+                    const RandomBCDOptions& opts)
 {
     int ok = 0, approx = 0, fail = 0;
 
+    unsigned seed = 0;
+    for (const char* p = opName; *p; p++) seed += *p;
     std::mt19937 rng(seed);
 
     for (int i = 0; i < RANDOM_TEST_COUNT; i++) {

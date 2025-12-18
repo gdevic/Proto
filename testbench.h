@@ -68,5 +68,4 @@ bool runCombTests(const char* opName,
 bool runRandomTests(const char* opName,
                     BcdBinaryOp bcdOp,
                     IeeeBinaryOp ieeeOp,
-                    const RandomBCDOptions& opts,
-                    unsigned seed);
+                    const RandomBCDOptions& opts);
