@@ -236,7 +236,8 @@ void testAddition()
             MatchLevel level = checkTolerance(ieee, result.toReal());
 
             g_testIndex++;
-            printTestResult("ADD", a, b, result, level, ieee);
+            if (printTestResult("ADD", a, b, result, level, ieee))
+                return;
 
             switch (level) {
                 case MatchLevel::OK: ok++; break;
@@ -259,7 +260,8 @@ void testAddition()
         MatchLevel level = checkTolerance(ieee, result.toReal());
 
         g_testIndex++;
-        printTestResult("ADD", a, b, result, level, ieee);
+        if (printTestResult("ADD", a, b, result, level, ieee))
+            return;
 
         switch (level) {
             case MatchLevel::OK: ok++; break;

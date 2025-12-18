@@ -9,10 +9,11 @@
 #endif
 
 // Output control flags (set from command line)
-inline bool g_verbose = false;   // -v: Print IEEE value even on OK
-inline bool g_traceAll = false;  // -t: Print all lines including OK
-inline bool g_showIndex = false; // -i: Print test index before each line
-inline int g_testIndex = 0;      // Global test counter
+inline bool g_verbose = false;    // -v: Print IEEE value even on OK
+inline bool g_traceAll = false;   // -t: Print all lines including OK
+inline bool g_showIndex = false;  // -i: Print test index before each line
+inline bool g_stopOnError = false;// -e: Stop on first error (FAIL)
+inline int g_testIndex = 0;       // Global test counter
 
 // Tolerance levels for verification (13-14 correct digits required)
 constexpr Real TIGHT_TOL = REAL_LITERAL(1e-14);  // 14 correct digits
@@ -26,8 +27,8 @@ bool withinTolerance(Real a, Real b, Real relTol = TIGHT_TOL);
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars)
 std::string formatBCD(const BCD& x);
 
-// Output a test result line
-void printTestResult(const char* op, const BCD& a, const BCD& b,
+// Output a test result line; returns true if execution should stop (FAIL with -e)
+bool printTestResult(const char* op, const BCD& a, const BCD& b,
                      const BCD& result, MatchLevel level, Real ieee);
 
 // Options for random BCD generation with domain constraints

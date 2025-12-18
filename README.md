@@ -140,11 +140,14 @@ make        # Build with long double (Linux default)
 | Flag | Description |
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
+| `-e` | Stop on first error (FAIL) and print the failing test line |
+| `-i` | Show test index (1-based) at start of each line |
 | `-v` | Verbose: also print IEEE value on OK lines |
 | `-t` | Trace all: print all lines including OK (for HW file) |
 
 ```bash
 ./proto              # Debug: show only problems
+./proto -e           # Stop at first failure
 ./proto -v           # Debug: problems + IEEE on OK
 ./proto -t > hw.txt  # Generate HW test file (all lines)
 ./proto -t -v        # All lines with IEEE everywhere

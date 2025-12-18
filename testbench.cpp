@@ -25,12 +25,15 @@ std::string formatBCD(const BCD& x)
 
 // Print a single test result line to stdout
 // Skips OK lines unless g_traceAll is set; appends IEEE/err on APPROX/FAIL (or OK with g_verbose)
-void printTestResult(const char* op, const BCD& a, const BCD& b,
+// Returns true if execution should stop (FAIL with g_stopOnError)
+bool printTestResult(const char* op, const BCD& a, const BCD& b,
                      const BCD& result, MatchLevel level, Real ieee)
 {
-    // Skip OK lines unless traceAll is set
+    bool shouldStop = (level == MatchLevel::FAIL) && g_stopOnError;
+
+    // Skip OK lines unless traceAll is set (but always print if stopping)
     if ((level == MatchLevel::OK) && !g_traceAll)
-        return;
+        return false;
 
     if (g_showIndex)
         std::cout << std::setw(5) << g_testIndex << " ";
@@ -54,6 +57,8 @@ void printTestResult(const char* op, const BCD& a, const BCD& b,
             break;
     }
     std::cout << "\n";
+
+    return shouldStop;
 }
 
 // Generate a random BCD string with configurable domain constraints
