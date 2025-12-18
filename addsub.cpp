@@ -84,8 +84,9 @@ BCD subtract(const BCD& a, const BCD& b)
     return add(a, negB);
 }
 
-// IEEE addition for test runner
+// IEEE operations for test runner
 static Real ieeeAdd(Real a, Real b) { return a + b; }
+static Real ieeeSub(Real a, Real b) { return a - b; }
 
 // Run combinatorial and random addition tests
 void testAddition()
@@ -118,4 +119,21 @@ void testAddition()
     if (!runCombTests("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
         return;
     runRandomTests("ADD", add, ieeeAdd, OPTS_ADDSUB, 42);
+}
+
+// Run minimal combinatorial and random subtraction tests
+void testSubtraction()
+{
+    static const std::string val[] = {
+        "0",
+        "1",
+        "-1",
+        "3.141592653589793",
+        "-1234567890123456",
+        "1e-50",
+    };
+
+    if (!runCombTests("SUB", subtract, ieeeSub, val, sizeof(val) / sizeof(val[0])))
+        return;
+    runRandomTests("SUB", subtract, ieeeSub, OPTS_ADDSUB, 45);
 }

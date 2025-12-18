@@ -65,6 +65,7 @@ int main(int argc, char* argv[])
     std::cerr << "Flags: " << (g_stopOnError ? "-e " : "") << (g_showIndex ? "-i " : "") << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n\n";
 
     testAddition();
+    testSubtraction();
     testMultiplication();
     testDivision();
 }

@@ -138,7 +138,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | `bcd.cpp` | Constructor, toReal() conversion |
 | `exponent.h/cpp` | Exponent utilities: getExp(), setExp() |
 | `mantissa.h/cpp` | Mantissa utilities: isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes() |
-| `addsub.cpp` | add(), subtract(), testAddition() |
+| `addsub.cpp` | add(), subtract(), testAddition(), testSubtraction() |
 | `mult.cpp` | mul(), testMultiplication() |
 | `div.cpp` | bcdDiv(), testDivision() |
 | `testbench.h/cpp` | Test infrastructure: formatBCD(), printTestResult(), checkTolerance(), runCombTests(), runRandomTests() |
@@ -215,6 +215,8 @@ Summary is printed to stderr (doesn't interfere with stdout redirection):
 ```
 ADD comb: 225 OK, 0 APPROX, 0 FAIL
 ADD rand: 2 OK, 0 APPROX, 0 FAIL
+SUB comb: 25 OK, 0 APPROX, 0 FAIL
+SUB rand: 2 OK, 0 APPROX, 0 FAIL
 MUL comb: 144 OK, 0 APPROX, 0 FAIL
 MUL rand: 2 OK, 0 APPROX, 0 FAIL
 DIV comb: 144 OK, 0 APPROX, 0 FAIL

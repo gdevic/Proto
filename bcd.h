@@ -46,5 +46,6 @@ BCD bcdDiv(const BCD& a, const BCD& b);
 
 // Test functions
 void testAddition();
+void testSubtraction();
 void testMultiplication();
 void testDivision();
