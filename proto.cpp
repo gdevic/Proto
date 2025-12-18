@@ -62,7 +62,9 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    std::cerr << "Flags: " << (g_stopOnError ? "-e " : "") << (g_showIndex ? "-i " : "") << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n\n";
+    if (g_stopOnError || g_showIndex || g_traceAll || g_verbose)
+        std::cerr << "Flags: " << (g_stopOnError ? "-e " : "") << (g_showIndex ? "-i " : "") << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n";
+    std::cerr << "\n";
 
     testAddition();
     testSubtraction();
