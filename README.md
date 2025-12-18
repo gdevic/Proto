@@ -18,7 +18,9 @@ struct BCD {
 };
 ```
 
-Representation: `±0.d₁d₂d₃...d₁₆ × 10^(±exp)`
+Representation: `±d₁.d₂d₃...d₁₆ × 10^(±exp)`
+
+Example: mantissa=1234..., exp=0 represents 1.234
 
 ## Constructors
 

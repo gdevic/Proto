@@ -36,10 +36,10 @@ BCD::BCD(Real v) : value(v)
         return;
 
     // Calculate base-10 exponent
-    // We want mantissa in range [0.1, 1.0), so add 1 to floor(log10)
-    int e = int(floor(log10(val))) + 1;
+    // Normalize mantissa to range [1.0, 10.0), so e = floor(log10)
+    int e = int(floor(log10(val)));
 
-    // Normalize mantissa to [0.1, 1.0)
+    // Normalize mantissa to [1.0, 10.0)
     Real m = val / pow10(e);
 
     // Handle exponent sign
@@ -58,11 +58,18 @@ BCD::BCD(Real v) : value(v)
     exp[0] = uint8_t(e / 10);
     exp[1] = uint8_t(e % 10);
 
-    // Extract mantissa digits
-    for (size_t i = 0; i < MAX_MANT; i++) {
+    // Extract mantissa digits (m is in [1.0, 10.0))
+    // First digit is integer part of m
+    int digit = int(m);
+    if (digit > 9) digit = 9;
+    if (digit < 1) digit = 1;
+    mant[0] = uint8_t(digit);
+    m -= digit;
+
+    // Remaining 15 digits
+    for (size_t i = 1; i < MAX_MANT; i++) {
         m *= REAL_LITERAL(10.0);
-        int digit = int(m);
-        // Guard against floating-point edge cases
+        digit = int(m);
         if (digit > 9) digit = 9;
         if (digit < 0) digit = 0;
         mant[i] = uint8_t(digit);
@@ -79,11 +86,11 @@ Real BCD::toReal() const
         m = (m * REAL_LITERAL(10.0)) + mant[i];
 
     // Reconstruct exponent and combine with mantissa scaling
-    // Single pow10 call: 10^(e - MAX_MANT) instead of separate divide and multiply
+    // Internal format: d₁.d₂d₃...d₁₆ × 10^exp, so m = d₁d₂...d₁₆ = value × 10^(15-exp)
     int e = (exp[0] * 10) + exp[1];
     if (esign)
         e = -e;
-    Real result = m * pow10(e - int(MAX_MANT));
+    Real result = m * pow10(e - int(MAX_MANT) + 1);
 
     // Apply sign
     if (sign) result = -result;
@@ -154,7 +161,11 @@ BCD::BCD(std::string_view str)
         mant[i] = (i < digit_count) ? digits[i] : 0;
 
     // 5. Calculate effective exponent
-    int effective_exp = parsed_exp + digits_before_decimal - leading_zeros_after_decimal;
+    // Internal format: d₁.d₂d₃... × 10^exp, so exp = parsed_exp + digits_before_decimal - 1
+    // Special case: zero has exp=0
+    int effective_exp = 0;
+    if (digit_count > 0)
+        effective_exp = parsed_exp + digits_before_decimal - 1 - leading_zeros_after_decimal;
 
     // 6. Set exp[] and esign
     if (effective_exp < 0) {

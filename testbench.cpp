@@ -9,18 +9,21 @@ bool g_verbose = false;
 bool g_traceAll = false;
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars, fixed width for HW parsing)
+// Internal format: d₁.d₂d₃...d₁₆ × 10^exp
 std::string formatBCD(const BCD& x)
 {
-    std::string s;
-    s += x.sign ? '-' : '+';
-    s += char('0' + x.mant[0]);
-    s += '.';
+    //               0123456789012345678901
+    std::string s = "+0.000000000000000e+00";
+
+    if (x.sign) s[0] = '-';
+    s[1] = char('0' + x.mant[0]);
     for (size_t i = 1; i < MAX_MANT; i++)
-        s += char('0' + x.mant[i]);
-    s += 'e';
-    s += x.esign ? '-' : '+';
-    s += char('0' + x.exp[0]);
-    s += char('0' + x.exp[1]);
+        s[2 + i] = char('0' + x.mant[i]);
+
+    if (x.esign) s[19] = '-';
+    s[20] = char('0' + (x.exp[0]));
+    s[21] = char('0' + (x.exp[1]));
+
     return s;
 }
 
