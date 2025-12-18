@@ -66,4 +66,5 @@ int main(int argc, char* argv[])
 
     testAddition();
     testMultiplication();
+    testDivision();
 }

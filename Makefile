@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -DUSE_LONG_DOUBLE
 TARGET = proto
-SRCS = proto.cpp bcd.cpp addsub.cpp testbench.cpp exponent.cpp mantissa.cpp mult.cpp
+SRCS = proto.cpp bcd.cpp addsub.cpp testbench.cpp exponent.cpp mantissa.cpp mult.cpp div.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 .PHONY: all clean double

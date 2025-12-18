@@ -42,7 +42,9 @@ struct BCD
 BCD add(const BCD& a, const BCD& b);
 BCD subtract(const BCD& a, const BCD& b);
 BCD mul(const BCD& a, const BCD& b);
+BCD bcdDiv(const BCD& a, const BCD& b);
 
 // Test functions
 void testAddition();
 void testMultiplication();
+void testDivision();

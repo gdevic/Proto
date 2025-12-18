@@ -148,6 +148,7 @@
     <ClCompile Include="exponent.cpp" />
     <ClCompile Include="mantissa.cpp" />
     <ClCompile Include="mult.cpp" />
+    <ClCompile Include="div.cpp" />
     <ClCompile Include="proto.cpp" />
     <ClCompile Include="testbench.cpp" />
   </ItemGroup>
