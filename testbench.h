@@ -21,8 +21,8 @@ constexpr Real LOOSE_TOL = REAL_LITERAL(1e-13);  // 13 correct digits (acceptabl
 
 enum class MatchLevel { OK, APPROX, FAIL };
 
-MatchLevel checkTolerance(Real expected, Real actual);
-bool withinTolerance(Real a, Real b, Real relTol = TIGHT_TOL);
+// Check tolerance with IEEE noise detection
+MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars)
 std::string formatBCD(const BCD& x);
