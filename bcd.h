@@ -20,6 +20,9 @@ using std::size_t;
 constexpr size_t MAX_MANT = 16;
 constexpr size_t MAX_EXP = 2;
 
+// Global flags (sticky - must be explicitly cleared)
+inline bool FLAG_OF = false;  // Overflow: exponent exceeded +99
+
 struct BCD
 {
     array<uint8_t, MAX_MANT> mant {}; // Mantissa nibbles
