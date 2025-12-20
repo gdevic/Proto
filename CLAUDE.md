@@ -15,15 +15,20 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 ## Current State
 
 ### BCD Structure (`bcd.h`)
-- 16-digit mantissa, 2-digit exponent (00-99), sign flags
+- 16 significant digits in mantissa, 2-digit exponent (00-99), sign flags
+- `bool sticky` flag tracks precision loss when digits shift out
 - Internal format: `d₁.d₂d₃...d₁₆ × 10^exp` (e.g., mant=1234, exp=0 → 1.234)
 - Single constructor: `BCD(std::string_view str)`
 
 ### Files
 - `bcd.h/cpp` - BCD struct, string constructor, toReal()
-- `addsub.cpp` - add(), subtract(), testAddition()
+- `mantissa.h/cpp` - isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes()
+- `exponent.h/cpp` - expCompare(), expDiff(), expInc(), expDec(), expAdd(), expSub(), expCopy()
+- `addsub.cpp` - add(), subtract(), testAddition(), testSubtraction()
+- `mult.cpp` - mul(), testMultiplication()
+- `div.cpp` - bcdDiv(), testDivision()
 - `testbench.h/cpp` - formatBCD(), printTestResult(), checkTolerance(), generateRandomBCD()
-- `proto.cpp` - main(), argument parsing (-h, -t, -v)
+- `proto.cpp` - main(), argument parsing (-h, -t, -v, -e, -i)
 
 ### Output Format
 One test per line, fixed columns for HW parsing:
@@ -45,7 +50,7 @@ Domain constraints for different operations:
 - OPTS_ATAN (maxExp=99)
 
 ## Next Steps
-- Implement mul(), div(), sqrt(), ln(), log(), exp(), tan(), atan()
+- Implement sqrt(), ln(), log(), exp(), tan(), atan()
 - Add corresponding test functions
 - Each operation uses appropriate RandomBCDOptions preset
 

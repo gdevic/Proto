@@ -44,19 +44,18 @@ BCD bcdDiv(const BCD& a, const BCD& b)
     // Sign: XOR of input signs
     result.sign = (a.sign != b.sign);
 
-    // Exponent: difference of exponents
-    int resultExp = getExp(a) - getExp(b);
+    // Exponent: difference of exponents (direct BCD subtraction)
+    expSub(result, a, b);
 
-    // Long division using 17-digit partial dividend
-    // Divisor extended to 17 digits with leading zero (for alignment)
+    // Long division using 17-digit arrays (16 significant + 1 for normalization)
     constexpr int DIVLEN = 17;
-    uint8_t divisor17[DIVLEN] = {0};
-    for (int i = 0; i < int(MAX_MANT); i++)
-        divisor17[i + 1] = b.mant[i];
+    uint8_t divisor[DIVLEN] = {0};
+    for (int i = 0; i < MAX_MANT; i++)
+        divisor[i + 1] = b.mant[i];
 
-    // Working partial dividend (17 digits): starts as [0, a.mant]
+    // Working partial dividend: starts as [0, a.mant[0..15]]
     uint8_t partial[DIVLEN] = {0};
-    for (int i = 0; i < int(MAX_MANT); i++)
+    for (int i = 0; i < MAX_MANT; i++)
         partial[i + 1] = a.mant[i];
 
     uint8_t quotient[DIVLEN] = {0};
@@ -64,10 +63,10 @@ BCD bcdDiv(const BCD& a, const BCD& b)
 
     // Perform long division, producing 17 quotient digits
     for (int i = 0; i < DIVLEN; i++) {
-        // Find largest q (0-9) such that q * divisor17 <= partial
+        // Find largest q (0-9) such that q * divisor <= partial
         int q = 0;
         for (int trial = 9; trial >= 1; trial--) {
-            int carry = multiplyByDigit(divisor17, trial, temp, DIVLEN);
+            int carry = multiplyByDigit(divisor, trial, temp, DIVLEN);
             // If carry > 0, product overflows, definitely > partial
             if ((carry == 0) && (compareMant(temp, partial, DIVLEN) <= 0)) {
                 q = trial;
@@ -77,9 +76,9 @@ BCD bcdDiv(const BCD& a, const BCD& b)
 
         quotient[i] = uint8_t(q);
 
-        // Subtract q * divisor17 from partial
+        // Subtract q * divisor from partial
         if (q > 0) {
-            (void)multiplyByDigit(divisor17, q, temp, DIVLEN);
+            (void)multiplyByDigit(divisor, q, temp, DIVLEN);
             int borrow = 0;
             for (int j = DIVLEN - 1; j >= 0; j--) {
                 int diff = (partial[j] - temp[j]) - borrow;
@@ -104,16 +103,20 @@ BCD bcdDiv(const BCD& a, const BCD& b)
     int startIdx = 0;
     if (quotient[0] == 0) {
         startIdx = 1;
-        resultExp -= 1;
+        expDec(result);
     }
 
-    // Copy 16 digits to result mantissa
-    for (int i = 0; i < int(MAX_MANT); i++)
+    // Copy 16 significant digits to result mantissa
+    for (int i = 0; i < MAX_MANT; i++)
         result.mant[i] = quotient[startIdx + i];
 
-    setExp(result, resultExp);
-    normalize(result);
+    // Set sticky if remainder is non-zero (digits were truncated)
+    result.sticky = false;
+    for (int i = 0; i < DIVLEN; i++)
+        if (partial[i] != 0)
+            result.sticky = true;
 
+    normalize(result);
     return result;
 }
 
@@ -128,6 +131,9 @@ void testDivision()
         "1",
         "-1",
         "2",
+        "3",
+        "3.333333333333333",
+        "7",
         "1234567890123456",
         "-1234567890123456",
         "9999999999999999",
@@ -137,6 +143,9 @@ void testDivision()
         "1e-25",
         ".1234567890123456",
         "-.9999999999999999",
+        "1.0000000000001",
+        "1.00000000000001",
+        "1.000000000000001",
     };
 
     if (!runCombTests("DIV", bcdDiv, ieeeDiv, val, sizeof(val) / sizeof(val[0])))

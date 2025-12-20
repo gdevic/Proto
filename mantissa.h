@@ -2,17 +2,27 @@
 
 #include "bcd.h"
 
-// Check if BCD mantissa is zero
+// Check if BCD mantissa is zero (checks all 16 positions)
 bool isZero(const BCD& x);
+
+// Check if raw mantissa array is zero
+bool isZeroMant(const uint8_t* mant);
 
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x);
 
-// Shift mantissa right by n digits, returns true if any non-zero digits were lost
+// Shift mantissa right by n digits
+// Returns sticky (true if any non-zero digit shifted out)
 bool shiftRight(uint8_t* mant, int n);
 
-// Add magnitudes of two aligned mantissas, returns carry (0 or 1)
+// Add magnitudes of two aligned mantissas (all 16 positions)
+// Returns carry (0 or 1)
 int addAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r);
 
 // Subtract aligned magnitudes: r = a - b (assumes |a| >= |b|)
-void subtractAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r);
+// sticky generates initial borrow from beyond mant[15]
+void subtractAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky);
+
+// Compare two aligned mantissas (all 16 positions)
+// Returns: >0 if a > b, <0 if a < b, 0 if equal
+int compareMagnitudes(const uint8_t* a, const uint8_t* b);

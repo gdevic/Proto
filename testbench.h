@@ -24,7 +24,7 @@ enum class MatchLevel { OK, APPROX, FAIL };
 // Check tolerance with IEEE noise detection
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
 
-// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars)
+// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, 16 significant digits)
 std::string formatBCD(const BCD& x);
 
 // Output a test result line; returns true if execution should stop (FAIL with -e)

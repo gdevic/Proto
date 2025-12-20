@@ -4,8 +4,8 @@
 #include <iomanip>
 #include <sstream>
 
-// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (23 chars, fixed width for HW parsing)
-// Internal format: d₁.d₂d₃...d₁₆ × 10^exp
+// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, fixed width for HW parsing)
+// Internal format: d₁.d₂d₃...d₁₆ × 10^exp (16 significant digits)
 std::string formatBCD(const BCD& x)
 {
     //               0123456789012345678901
@@ -13,7 +13,7 @@ std::string formatBCD(const BCD& x)
 
     if (x.sign) s[0] = '-';
     s[1] = char('0' + x.mant[0]);
-    for (size_t i = 1; i < MAX_MANT; i++)
+    for (int i = 1; i < MAX_MANT; i++)
         s[2 + i] = char('0' + x.mant[i]);
 
     if (x.esign) s[19] = '-';
@@ -62,7 +62,7 @@ bool printTestResult(const char* op, const BCD& a, const BCD& b,
 }
 
 // Generate a random BCD string with configurable domain constraints
-// Returns format: ±D.DDDDDDDDDDDDDDDeN (parseable by BCD string constructor)
+// Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD string constructor)
 std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
 {
     std::uniform_int_distribution<int> digit(0, 9);
@@ -80,8 +80,8 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
     // Decimal point after first digit
     s += '.';
 
-    // Remaining 15 mantissa digits
-    for (int i = 0; i < 15; i++)
+    // Remaining mantissa digits (MAX_MANT - 1)
+    for (int i = 0; i < MAX_MANT - 1; i++)
         s += char('0' + digit(rng));
 
     // Exponent
@@ -105,9 +105,9 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
 //   2. IEEE binary floating-point accumulates representation errors
 //
 // Example:
-//   Input:  1.000000000000900 - 0.9999999999999999
-//   BCD:    9.001000000000000e-13  (exact decimal result, trailing zeros)
-//   IEEE:   9.00100035738233e-13   (has floating-point noise: ...35738233)
+//   Input:  1.00000000000090 - 0.999999999999999
+//   BCD:    9.00100000000000e-13  (exact decimal result, trailing zeros)
+//   IEEE:   9.0010003573823e-13   (has floating-point noise: ...3573823)
 //
 // The heuristic to detect this:
 //   1. BCD result has 3+ trailing zeros → looks like an exact decimal answer
@@ -156,7 +156,7 @@ static bool isIeeeNoise(const BCD& bcdResult, Real ieee)
         return false;
 
     // Condition 2: Leading significant digits must match
-    int significantDigits = int(MAX_MANT) - trailingZeros;
+    int significantDigits = MAX_MANT - trailingZeros;
     if (significantDigits < 1)
         return false;
 

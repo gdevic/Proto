@@ -4,16 +4,17 @@ A software BCD (Binary-Coded Decimal) arithmetic implementation serving as a gol
 
 ## Overview
 
-This implementation provides 16-digit decimal precision arithmetic operations. The software and hardware implementations share identical precision limits and alignment behavior, enabling direct result comparison.
+This implementation provides 16-digit decimal precision arithmetic operations. The software and hardware implementations share identical precision limits and alignment behavior, enabling direct result comparison. In addition, this code includes computation of golden values for verification using IEEE long double operations.
 
 ## BCD Structure
 
 ```cpp
 struct BCD {
-    array<uint8_t, 16> mant;  // Mantissa digits (normalized: first digit non-zero)
-    array<uint8_t, 2> exp;    // Exponent digits (00-99)
+    array<uint8_t, 16> mant;   // 16 significant digits (normalized: first digit non-zero)
+    array<uint8_t, 2> exp;     // Exponent digits (00-99)
     bool sign;                 // Number sign (true = negative)
     bool esign;                // Exponent sign (true = negative)
+    bool sticky;               // True if any non-zero digit shifted out
     Real value;                // Original value for verification
 };
 ```
@@ -136,7 +137,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 |------|---------|
 | `bcd.h` | BCD struct, constants, function declarations |
 | `bcd.cpp` | Constructor, toReal() conversion |
-| `exponent.h/cpp` | Exponent utilities: getExp(), setExp() |
+| `exponent.h/cpp` | Exponent utilities: expCompare(), expDiff(), expInc(), expDec(), expAdd(), expSub() |
 | `mantissa.h/cpp` | Mantissa utilities: isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes() |
 | `addsub.cpp` | add(), subtract(), testAddition(), testSubtraction() |
 | `mult.cpp` | mul(), testMultiplication() |
@@ -196,9 +197,9 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 | Field | Width | Description |
 |-------|-------|-------------|
 | OP | 3 | Operation: ADD, SUB, MUL, DIV, SQR, TAN, ATN, LOG, LN_, EXP |
-| Operand A | 23 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE |
-| Operand B | 23 | Same format (zeros for unary ops) |
-| Result | 23 | Same format |
+| Operand A | 22 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE (16 digits) |
+| Operand B | 22 | Same format (zeros for unary ops) |
+| Result | 22 | Same format |
 | Status | 2-6 | OK, APPROX, or FAIL |
 | IEEE/err | var | Only on APPROX/FAIL (or OK with -v) |
 
@@ -206,7 +207,7 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 
 ```
 ADD +1.234567890123456e+50 +9.876543210987654e+10 +1.234567890123456e+50 OK
-SUB +1.000000000000001e+00 +1.000000000000000e+00 +9.999999999999980e-16 APPROX 1e-15 err=2e-16
+SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 APPROX 1e-15 err=2e-16
 ```
 
 ### Test Summary

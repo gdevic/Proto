@@ -15,15 +15,15 @@ BCD mul(const BCD& a, const BCD& b)
     // Sign: XOR of input signs
     result.sign = (a.sign != b.sign);
 
-    // Exponent: sum of exponents
-    int resultExp = getExp(a) + getExp(b);
+    // Exponent: sum of exponents (direct BCD addition)
+    expAdd(result, a, b);
 
     // Multiply mantissas (16x16 digits = up to 32 digits)
     // Use int array for intermediate sums to handle multi-digit products
     // Position offset: mant[i] represents 10^(15-i), so product goes to position i+j+1
     int prod[32] = {0};
-    for (int i = 0; i < int(MAX_MANT); i++)
-        for (int j = 0; j < int(MAX_MANT); j++)
+    for (int i = 0; i < MAX_MANT; i++)
+        for (int j = 0; j < MAX_MANT; j++)
             prod[i + j + 1] += a.mant[i] * b.mant[j];
 
     // Propagate carries (right to left)
@@ -38,15 +38,19 @@ BCD mul(const BCD& a, const BCD& b)
     // If prod[0] == 0: result is 0d.xxx, start at prod[1]
     int startIdx = (prod[0] != 0) ? 0 : 1;
     if (prod[0] != 0)
-        resultExp += 1;
+        expInc(result);
 
-    // Copy 16 digits to result mantissa
-    for (int i = 0; i < int(MAX_MANT); i++)
+    // Copy 16 significant digits to result mantissa
+    for (int i = 0; i < MAX_MANT; i++)
         result.mant[i] = uint8_t(prod[startIdx + i]);
 
-    setExp(result, resultExp);
-    normalize(result);
+    // Set sticky if any digits beyond position 16 are non-zero
+    result.sticky = false;
+    for (int i = startIdx + MAX_MANT; i < 32; i++)
+        if (prod[i] != 0)
+            result.sticky = true;
 
+    normalize(result);
     return result;
 }
 

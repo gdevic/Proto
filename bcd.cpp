@@ -26,7 +26,7 @@ Real BCD::toReal() const
     // Reconstruct mantissa using exact integer operations
     // Multiply by 10 (exact in binary) instead of 0.1 (inexact)
     Real m = REAL_LITERAL(0.0);
-    for (size_t i = 0; i < MAX_MANT; i++)
+    for (int i = 0; i < MAX_MANT; i++)
         m = (m * REAL_LITERAL(10.0)) + mant[i];
 
     // Reconstruct exponent and combine with mantissa scaling
@@ -34,7 +34,7 @@ Real BCD::toReal() const
     int e = (exp[0] * 10) + exp[1];
     if (esign)
         e = -e;
-    Real result = m * pow10(e - int(MAX_MANT) + 1);
+    Real result = m * pow10(e - MAX_MANT + 1);
 
     // Apply sign
     if (sign) result = -result;
@@ -51,7 +51,7 @@ BCD::BCD(std::string_view str)
     else if ((pos < str.size()) && (str[pos] == '+')) { pos++; }
 
     // 2. Parse mantissa digits (store temporarily, skip leading zeros)
-    uint8_t digits[16];
+    uint8_t digits[MAX_MANT];
     int digit_count = 0;
     int digits_before_decimal = 0;
     bool seen_decimal = false;
@@ -75,7 +75,7 @@ BCD::BCD(std::string_view str)
                 continue;
             }
             seen_nonzero = true;
-            if (digit_count >= 16)
+            if (digit_count >= MAX_MANT)
                 throw std::invalid_argument("BCD: more than 16 mantissa digits");
             digits[digit_count++] = uint8_t(d);
         }
@@ -101,7 +101,7 @@ BCD::BCD(std::string_view str)
     }
 
     // 4. Copy digits to mant[], zero-pad remainder
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < MAX_MANT; i++)
         mant[i] = (i < digit_count) ? digits[i] : 0;
 
     // 5. Calculate effective exponent
@@ -124,7 +124,10 @@ BCD::BCD(std::string_view str)
     exp[0] = uint8_t(effective_exp / 10);
     exp[1] = uint8_t(effective_exp % 10);
 
-    // 7. Compute value field via sscanf (needs null-terminated string)
+    // 7. Initialize sticky to false (no precision loss from parsing)
+    sticky = false;
+
+    // 8. Compute value field via sscanf (needs null-terminated string)
     std::string tmp(str);
 #ifdef USE_LONG_DOUBLE
     sscanf(tmp.c_str(), "%Lf", &value);

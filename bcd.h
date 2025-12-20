@@ -17,19 +17,23 @@ using std::size_t;
     #define REAL_LITERAL(x) x
 #endif
 
-constexpr size_t MAX_MANT = 16;
-constexpr size_t MAX_EXP = 2;
+constexpr int MAX_MANT = 16;
+constexpr int MAX_EXP = 2;
 
-// Global flags (sticky - must be explicitly cleared)
+// Global flags (must be explicitly cleared)
 inline bool FLAG_OF = false;  // Overflow: exponent exceeded +99
 
 struct BCD
 {
+    // The reference implementation of a User Register
     array<uint8_t, MAX_MANT> mant {}; // Mantissa nibbles
-    array<uint8_t, MAX_EXP> exp {}; // Exponent nibbles
-    bool sign {}; // The number sign, true for negative numbers
-    bool esign {}; // The exponent sign, true for negative exponents
-    Real value {}; // Original value for verification (stored as Real for precision)
+    array<uint8_t, MAX_EXP> exp {};   // Exponent nibbles
+    bool sign {};                     // The number sign, true for negative numbers
+    bool esign {};                    // The exponent sign, true for negative exponents
+    bool sticky {};                   // True if any non-zero digit shifted out
+
+    // Original value for verification (stored as Real for precision)
+    Real value {};
 
     // Default constructor
     BCD() = default;

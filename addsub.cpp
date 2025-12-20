@@ -10,74 +10,69 @@ BCD add(const BCD& a, const BCD& b)
     if (isZero(a)) return b;
     if (isZero(b)) return a;
 
-    BCD result{};
+    // Ensure A has larger or equal exponent (swap if needed)
+    // This means only B ever needs shifting
+    const BCD* pA = &a;
+    const BCD* pB = &b;
+    if (expCompare(b, a) > 0)
+        std::swap(pA, pB);
 
-    // Get exponents
-    int expA = getExp(a);
-    int expB = getExp(b);
-
-    // Work with copies for alignment
+    // Work copies
     uint8_t mantA[MAX_MANT], mantB[MAX_MANT];
-    for (size_t i = 0; i < MAX_MANT; i++) {
-        mantA[i] = a.mant[i];
-        mantB[i] = b.mant[i];
+    for (int i = 0; i < MAX_MANT; i++) {
+        mantA[i] = pA->mant[i];
+        mantB[i] = pB->mant[i];
     }
 
-    // Align exponents by shifting the smaller one right
-    int resultExp;
-    if (expA > expB) {
-        shiftRight(mantB, expA - expB);
-        resultExp = expA;
-    } else if (expB > expA) {
-        shiftRight(mantA, expB - expA);
-        resultExp = expB;
-    } else {
-        resultExp = expA;
-    }
+    // Shift B, sticky tracks digits shifted out
+    bool sticky = false;
+    int shift = expDiff(*pA, *pB);
+    if (shift > 0)
+        sticky = shiftRight(mantB, shift);
+
+    BCD result{};
+    expCopy(result, *pA);
+    result.sticky = sticky;  // Accumulate sticky from shift
 
     // Same signs: add magnitudes
-    if (a.sign == b.sign) {
+    if (pA->sign == pB->sign) {
         int carry = addAlignedMagnitudes(mantA, mantB, result.mant.data());
-        result.sign = a.sign;
+        result.sign = pA->sign;
 
-        // Handle carry overflow
+        // Handle carry overflow: shift result right, bringing in carry
         if (carry) {
-            shiftRight(result.mant.data(), 1);
-            result.mant[0] = uint8_t(carry);
-            resultExp++;
+            if (shiftRight(result.mant.data(), 1))
+                result.sticky = true;
+            result.mant[0] = 1;
+            expInc(result);
         }
     }
     // Different signs: subtract smaller from larger magnitude
     else {
-        // Compare aligned magnitudes
-        int cmp = 0;
-        for (size_t i = 0; i < MAX_MANT; i++) {
-            if (mantA[i] > mantB[i]) { cmp = 1; break; }
-            if (mantA[i] < mantB[i]) { cmp = -1; break; }
-        }
+        int cmp = compareMagnitudes(mantA, mantB);
 
-        if (cmp == 0) {
-            // Result is zero
+        // Check for exact zero (magnitudes equal and no sticky)
+        if ((cmp == 0) && !sticky)
             return BCD{};
-        } else if (cmp > 0) {
-            subtractAlignedMagnitudes(mantA, mantB, result.mant.data());
-            result.sign = a.sign;
+
+        if (cmp > 0) {
+            // |A| > |B|: compute A - B, sticky generates borrow
+            subtractAlignedMagnitudes(mantA, mantB, result.mant.data(), sticky);
+            result.sign = pA->sign;
         } else {
-            subtractAlignedMagnitudes(mantB, mantA, result.mant.data());
-            result.sign = b.sign;
+            // |B| >= |A|: compute B - A, no sticky (A has no extra precision)
+            subtractAlignedMagnitudes(mantB, mantA, result.mant.data(), false);
+            result.sign = pB->sign;
         }
     }
 
-    setExp(result, resultExp);
     normalize(result);
-
     return result;
 }
 
 // Subtract two BCD numbers: a - b = a + (-b)
 BCD subtract(const BCD& a, const BCD& b)
 {
-    // a - b = a + (-b)
     BCD negB = b;
     if (!isZero(b))
         negB.sign = !b.sign;
@@ -111,9 +106,9 @@ void testAddition()
         // Decimal precision and catastrophic cancellations
         ".1234567890123456",
         "-.9999999999999999",
+        "1.000000000001",
         "1.0000000000001",
         "1.00000000000001",
-        "1.000000000000001",
         "1.0000000000009",
         "1.00000000000009",
         "1.000000000000009",
