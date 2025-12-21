@@ -22,12 +22,15 @@ constexpr Real LOOSE_TOL = REAL_LITERAL(1e-13);  // 13 correct digits (acceptabl
 enum class MatchLevel { OK, APPROX, FAIL };
 
 // Check tolerance with IEEE noise detection
+// Returns MatchLevel indicating accuracy classification
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, 16 significant digits)
+// Returns formatted string representation
 std::string formatBCD(const BCD& x);
 
-// Output a test result line; returns true if execution should stop (FAIL with -e)
+// Output a test result line
+// Returns true if execution should stop (FAIL with -e)
 bool printTestResult(const char* op, const BCD& a, const BCD& b,
                      const BCD& result, MatchLevel level, Real ieee);
 
@@ -49,6 +52,8 @@ constexpr RandomBCDOptions OPTS_EXP    = { 2,  false, true  };
 constexpr RandomBCDOptions OPTS_TAN    = { 1,  false, true  };
 constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
 
+// Generate a random BCD string with configurable domain constraints
+// Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)
 std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts = {});
 
 // Function pointer types for generic test runners

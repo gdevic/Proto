@@ -14,6 +14,7 @@ static const Real POW10[] = {
     REAL_LITERAL(1e16), REAL_LITERAL(1e17), REAL_LITERAL(1e18), REAL_LITERAL(1e19)
 };
 
+// Returns 10^n using precomputed table for small n
 static Real pow10(int n)
 {
     if ((n >= 0) && (n < 20)) return POW10[n];

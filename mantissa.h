@@ -3,6 +3,7 @@
 #include "bcd.h"
 
 // Check if BCD mantissa is zero (checks all 16 positions)
+// Returns true if all mantissa digits are zero
 bool isMantZero(const BCD& x);
 
 // Returns true if two mantissas are equal

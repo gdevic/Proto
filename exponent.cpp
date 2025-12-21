@@ -196,6 +196,7 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
 }
 
 // Subtract exponents: result.exp = a.exp - b.exp
+// Returns true if underflowed to zero
 bool expSub(BCD& result, const BCD& a, const BCD& b)
 {
     // a - b = a + (-b)

@@ -6,6 +6,7 @@
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, fixed width for HW parsing)
 // Internal format: d₁.d₂d₃...d₁₆ × 10^exp (16 significant digits)
+// Returns formatted string representation
 std::string formatBCD(const BCD& x)
 {
     //               0123456789012345678901
@@ -120,6 +121,7 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
 
 // Count trailing zeros in BCD mantissa
 // A high count (3+) suggests BCD computed an exact decimal result
+// Returns number of trailing zero digits
 static int countTrailingZeros(const BCD& x)
 {
     int count = 0;
@@ -147,6 +149,7 @@ static bool leadingDigitsMatch(Real a, Real b, int digits)
 }
 
 // Detect IEEE floating-point noise using the heuristic described above
+// Returns true if difference is likely IEEE noise rather than BCD error
 static bool isIeeeNoise(const BCD& bcdResult, Real ieee)
 {
     int trailingZeros = countTrailingZeros(bcdResult);
@@ -166,6 +169,7 @@ static bool isIeeeNoise(const BCD& bcdResult, Real ieee)
 // Classify result accuracy: OK (14+ digits), APPROX (13-14 digits), or FAIL (<13 digits)
 // Uses absolute tolerance for near-zero results, relative tolerance otherwise
 // Also detects IEEE noise where BCD has exact result but IEEE has floating-point errors
+// Returns MatchLevel indicating accuracy classification
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult)
 {
     if (expected == actual) return MatchLevel::OK;

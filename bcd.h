@@ -41,5 +41,6 @@ struct BCD
     explicit BCD(std::string_view str);
 
     // Convert BCD back to Real for verification
+    // Returns the numeric value as Real
     Real toReal() const;
 };

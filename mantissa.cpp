@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 // Check if BCD mantissa is zero (checks all 16 positions)
+// Returns true if all mantissa digits are zero
 bool isMantZero(const BCD& x)
 {
     for (uint i = 0; i < MAX_MANT; i++)
