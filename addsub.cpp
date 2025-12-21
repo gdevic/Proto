@@ -30,7 +30,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
 
     // Same signs: add magnitudes
     if (S0.sign == S1.sign) {
-        int carry = addAlignedMagnitudes(S0.mant.data(), S1.mant.data(), R.mant.data());
+        int carry = mantAdd(S0.mant.data(), S1.mant.data(), R.mant.data());
         R.sign = S0.sign;
 
         // Handle carry overflow: shift result right, bringing in carry
@@ -43,7 +43,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
     }
     // Different signs: subtract smaller from larger magnitude
     else {
-        int cmp = compareMagnitudes(S0.mant.data(), S1.mant.data());
+        int cmp = mantCmp(S0.mant.data(), S1.mant.data());
 
         // Check for exact zero (magnitudes equal and no sticky)
         if ((cmp == 0) && !sticky) {
@@ -58,7 +58,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
             swapped = true;
             sticky = false;  // S0 was not shifted, has no extra precision
         }
-        subtractAlignedMagnitudes(S0.mant.data(), S1.mant.data(), R.mant.data(), sticky);
+        mantSub(S0.mant.data(), S1.mant.data(), R.mant.data(), sticky);
         R.sign = swapped ? S1.sign : S0.sign;
     }
 

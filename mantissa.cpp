@@ -73,7 +73,7 @@ bool mantShr(uint8_t* mant)
 
 // Add magnitudes of two aligned mantissas (all 16 positions)
 // Returns carry (0 or 1)
-int addAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r)
+int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r)
 {
     int carry = 0;
 
@@ -86,9 +86,9 @@ int addAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r)
     return carry;
 }
 
-// Subtract aligned magnitudes: r = a - b (assumes |a| >= |b|)
+// Subtract two aligned mantissas: r = a - b (assumes |a| >= |b|)
 // sticky generates initial borrow from beyond mant[15]
-void subtractAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
+void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
 {
     int borrow = sticky ? 1 : 0;
 
@@ -106,7 +106,7 @@ void subtractAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r, b
 
 // Compare two aligned mantissas (all 16 positions)
 // Returns: >0 if a > b, <0 if a < b, 0 if equal
-int compareMagnitudes(const uint8_t* a, const uint8_t* b)
+int mantCmp(const uint8_t* a, const uint8_t* b)
 {
     for (uint i = 0; i < MAX_MANT; i++) {
         if (a[i] > b[i]) return 1;
