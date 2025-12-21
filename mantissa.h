@@ -17,6 +17,9 @@ void swapMant(uint8_t* a, uint8_t* b);
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x);
 
+// Shift mantissa left by one digit
+void mantShl(uint8_t* mant);
+
 // Shift mantissa right by one digit
 // Returns true if a non-zero digit shifted out
 bool mantShr(uint8_t* mant);

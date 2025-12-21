@@ -45,23 +45,19 @@ void normalize(BCD& x)
         return;
     }
 
-    // Find first non-zero digit
-    uint shift = 0;
-    while ((shift < MAX_MANT) && (x.mant[shift] == 0))
-        shift++;
-
-    if (shift > 0) {
-        // Shift mantissa left
-        for (uint i = 0; i < MAX_MANT; i++) {
-            if (i + shift < MAX_MANT)
-                x.mant[i] = x.mant[i + shift];
-            else
-                x.mant[i] = 0;
-        }
-
-        // Decrement exponent by shift amount
-        expDecBy(x, shift);
+    // Shift left until first digit is non-zero
+    while (x.mant[0] == 0) {
+        mantShl(x.mant.data());
+        expDec(x);  // Could underflow to zero
     }
+}
+
+// Shift mantissa left by one digit
+void mantShl(uint8_t* mant)
+{
+    for (uint i = 0; i < MAX_MANT - 1; i++)
+        mant[i] = mant[i + 1];
+    mant[MAX_MANT - 1] = 0;
 }
 
 // Shift mantissa right by one digit

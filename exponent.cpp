@@ -155,16 +155,6 @@ bool expDec(BCD& x)
     }
 }
 
-// Decrement exponent by n. Returns true if underflow (sets x to zero).
-bool expDecBy(BCD& x, int n)
-{
-    for (uint i = 0; i < uint(n); i++) {
-        if (expDec(x))
-            return true;
-    }
-    return false;
-}
-
 // Add exponents: result.exp = a.exp + b.exp
 void expAdd(BCD& result, const BCD& a, const BCD& b)
 {
