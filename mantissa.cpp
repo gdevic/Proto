@@ -18,6 +18,22 @@ void preCalc(BCD& S0, BCD& S1, BCD& R)
     R = BCD{};
 }
 
+// Swap the complete content of two User Registers
+void swapReg(BCD& a, BCD& b)
+{
+    // In microcode, this will swap mantissa (16), exponent (2) and the sign nibble (1)
+    // We would call swapMant() as part of this swapping (or fall-through)
+    // Note: this function also implements "key_exchg"
+    std::swap(a, b);
+}
+
+// Swap two mantissa arrays
+void swapMant(uint8_t* a, uint8_t* b)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+        std::swap(a[i], b[i]);
+}
+
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x)
 {

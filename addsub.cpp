@@ -13,33 +13,31 @@ void add(BCD& S0, BCD& S1, BCD& R)
     if (FLAG_S0_ZERO) { R = S1; return; }
     if (FLAG_S1_ZERO) { R = S0; return; }
 
-    // Ensure A has larger or equal exponent (swap if needed)
-    // This means only B ever needs shifting
-    BCD* pA = &S0;
-    BCD* pB = &S1;
+    // Ensure S0 has larger or equal exponent (swap if needed)
+    // This means only S1 ever needs shifting
     if (expCompare(S1, S0) > 0)
-        std::swap(pA, pB);
+        swapReg(S0, S1);
 
     // Work copies
     uint8_t mantA[MAX_MANT], mantB[MAX_MANT];
     for (uint i = 0; i < MAX_MANT; i++) {
-        mantA[i] = pA->mant[i];
-        mantB[i] = pB->mant[i];
+        mantA[i] = S0.mant[i];
+        mantB[i] = S1.mant[i];
     }
 
     // Shift B, sticky tracks digits shifted out
     bool sticky = false;
-    int shift = expDiff(*pA, *pB);
+    int shift = expDiff(S0, S1);
     if (shift > 0)
         sticky = shiftRight(mantB, shift);
 
-    expCopy(R, *pA);
+    expCopy(R, S0);
     R.sticky = sticky;  // Accumulate sticky from shift
 
     // Same signs: add magnitudes
-    if (pA->sign == pB->sign) {
+    if (S0.sign == S1.sign) {
         int carry = addAlignedMagnitudes(mantA, mantB, R.mant.data());
-        R.sign = pA->sign;
+        R.sign = S0.sign;
 
         // Handle carry overflow: shift result right, bringing in carry
         if (carry) {
@@ -59,15 +57,15 @@ void add(BCD& S0, BCD& S1, BCD& R)
             return;
         }
 
-        if (cmp > 0) {
-            // |A| > |B|: compute A - B, sticky generates borrow
-            subtractAlignedMagnitudes(mantA, mantB, R.mant.data(), sticky);
-            R.sign = pA->sign;
-        } else {
-            // |B| >= |A|: compute B - A, no sticky (A has no extra precision)
-            subtractAlignedMagnitudes(mantB, mantA, R.mant.data(), false);
-            R.sign = pB->sign;
+        // Ensure |A| >= |B| for subtraction
+        bool swapped = false;
+        if (cmp < 0) {
+            swapMant(mantA, mantB);
+            swapped = true;
+            sticky = false;  // A was not shifted, has no extra precision
         }
+        subtractAlignedMagnitudes(mantA, mantB, R.mant.data(), sticky);
+        R.sign = swapped ? S1.sign : S0.sign;
     }
 
     normalize(R);
