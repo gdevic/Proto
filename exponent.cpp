@@ -8,36 +8,31 @@
 
 // Add two 2-digit BCD magnitudes: result = a + b
 // Returns carry (1 if result >= 100, i.e., overflow)
-static int bcdAddMag(uint8_t* result, const uint8_t* a, const uint8_t* b)
+static int expAddMag(uint8_t* result, const uint8_t* a, const uint8_t* b)
 {
-    int sum = a[1] + b[1];
-    result[1] = uint8_t(sum % 10);
-    int carry = sum / 10;
-
-    sum = a[0] + b[0] + carry;
-    result[0] = uint8_t(sum % 10);
-    return sum / 10;
+    // Add ones digits
+    result[1] = a[1] + b[1];
+    uint carry = result[1] > 9;
+    result[1] = result[1] - carry * 10; // "daa"
+    // Add tens digits
+    result[0] = a[0] + b[0] + carry;
+    carry = result[0] > 9;
+    result[0] = result[0] - carry * 10; // "daa"
+    return carry;
 }
 
 // Subtract two 2-digit BCD magnitudes: result = a - b (assumes a >= b)
-static void bcdSubMag(uint8_t* result, const uint8_t* a, const uint8_t* b)
+static void expSubMag(uint8_t* result, const uint8_t* a, const uint8_t* b)
 {
-    int diff = a[1] - b[1];
-    int borrow = 0;
-    if (diff < 0) {
-        diff += 10;
-        borrow = 1;
-    }
-    result[1] = uint8_t(diff);
-
-    diff = a[0] - b[0] - borrow;
-    if (diff < 0)
-        diff += 10;  // Shouldn't happen if a >= b
-    result[0] = uint8_t(diff);
+    // Subtract ones digits
+    uint borrow = a[1] < b[1];
+    result[1] = a[1] - b[1] + borrow * 10; // "das"
+    // Subtract tens digits
+    result[0] = a[0] - b[0] - borrow; // "das"
 }
 
 // Compare two 2-digit BCD magnitudes: returns -1 (a<b), 0 (a==b), +1 (a>b)
-static int bcdCmpMag(const uint8_t* a, const uint8_t* b)
+static int expCmpMag(const uint8_t* a, const uint8_t* b)
 {
     if (a[0] != b[0])
         return (a[0] > b[0]) ? 1 : -1;
@@ -55,7 +50,7 @@ bool isExpEQ(const BCD &a, const BCD &b)
 {
     if (a.esign != b.esign)
         return false;
-    return bcdCmpMag(a.exp.data(), b.exp.data()) == 0;
+    return expCmpMag(a.exp.data(), b.exp.data()) == 0;
 }
 
 // Returns true if exponent of a > exponent of b
@@ -66,7 +61,7 @@ bool isExpGT(const BCD& a, const BCD& b)
         return !a.esign;  // positive > negative
 
     // Same sign: compare magnitude
-    int cmp = bcdCmpMag(a.exp.data(), b.exp.data());
+    int cmp = expCmpMag(a.exp.data(), b.exp.data());
     if (cmp == 0)
         return false;
 
@@ -87,21 +82,20 @@ void expInc(BCD& x)
 {
     if (x.esign) {
         // Negative exponent: incrementing moves toward zero
-        if (x.exp[0] == 0 && x.exp[1] == 0) {
+        if ((x.exp[0] == 0) && (x.exp[1] == 0)) {
             // -0 + 1 = +1 (edge case)
             x.esign = false;
             x.exp[1] = 1;
         }
-        else if (x.exp[1] > 0) {
+        else if (x.exp[1] > 0)
             x.exp[1]--;
-        }
         else {
             // exp[1] == 0, borrow from exp[0]
             x.exp[0]--;
             x.exp[1] = 9;
         }
         // Normalize -0 to +0
-        if (x.exp[0] == 0 && x.exp[1] == 0)
+        if ((x.exp[0] == 0) && (x.exp[1] == 0))
             x.esign = false;
     }
     else {
@@ -114,7 +108,7 @@ void expInc(BCD& x)
                 // Overflow: 99 + 1 = 100
                 FLAG_OF = true;
                 x.exp[0] = 9;
-                x.exp[1] = 9;  // Saturate at 99
+                x.exp[1] = 9;  // XXX Saturate at 99 or leave it as-is due to FLAG_OF?
             }
         }
     }
@@ -125,14 +119,13 @@ bool expDec(BCD& x)
 {
     if (!x.esign) {
         // Positive exponent: decrementing moves toward zero
-        if (x.exp[0] == 0 && x.exp[1] == 0) {
+        if ((x.exp[0] == 0) && (x.exp[1] == 0)) {
             // 0 - 1 = -1
             x.esign = true;
             x.exp[1] = 1;
         }
-        else if (x.exp[1] > 0) {
+        else if (x.exp[1] > 0)
             x.exp[1]--;
-        }
         else {
             // exp[1] == 0, borrow from exp[0]
             x.exp[0]--;
@@ -148,7 +141,7 @@ bool expDec(BCD& x)
             x.exp[0]++;
             if (x.exp[0] > 9) {
                 // Underflow: -99 - 1 = -100
-                regClear(x);
+                regClear(x);  // XXX Clear the whole register?
                 return true;
             }
         }
@@ -161,24 +154,24 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
 {
     if (a.esign == b.esign) {
         // Same sign: add magnitudes
-        int carry = bcdAddMag(result.exp.data(), a.exp.data(), b.exp.data());
+        int carry = expAddMag(result.exp.data(), a.exp.data(), b.exp.data());
         result.esign = a.esign;
         if (carry) {
             // Overflow: magnitude >= 100
-            if (result.esign) {
+            if (result.esign)
                 // Negative overflow (underflow): set to zero
                 regClear(result);
-            } else {
+            else {
                 // Positive overflow: saturate at 99, set flag
                 FLAG_OF = true;
                 result.exp[0] = 9;
-                result.exp[1] = 9;
+                result.exp[1] = 9;  // XXX Saturate at 99 or leave it as-is due to FLAG_OF?
             }
         }
     }
     else {
         // Different signs: subtract smaller magnitude from larger
-        int cmp = bcdCmpMag(a.exp.data(), b.exp.data());
+        int cmp = expCmpMag(a.exp.data(), b.exp.data());
         if (cmp == 0) {
             // Equal magnitudes, opposite signs: result is zero
             result.esign = false;
@@ -187,18 +180,18 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
         }
         else if (cmp > 0) {
             // |a| > |b|: result has sign of a
-            bcdSubMag(result.exp.data(), a.exp.data(), b.exp.data());
+            expSubMag(result.exp.data(), a.exp.data(), b.exp.data());
             result.esign = a.esign;
         }
         else {
             // |b| > |a|: result has sign of b
-            bcdSubMag(result.exp.data(), b.exp.data(), a.exp.data());
+            expSubMag(result.exp.data(), b.exp.data(), a.exp.data());
             result.esign = b.esign;
         }
     }
 
     // Normalize -0 to +0
-    if (result.exp[0] == 0 && result.exp[1] == 0)
+    if ((result.exp[0] == 0) && (result.exp[1] == 0))
         result.esign = false;
 }
 
@@ -209,13 +202,13 @@ bool expSub(BCD& result, const BCD& a, const BCD& b)
     BCD negB = b;
     negB.esign = !b.esign;
     // Handle -0 edge case
-    if (b.exp[0] == 0 && b.exp[1] == 0)
+    if ((b.exp[0] == 0) && (b.exp[1] == 0))
         negB.esign = false;
 
     expAdd(result, a, negB);
 
     // Return true if underflowed to zero (check if result is zero BCD)
-    if (result.exp[0] == 0 && result.exp[1] == 0) {
+    if ((result.exp[0] == 0) && (result.exp[1] == 0)) {
         for (uint i = 0; i < MAX_MANT; i++)
             if (result.mant[i] != 0)
                 return false;  // Not underflow, just zero exponent
