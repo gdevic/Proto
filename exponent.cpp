@@ -1,4 +1,5 @@
 #include "exponent.h"
+#include "proto.h"
 
 // ---------------------------------------------------------------------------
 // Helper functions for 2-digit BCD exponent arithmetic (internal use only)

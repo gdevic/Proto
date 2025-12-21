@@ -1,4 +1,5 @@
 #include "mantissa.h"
+#include "proto.h"
 #include "exponent.h"
 
 // Check if BCD mantissa is zero (checks all 16 positions)

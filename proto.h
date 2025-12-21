@@ -9,6 +9,11 @@ inline BCD S0;
 inline BCD S1;
 inline BCD R;
 
+// Global flags (must be explicitly cleared)
+inline bool FLAG_OF = false;       // Overflow: exponent exceeded +99
+inline bool FLAG_S0_ZERO = false;  // S0 is zero (set by preCalc)
+inline bool FLAG_S1_ZERO = false;  // S1 is zero (set by preCalc)
+
 // Arithmetic operations: read from S0 and S1, write result to R
 void add(BCD &S0, BCD &S1, BCD &R);
 void sub(BCD &S0, BCD &S1, BCD &R);

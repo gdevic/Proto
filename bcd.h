@@ -22,11 +22,6 @@ typedef unsigned int uint;
 constexpr uint MAX_MANT = 16;
 constexpr uint MAX_EXP = 2;
 
-// Global flags (must be explicitly cleared)
-inline bool FLAG_OF = false;       // Overflow: exponent exceeded +99
-inline bool FLAG_S0_ZERO = false;  // S0 is zero (set by preCalc)
-inline bool FLAG_S1_ZERO = false;  // S1 is zero (set by preCalc)
-
 struct BCD
 {
     // The reference implementation of a User Register
