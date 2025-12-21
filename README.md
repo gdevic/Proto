@@ -22,17 +22,9 @@ Representation: `±d₁.d₂d₃...d₁₆ × 10^(±exp)`
 
 Example: mantissa=1234..., exp=0 represents 1.234
 
-## Rounding Modes
+## Rounding
 
-```cpp
-enum class RoundMode {
-    HalfUp,     // Round half away from zero (0.5 rounds up)
-    HalfEven    // Round half to even (banker's rounding)
-};
-```
-
-- **HalfUp**: Traditional rounding where 0.5 always rounds up
-- **HalfEven**: When exactly 0.5, rounds to make last digit even; uses sticky bit to detect exact ties
+Uses banker's rounding (round half to even): when exactly 0.5, rounds to make last digit even. The sticky bit detects exact ties.
 
 ## Constructor
 
@@ -137,7 +129,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Subtraction | `subtract(a, b)` | Implemented |
 | Multiplication | `mul(a, b)` | Implemented |
 | Division | `bcdDiv(a, b)` | Implemented |
-| Rounding | `round(a, digits, mode)` | Implemented |
+| Rounding | `round(a, digits)` | Implemented |
 | Square Root | `sqrt(a)` | Planned |
 | Logarithm | `log(a)`, `ln(a)` | Planned |
 | Exponential | `exp(a)` | Planned |

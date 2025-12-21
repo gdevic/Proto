@@ -17,7 +17,6 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 ### BCD Structure (`bcd.h`)
 - 16 significant digits in mantissa, 2-digit exponent (00-99), sign flags
 - `bool sticky` flag tracks precision loss when digits shift out
-- `RoundMode` enum: HalfUp, HalfEven (for round() function)
 - Internal format: `d₁.d₂d₃...d₁₆ × 10^exp` (e.g., mant=1234, exp=0 → 1.234)
 - Single constructor: `BCD(std::string_view str)`
 
