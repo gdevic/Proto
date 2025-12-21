@@ -158,6 +158,9 @@ bool expDec(BCD& x)
 }
 
 // Add exponents: result.exp = a.exp + b.exp
+// Overflow: result > +99 (e.g., +50 + (+50) = +100) sets FLAG_OF, saturates at +99
+// Underflow: result < -99 (e.g., -50 + (-50) = -100) clears result to zero
+// Normalizes -0 to +0
 void expAdd(BCD& result, const BCD& a, const BCD& b)
 {
     if (a.esign == b.esign) {
@@ -204,15 +207,20 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
 
 // Subtract exponents: result.exp = a.exp - b.exp
 // Returns true if underflowed to zero
+// Overflow: result > +99 (e.g., +99 - (-99) = +198) sets FLAG_OF, saturates at +99
+// Underflow: result < -99 (e.g., -99 - (+99) = -198) clears result to zero
+// Normalizes -0 to +0
 bool expSub(BCD& result, const BCD& a, const BCD& b)
 {
+    // Special case: a - 0 = a
+    if (isExpZeroMag(b.exp.data())) {
+        expCopy(result, a);
+        return false;
+    }
+
     // a - b = a + (-b)
     BCD negB = b;
     negB.esign = !b.esign;
-    // Handle -0 edge case
-    if (isExpZeroMag(b.exp.data()))
-        negB.esign = false;
-
     expAdd(result, a, negB);
 
     // Return true if underflowed to zero (check if result is zero BCD)
