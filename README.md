@@ -22,6 +22,18 @@ Representation: `±d₁.d₂d₃...d₁₆ × 10^(±exp)`
 
 Example: mantissa=1234..., exp=0 represents 1.234
 
+## Rounding Modes
+
+```cpp
+enum class RoundMode {
+    HalfUp,     // Round half away from zero (0.5 rounds up)
+    HalfEven    // Round half to even (banker's rounding)
+};
+```
+
+- **HalfUp**: Traditional rounding where 0.5 always rounds up
+- **HalfEven**: When exactly 0.5, rounds to make last digit even; uses sticky bit to detect exact ties
+
 ## Constructor
 
 - `BCD(std::string_view str)` - Parse string representation
@@ -125,6 +137,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Subtraction | `subtract(a, b)` | Implemented |
 | Multiplication | `mul(a, b)` | Implemented |
 | Division | `bcdDiv(a, b)` | Implemented |
+| Rounding | `round(a, digits, mode)` | Implemented |
 | Square Root | `sqrt(a)` | Planned |
 | Logarithm | `log(a)`, `ln(a)` | Planned |
 | Exponential | `exp(a)` | Planned |
@@ -136,7 +149,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 |------|---------|
 | `bcd.h` | BCD struct, constants, function declarations |
 | `bcd.cpp` | Constructor, toReal() conversion |
-| `register.h/cpp` | Register utilities: regClear(), preCalc(), swapReg(), swapMant(), normalize() |
+| `register.h/cpp` | Register utilities: regClear(), preCalc(), swapReg(), swapMant(), normalize(), round() |
 | `mantissa.h/cpp` | Mantissa utilities: isMantZero(), isMantEQ(), isMantGT(), mantShl(), mantShr(), mantAdd(), mantSub() |
 | `exponent.h/cpp` | Exponent utilities: isExpEQ(), isExpGT(), expCopy(), expInc(), expDec(), expAdd(), expSub() |
 | `addsub.cpp` | add(), sub(), testAddition(), testSubtraction() |

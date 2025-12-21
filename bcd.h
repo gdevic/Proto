@@ -19,6 +19,12 @@ using std::size_t;
 
 typedef unsigned int uint;
 
+// Rounding modes for round() function
+enum class RoundMode {
+    HalfUp,     // Round half away from zero (0.5 rounds up)
+    HalfEven    // Round half to even (banker's rounding)
+};
+
 constexpr uint MAX_MANT = 16;
 constexpr uint MAX_EXP = 2;
 

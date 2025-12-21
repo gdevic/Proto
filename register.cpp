@@ -54,3 +54,77 @@ void normalize(BCD& x)
         expDec(x);  // Could underflow to zero
     }
 }
+
+// Round S0 to specified number of significant digits, store in R
+// digits=0: no rounding (copy S0 to R)
+// digits=1-15: round to that many significant digits
+// Uses sticky bit for precise tie-breaking in HalfEven mode
+void round(BCD& S0, RoundMode mode, uint digits, BCD& R)
+{
+    // No rounding needed
+    if (digits == 0) {
+        R = S0;
+        R.sticky = false;
+        return;
+    }
+
+    // Zero input yields zero output
+    if (isMantZero(S0)) {
+        regClear(R);
+        return;
+    }
+
+    // Copy input to output
+    R = S0;
+
+    // Check if there are any non-zero digits after the rounding position
+    // Start from position 15 (tainted by sticky) and walk backwards
+    bool hasTrailing = S0.sticky;
+    for (uint i = MAX_MANT - 1; (i > digits) && !hasTrailing; i--)
+        if (R.mant[i] != 0)
+            hasTrailing = true;
+
+    // Determine if we should round up based on mode
+    uint8_t decisionDigit = R.mant[digits];
+    bool roundUp = false;
+
+    if (decisionDigit > 5)
+        roundUp = true;
+    else if (decisionDigit == 5) {
+        if (mode == RoundMode::HalfUp)
+            roundUp = true;  // Half-up: 0.5 always rounds up
+        else  // HalfEven
+            roundUp = hasTrailing || ((R.mant[digits - 1] & 1));  // Round to even
+    }
+    // decisionDigit < 5: truncate (roundUp stays false)
+
+    // Zero out digits beyond the rounding position
+    for (uint i = digits; i < MAX_MANT; i++)
+        R.mant[i] = 0;
+
+    // Apply rounding
+    if (roundUp) {
+        uint carry = 1;
+        for (uint i = digits; (i > 0) && carry; ) {
+            i--;
+            uint8_t sum = R.mant[i] + carry;
+            if (sum > 9) {
+                R.mant[i] = sum - 10;
+                carry = 1;
+            } else {
+                R.mant[i] = sum;
+                carry = 0;
+            }
+        }
+
+        // Handle overflow (9.999... rounded to 10.000...)
+        if (carry) {
+            mantShr(R.mant.data());
+            R.mant[0] = 1;
+            R.mant[digits] = 0;  // Shifted in from digits-1
+            expInc(R);
+        }
+    }
+
+    R.sticky = false;
+}
