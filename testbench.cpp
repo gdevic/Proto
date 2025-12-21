@@ -13,7 +13,7 @@ std::string formatBCD(const BCD& x)
 
     if (x.sign) s[0] = '-';
     s[1] = char('0' + x.mant[0]);
-    for (int i = 1; i < MAX_MANT; i++)
+    for (uint i = 1; i < MAX_MANT; i++)
         s[2 + i] = char('0' + x.mant[i]);
 
     if (x.esign) s[19] = '-';
@@ -81,7 +81,7 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
     s += '.';
 
     // Remaining mantissa digits (MAX_MANT - 1)
-    for (int i = 0; i < MAX_MANT - 1; i++)
+    for (uint i = 0; i < MAX_MANT - 1; i++)
         s += char('0' + digit(rng));
 
     // Exponent

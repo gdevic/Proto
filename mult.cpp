@@ -22,8 +22,8 @@ BCD mul(const BCD& a, const BCD& b)
     // Use int array for intermediate sums to handle multi-digit products
     // Position offset: mant[i] represents 10^(15-i), so product goes to position i+j+1
     int prod[32] = {0};
-    for (int i = 0; i < MAX_MANT; i++)
-        for (int j = 0; j < MAX_MANT; j++)
+    for (uint i = 0; i < MAX_MANT; i++)
+        for (uint j = 0; j < MAX_MANT; j++)
             prod[i + j + 1] += a.mant[i] * b.mant[j];
 
     // Propagate carries (right to left)
@@ -41,12 +41,12 @@ BCD mul(const BCD& a, const BCD& b)
         expInc(result);
 
     // Copy 16 significant digits to result mantissa
-    for (int i = 0; i < MAX_MANT; i++)
+    for (uint i = 0; i < MAX_MANT; i++)
         result.mant[i] = uint8_t(prod[startIdx + i]);
 
     // Set sticky if any digits beyond position 16 are non-zero
     result.sticky = false;
-    for (int i = startIdx + MAX_MANT; i < 32; i++)
+    for (uint i = startIdx + MAX_MANT; i < 32; i++)
         if (prod[i] != 0)
             result.sticky = true;
 

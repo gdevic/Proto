@@ -26,7 +26,7 @@ Real BCD::toReal() const
     // Reconstruct mantissa using exact integer operations
     // Multiply by 10 (exact in binary) instead of 0.1 (inexact)
     Real m = REAL_LITERAL(0.0);
-    for (int i = 0; i < MAX_MANT; i++)
+    for (uint i = 0; i < MAX_MANT; i++)
         m = (m * REAL_LITERAL(10.0)) + mant[i];
 
     // Reconstruct exponent and combine with mantissa scaling
@@ -75,7 +75,7 @@ BCD::BCD(std::string_view str)
                 continue;
             }
             seen_nonzero = true;
-            if (digit_count >= MAX_MANT)
+            if (uint(digit_count) >= MAX_MANT)
                 throw std::invalid_argument("BCD: more than 16 mantissa digits");
             digits[digit_count++] = uint8_t(d);
         }
@@ -101,8 +101,8 @@ BCD::BCD(std::string_view str)
     }
 
     // 4. Copy digits to mant[], zero-pad remainder
-    for (int i = 0; i < MAX_MANT; i++)
-        mant[i] = (i < digit_count) ? digits[i] : 0;
+    for (uint i = 0; i < MAX_MANT; i++)
+        mant[i] = (i < uint(digit_count)) ? digits[i] : 0;
 
     // 5. Calculate effective exponent
     // Internal format: d₁.d₂d₃... × 10^exp, so exp = parsed_exp + digits_before_decimal - 1

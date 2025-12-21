@@ -7,7 +7,7 @@
 // Returns: -1 if a < b, 0 if a == b, 1 if a > b
 static int compareMant(const uint8_t* a, const uint8_t* b, int n)
 {
-    for (int i = 0; i < n; i++) {
+    for (uint i = 0; i < uint(n); i++) {
         if (a[i] < b[i]) return -1;
         if (a[i] > b[i]) return 1;
     }
@@ -50,19 +50,19 @@ BCD bcdDiv(const BCD& a, const BCD& b)
     // Long division using 17-digit arrays (16 significant + 1 for normalization)
     constexpr int DIVLEN = 17;
     uint8_t divisor[DIVLEN] = {0};
-    for (int i = 0; i < MAX_MANT; i++)
+    for (uint i = 0; i < MAX_MANT; i++)
         divisor[i + 1] = b.mant[i];
 
     // Working partial dividend: starts as [0, a.mant[0..15]]
     uint8_t partial[DIVLEN] = {0};
-    for (int i = 0; i < MAX_MANT; i++)
+    for (uint i = 0; i < MAX_MANT; i++)
         partial[i + 1] = a.mant[i];
 
     uint8_t quotient[DIVLEN] = {0};
     uint8_t temp[DIVLEN] = {0};
 
     // Perform long division, producing 17 quotient digits
-    for (int i = 0; i < DIVLEN; i++) {
+    for (uint i = 0; i < DIVLEN; i++) {
         // Find largest q (0-9) such that q * divisor <= partial
         int q = 0;
         for (int trial = 9; trial >= 1; trial--) {
@@ -93,7 +93,7 @@ BCD bcdDiv(const BCD& a, const BCD& b)
         }
 
         // Shift partial left by 1 digit (multiply by 10), bringing in 0
-        for (int j = 0; j < DIVLEN - 1; j++)
+        for (uint j = 0; j < DIVLEN - 1; j++)
             partial[j] = partial[j + 1];
         partial[DIVLEN - 1] = 0;
     }
@@ -107,12 +107,12 @@ BCD bcdDiv(const BCD& a, const BCD& b)
     }
 
     // Copy 16 significant digits to result mantissa
-    for (int i = 0; i < MAX_MANT; i++)
+    for (uint i = 0; i < MAX_MANT; i++)
         result.mant[i] = quotient[startIdx + i];
 
     // Set sticky if remainder is non-zero (digits were truncated)
     result.sticky = false;
-    for (int i = 0; i < DIVLEN; i++)
+    for (uint i = 0; i < DIVLEN; i++)
         if (partial[i] != 0)
             result.sticky = true;
 

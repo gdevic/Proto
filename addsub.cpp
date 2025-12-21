@@ -19,7 +19,7 @@ BCD add(const BCD& a, const BCD& b)
 
     // Work copies
     uint8_t mantA[MAX_MANT], mantB[MAX_MANT];
-    for (int i = 0; i < MAX_MANT; i++) {
+    for (uint i = 0; i < MAX_MANT; i++) {
         mantA[i] = pA->mant[i];
         mantB[i] = pB->mant[i];
     }

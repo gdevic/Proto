@@ -17,8 +17,10 @@ using std::size_t;
     #define REAL_LITERAL(x) x
 #endif
 
-constexpr int MAX_MANT = 16;
-constexpr int MAX_EXP = 2;
+typedef unsigned int uint;
+
+constexpr uint MAX_MANT = 16;
+constexpr uint MAX_EXP = 2;
 
 // Global flags (must be explicitly cleared)
 inline bool FLAG_OF = false;  // Overflow: exponent exceeded +99

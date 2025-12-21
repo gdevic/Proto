@@ -10,7 +10,7 @@ void normalize(BCD& x);
 
 // Shift mantissa right by n digits
 // Returns sticky (true if any non-zero digit shifted out)
-bool shiftRight(uint8_t* mant, int n);
+bool shiftRight(uint8_t* mant, uint n);
 
 // Add magnitudes of two aligned mantissas (all 16 positions)
 // Returns carry (0 or 1)

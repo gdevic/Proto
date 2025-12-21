@@ -162,7 +162,7 @@ bool expDec(BCD& x)
 // Decrement exponent by n. Returns true if underflow (sets x to zero).
 bool expDecBy(BCD& x, int n)
 {
-    for (int i = 0; i < n; i++) {
+    for (uint i = 0; i < uint(n); i++) {
         if (expDec(x))
             return true;
     }
@@ -229,7 +229,7 @@ bool expSub(BCD& result, const BCD& a, const BCD& b)
 
     // Return true if underflowed to zero (check if result is zero BCD)
     if (result.exp[0] == 0 && result.exp[1] == 0) {
-        for (int i = 0; i < MAX_MANT; i++)
+        for (uint i = 0; i < MAX_MANT; i++)
             if (result.mant[i] != 0)
                 return false;  // Not underflow, just zero exponent
         return true;  // Underflowed
