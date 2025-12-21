@@ -15,7 +15,6 @@ struct BCD {
     bool sign;                 // Number sign (true = negative)
     bool esign;                // Exponent sign (true = negative)
     bool sticky;               // True if any non-zero digit shifted out
-    Real value;                // Original value for verification
 };
 ```
 
@@ -137,11 +136,12 @@ When subtracting nearly-equal numbers, leading digits cancel:
 |------|---------|
 | `bcd.h` | BCD struct, constants, function declarations |
 | `bcd.cpp` | Constructor, toReal() conversion |
-| `exponent.h/cpp` | Exponent utilities: expCompare(), expDiff(), expInc(), expDec(), expAdd(), expSub() |
-| `mantissa.h/cpp` | Mantissa utilities: isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes() |
-| `addsub.cpp` | add(), subtract(), testAddition(), testSubtraction() |
+| `register.h/cpp` | Register utilities: regClear(), preCalc(), swapReg(), swapMant(), normalize() |
+| `mantissa.h/cpp` | Mantissa utilities: isMantZero(), isMantEQ(), isMantGT(), mantShl(), mantShr(), mantAdd(), mantSub() |
+| `exponent.h/cpp` | Exponent utilities: isExpEQ(), isExpGT(), expCopy(), expInc(), expDec(), expAdd(), expSub() |
+| `addsub.cpp` | add(), sub(), testAddition(), testSubtraction() |
 | `mult.cpp` | mul(), testMultiplication() |
-| `div.cpp` | bcdDiv(), testDivision() |
+| `div.cpp` | div(), testDivision() |
 | `testbench.h/cpp` | Test infrastructure: formatBCD(), printTestResult(), checkTolerance(), runCombTests(), runRandomTests() |
 | `proto.cpp` | Main driver, command-line parsing |
 

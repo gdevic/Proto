@@ -1,8 +1,8 @@
-# Precision Loss in BCD Subtraction: A Guard Digit Solution
+# Precision Loss in BCD Subtraction
 
 ## The Setup
 
-Binary-Coded Decimal (BCD) arithmetic stores each decimal digit separately, making it ideal for financial calculations and hardware verification where exact decimal representation matters. Our implementation uses a 15-digit mantissa (with a 16th guard digit) and a 2-digit exponent—enough precision for most purposes, until you try to subtract two nearly-equal numbers.
+Binary-Coded Decimal (BCD) arithmetic stores each decimal digit separately, making it ideal for financial calculations and hardware verification where exact decimal representation matters. Our implementation uses a 16-digit mantissa and a 2-digit exponent—enough precision for most purposes, until you try to subtract two nearly-equal numbers.
 
 ## The Problem: Catastrophic Cancellation
 
@@ -16,87 +16,95 @@ Consider this subtraction:
 
 The result is tiny: 9.001 × 10⁻¹³. But here's the trouble. Before we can subtract, we need to align the decimal points. The second operand has a smaller exponent, so we shift its mantissa right by one position to line things up.
 
-When we shift right, a digit falls off the end. Our 15-digit mantissa can only hold 15 digits—the 16th digit would be discarded without a guard:
+When we shift right, a digit falls off the end:
 
 ```
-Before shift: [9,9,9,9,9,9,9,9,9,9,9,9,9,9,9]  (15 nines)
-After shift:  [0,9,9,9,9,9,9,9,9,9,9,9,9,9,9]  (14 nines)
-                                          ↑
-                                  This 9 is lost
+Before shift: [9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9]  (16 nines)
+After shift:  [0,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9]  (15 nines)
+                                              ↑
+                                      This 9 is lost
 ```
 
 Now we're subtracting the wrong value. Instead of 0.9999999999999999, we're subtracting 0.999999999999999—a number that's 10⁻¹⁶ larger than it should be. The subtraction produces 9.01 × 10⁻¹³ instead of 9.001 × 10⁻¹³.
 
 This is catastrophic cancellation: when subtracting nearly-equal numbers, the significant digits of the result come from the least significant digits of the operands—precisely the ones we just threw away.
 
-## The Constraint
+## Conceptual Solution: Guard Digit + Sticky Flag
 
-We're building a software reference model for hardware verification. The hardware has a fixed 15-digit BCD mantissa, and we can't change that. But we do have access to one spare register that can hold an extra BCD digit (the guard), plus a status flag. The question becomes: can we achieve correct results with these limited additional resources?
-
-## The Solution: Guard and Sticky
-
-The answer is yes. We introduce two new pieces of state:
-
-**The Guard Digit** is a single BCD digit (4 bits) stored at position 16 of the mantissa buffer. When we shift a mantissa right, the first digit that falls off goes into the guard instead of being discarded. This digit will participate in the arithmetic as a "16th digit."
-
-**The Sticky Flag** is a single bit. When any digits beyond the guard are shifted out and any of them are non-zero, we set this flag. We don't need to know what those digits were—we just need to know that something non-zero was there.
-
-## How It Works
-
-### During Alignment
-
-When shifting a mantissa right by n positions:
-- The first digit shifted out becomes the guard
-- If n > 1, we check whether any of the remaining shifted-out digits are non-zero; if so, we set sticky
-
-For our failing example, we shift by 1. The lost nine goes into the guard. Nothing remains beyond it, so sticky stays clear.
-
-### During Subtraction
-
-We now subtract 16 digits instead of 15, treating the guard as the least significant position. But there's a subtlety: what about the digits beyond the guard that we didn't save?
-
-This is where sticky earns its keep. If sticky is set, we know the subtrahend had non-zero digits beyond the guard. In subtraction, any non-zero digit generates a borrow. We don't need to know the exact value—any non-zero digit minus zero produces a borrow of exactly one. So we simply initialize the borrow to 1 if sticky is set.
-
-The subtraction proceeds from the guard position upward through all 15 mantissa digits, propagating borrows as usual.
-
-### During Normalization
-
-After subtraction, the result often has leading zeros. We shift left to normalize, adjusting the exponent accordingly. Here's the key insight: when we shift left, the guard digit slides into position 15 of the mantissa.
-
-In our example, after subtracting with the guard, we get:
-
-```
-Mantissa: [0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,1]  (positions 0-14 are significant, position 15 is guard)
-```
-
-Normalizing requires shifting left by 12 positions. The guard value (1) shifts into the mantissa:
-
-```
-Result:   [9,0,0,1,0,0,0,0,0,0,0,0,0,0,0] × 10⁻¹³  (15 significant digits)
-```
-
-This is 9.001 × 10⁻¹³—the correct answer.
-
-## Why This Combination?
-
-One might ask: why do we need both components? Can we simplify?
-
-**Guard alone isn't enough.** If we shift by two or more positions, multiple digits fall off. The guard captures the first, but we need to know if the remaining ones would generate a borrow. Without sticky, we'd compute the wrong result when the shift distance exceeds one.
-
-**Sticky alone isn't enough.** It tells us whether there's a borrow, but not what digit should shift into the mantissa during normalization. Consider two scenarios where the lost digit is 9 versus 1:
-
-```
-0 - 9 = 1 (with borrow)
-0 - 1 = 9 (with borrow)
-```
-
-Both set sticky, both generate a borrow, but they produce different guard results. When that digit shifts into the mantissa, we get different answers. Sticky can't distinguish these cases.
-
-## The Complete Picture
+One classic approach uses a **guard digit**—an extra digit position beyond the mantissa that captures the first digit shifted out. Combined with a **sticky flag** that tracks whether any non-zero digits were lost beyond the guard, this provides enough information to compute correct results.
 
 | Component | Storage | Role |
 |-----------|---------|------|
-| Guard | 4 bits | The 16th digit; participates in arithmetic; shifts into mantissa during normalization |
-| Sticky | 1 bit | Indicates borrow from beyond guard; consumed during subtraction |
+| Guard | 4 bits | The extra digit; participates in arithmetic; shifts into mantissa during normalization |
+| Sticky | 1 bit | Indicates non-zero digits were lost beyond guard; affects borrow in subtraction |
 
-Together, these five bits of additional state let us compute correct 15-digit results even in the worst-case scenario: subtracting nearly-equal numbers with different exponents. The guard provides the precision we need, and sticky ensures correct borrow propagation.
+The guard provides precision for the arithmetic, while sticky ensures correct borrow propagation from the "lost" digits.
+
+## Current Implementation: 16 Digits + Sticky
+
+Our implementation takes a simpler approach: we use all 16 mantissa positions as significant digits (no separate guard), and track precision loss with a `bool sticky` flag in the BCD structure.
+
+```cpp
+struct BCD {
+    array<uint8_t, 16> mant;  // 16 significant digits
+    array<uint8_t, 2> exp;    // Exponent (00-99)
+    bool sign;                 // Number sign
+    bool esign;                // Exponent sign
+    bool sticky;               // True if non-zero digit shifted out
+};
+```
+
+### During Alignment
+
+When shifting a mantissa right to align exponents, `mantShr()` returns true if a non-zero digit was shifted out. We accumulate this into the sticky flag:
+
+```cpp
+while (!isExpEQ(S0, S1)) {
+    sticky |= mantShr(S1.mant.data());
+    expInc(S1);
+}
+```
+
+### During Subtraction
+
+The sticky flag generates an initial borrow in `mantSub()`:
+
+```cpp
+void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
+{
+    int borrow = sticky ? 1 : 0;
+    // ... subtract with borrow propagation
+}
+```
+
+If sticky is set, we know the subtrahend had non-zero digits beyond what we stored. Any non-zero digit minus zero produces a borrow of exactly one, so we initialize borrow to 1.
+
+### During Normalization
+
+After subtraction, results often have leading zeros. We shift left to normalize using `mantShl()`, adjusting the exponent with `expDec()`:
+
+```cpp
+while (x.mant[0] == 0) {
+    mantShl(x.mant.data());
+    expDec(x);
+}
+```
+
+## Why Sticky Alone Works
+
+With a full 16-digit mantissa, we have enough precision that the sticky flag alone provides correct rounding behavior:
+
+- **Shift by 1**: The lost digit affects only the final rounding decision
+- **Shift by N**: Multiple lost digits all contribute to sticky; the borrow propagates correctly
+
+The sticky flag answers the key question: "Was anything non-zero lost?" For subtraction, this determines whether we need an extra borrow. We don't need to know the exact lost value—just whether it was non-zero.
+
+## The Complete Picture
+
+| Scenario | Sticky | Effect |
+|----------|--------|--------|
+| No shift needed | false | Direct subtraction |
+| Shift, lost zeros | false | No extra borrow |
+| Shift, lost non-zero | true | Borrow from beyond mantissa |
+
+This approach provides correct 16-digit results even in worst-case scenarios: subtracting nearly-equal numbers with different exponents.

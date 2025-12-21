@@ -22,11 +22,12 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 
 ### Files
 - `bcd.h/cpp` - BCD struct, string constructor, toReal()
-- `mantissa.h/cpp` - isZero(), normalize(), shiftRight(), addAlignedMagnitudes(), subtractAlignedMagnitudes()
-- `exponent.h/cpp` - expCompare(), expDiff(), expInc(), expDec(), expAdd(), expSub(), expCopy()
-- `addsub.cpp` - add(), subtract(), testAddition(), testSubtraction()
+- `register.h/cpp` - regClear(), preCalc(), swapReg(), swapMant(), normalize()
+- `mantissa.h/cpp` - isMantZero(), isMantEQ(), isMantGT(), mantShl(), mantShr(), mantAdd(), mantSub()
+- `exponent.h/cpp` - isExpEQ(), isExpGT(), expCopy(), expInc(), expDec(), expAdd(), expSub()
+- `addsub.cpp` - add(), sub(), testAddition(), testSubtraction()
 - `mult.cpp` - mul(), testMultiplication()
-- `div.cpp` - bcdDiv(), testDivision()
+- `div.cpp` - div(), testDivision()
 - `testbench.h/cpp` - formatBCD(), printTestResult(), checkTolerance(), generateRandomBCD()
 - `proto.cpp` - main(), argument parsing (-h, -t, -v, -e, -i)
 
