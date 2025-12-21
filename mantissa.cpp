@@ -2,6 +2,10 @@
 #include "proto.h"
 #include "exponent.h"
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 // Check if BCD mantissa is zero (checks all 16 positions)
 bool isMantZero(const BCD& x)
 {
