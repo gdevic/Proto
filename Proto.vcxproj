@@ -147,6 +147,7 @@
     <ClCompile Include="bcd.cpp" />
     <ClCompile Include="exponent.cpp" />
     <ClCompile Include="mantissa.cpp" />
+    <ClCompile Include="register.cpp" />
     <ClCompile Include="mult.cpp" />
     <ClCompile Include="div.cpp" />
     <ClCompile Include="proto.cpp" />
@@ -156,6 +157,7 @@
     <ClInclude Include="bcd.h" />
     <ClInclude Include="exponent.h" />
     <ClInclude Include="mantissa.h" />
+    <ClInclude Include="register.h" />
     <ClInclude Include="proto.h" />
     <ClInclude Include="testbench.h" />
   </ItemGroup>

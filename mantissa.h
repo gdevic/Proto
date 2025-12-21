@@ -5,20 +5,11 @@
 // Check if BCD mantissa is zero (checks all 16 positions)
 bool isMantZero(const BCD& x);
 
-// Clear a register to zero
-void regClear(BCD& x);
+// Returns true if two mantissas are equal
+bool isMantEQ(const uint8_t *a, const uint8_t *b);
 
-// Pre-calculation setup: set zero flags and clear R
-void preCalc(BCD& S0, BCD& S1, BCD& R);
-
-// Swap the complete content of two User Registers
-void swapReg(BCD& a, BCD& b);
-
-// Swap two mantissa arrays
-void swapMant(uint8_t* a, uint8_t* b);
-
-// Normalize: shift mantissa left until first digit is non-zero, adjust exponent
-void normalize(BCD& x);
+// Returns true if mantissa a > mantissa b
+bool isMantGT(const uint8_t *a, const uint8_t *b);
 
 // Shift mantissa left by one digit
 void mantShl(uint8_t* mant);
@@ -34,9 +25,3 @@ int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r);
 // Subtract two aligned mantissas: r = a - b (assumes |a| >= |b|)
 // sticky generates initial borrow from beyond mant[15]
 void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky);
-
-// Returns true if two mantissas are equal
-bool isMantEQ(const uint8_t* a, const uint8_t* b);
-
-// Returns true if mantissa a > mantissa b
-bool isMantGT(const uint8_t* a, const uint8_t* b);

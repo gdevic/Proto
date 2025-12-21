@@ -1,7 +1,7 @@
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"
-#include "mantissa.h"
+#include "register.h"
 
 // Multiply two BCD numbers
 // Reads from S0 and S1, stores result in R

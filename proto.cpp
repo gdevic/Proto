@@ -2,7 +2,6 @@
 #include "testbench.h"
 #include <iostream>
 #include <iomanip>
-#include <cmath>
 #include <cstring>
 
 static void printHelp(const char* prog)

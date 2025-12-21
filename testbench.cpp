@@ -3,7 +3,6 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
-#include <sstream>
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, fixed width for HW parsing)
 // Internal format: d₁.d₂d₃...d₁₆ × 10^exp (16 significant digits)

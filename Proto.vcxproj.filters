@@ -39,6 +39,9 @@
     <ClCompile Include="testbench.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="register.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">
@@ -54,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="proto.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="register.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

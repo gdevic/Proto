@@ -1,6 +1,6 @@
 #include "exponent.h"
 #include "proto.h"
-#include "mantissa.h"
+#include "register.h"
 
 // ---------------------------------------------------------------------------
 // Helper functions for 2-digit BCD exponent arithmetic (internal use only)
@@ -50,6 +50,14 @@ static int bcdCmpMag(const uint8_t* a, const uint8_t* b)
 // Public API
 // ---------------------------------------------------------------------------
 
+// Returns true if exponent of a == exponent of b
+bool isExpEQ(const BCD &a, const BCD &b)
+{
+    if (a.esign != b.esign)
+        return false;
+    return bcdCmpMag(a.exp.data(), b.exp.data()) == 0;
+}
+
 // Returns true if exponent of a > exponent of b
 bool isExpGT(const BCD& a, const BCD& b)
 {
@@ -64,14 +72,6 @@ bool isExpGT(const BCD& a, const BCD& b)
 
     // If both negative, larger magnitude = smaller value
     return a.esign ? (cmp < 0) : (cmp > 0);
-}
-
-// Returns true if exponent of a == exponent of b
-bool isExpEQ(const BCD& a, const BCD& b)
-{
-    if (a.esign != b.esign)
-        return false;
-    return bcdCmpMag(a.exp.data(), b.exp.data()) == 0;
 }
 
 // Copy exponent from src to dst

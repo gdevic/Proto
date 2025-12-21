@@ -1,7 +1,7 @@
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"
-#include "mantissa.h"
+#include "register.h"
 
 // Compare two digit arrays of length n
 // Returns: -1 if a < b, 0 if a == b, 1 if a > b

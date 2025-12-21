@@ -2,6 +2,7 @@
 #include "testbench.h"
 #include "exponent.h"
 #include "mantissa.h"
+#include "register.h"
 
 // Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
 // Reads from S0 and S1, stores result in R
