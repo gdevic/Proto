@@ -3,6 +3,21 @@
 #include "exponent.h"
 #include "mantissa.h"
 
+// Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
+// Reads from S0 and S1, stores result in R
+void sub(BCD &S0, BCD &S1, BCD &R)
+{
+    preCalc(S0, S1, R);
+
+    if (FLAG_S1_ZERO)
+    {
+        R = S0;
+        return;
+    }
+    S1.sign = !S1.sign;
+    add(S0, S1, R);  // Could jump to add() skipping its preCalc()
+}
+
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
 // Reads from S0 and S1, stores result in R
 void add(BCD& S0, BCD& S1, BCD& R)
@@ -61,20 +76,6 @@ void add(BCD& S0, BCD& S1, BCD& R)
     }
 
     normalize(R);
-}
-
-// Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
-// Reads from S0 and S1, stores result in R
-void sub(BCD& S0, BCD& S1, BCD& R)
-{
-    preCalc(S0, S1, R);
-
-    if (FLAG_S1_ZERO) {
-        R = S0;
-        return;
-    }
-    S1.sign = !S1.sign;
-    add(S0, S1, R);
 }
 
 // IEEE operations for test runner
