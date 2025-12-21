@@ -13,11 +13,12 @@ void mul(BCD& S0, BCD& S1, BCD& R)
     if (FLAG_S0_ZERO || FLAG_S1_ZERO)
         return;
 
+    // Exponent: sum of exponents (direct BCD addition)
+    if (expAdd(R, S0, S1))
+        return;  // Overflow or underflow
+
     // Sign: XOR of input signs
     R.sign = (S0.sign != S1.sign);
-
-    // Exponent: sum of exponents (direct BCD addition)
-    expAdd(R, S0, S1);
 
     // Multiply mantissas (16x16 digits = up to 32 digits)
     // Use int array for intermediate sums to handle multi-digit products

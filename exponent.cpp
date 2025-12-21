@@ -1,5 +1,4 @@
 #include "exponent.h"
-#include "mantissa.h"
 #include "proto.h"
 #include "register.h"
 
@@ -158,10 +157,10 @@ bool expDec(BCD& x)
 }
 
 // Add exponents: result.exp = a.exp + b.exp
-// Overflow: result > +99 (e.g., +50 + (+50) = +100) sets FLAG_OF, saturates at +99
-// Underflow: result < -99 (e.g., -50 + (-50) = -100) clears result to zero
-// Normalizes -0 to +0
-void expAdd(BCD& result, const BCD& a, const BCD& b)
+// Returns true if overflow or underflow occurred
+// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Underflow: result < -99 sets exponent to zero (mantissa untouched)
+bool expAdd(BCD& result, const BCD& a, const BCD& b)
 {
     if (a.esign == b.esign) {
         // Same sign: add magnitudes
@@ -169,15 +168,17 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
         result.esign = a.esign;
         if (carry) {
             // Overflow: magnitude >= 100
-            if (result.esign)
-                // Negative overflow (underflow): set to zero
-                regClear(result);
-            else {
-                // Positive overflow: saturate at 99, set flag
+
+            // Positive overflow: set flag
+            if (result.esign == false)
                 FLAG_OF = true;
-                result.exp[0] = 9;
-                result.exp[1] = 9;  // XXX Saturate at 99 or leave it as-is due to FLAG_OF?
-            }
+
+            // Negative overflow (underflow): set exponent to zero
+            result.esign = false;
+            result.exp[0] = 0;
+            result.exp[1] = 0;
+
+            return true;  // Overflow or underflow
         }
     }
     else {
@@ -200,17 +201,18 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
         }
     }
 
-    // Normalize -0 to +0
+    // Normalize exponent -0 to +0
     if (isExpZeroMag(result.exp.data()))
         result.esign = false;
+
+    return false;
 }
 
 // Subtract exponents: result.exp = a.exp - b.exp
-// Returns true if underflowed to zero
-// Overflow: result > +99 (e.g., +99 - (-99) = +198) sets FLAG_OF, saturates at +99
-// Underflow: result < -99 (e.g., -99 - (+99) = -198) clears result to zero
-// Normalizes -0 to +0
-bool expSub(BCD& result, const BCD& a, const BCD& b)
+// Returns true if overflow or underflow occurred
+// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Underflow: result < -99 sets exponent to zero (mantissa untouched)
+bool expSub(BCD& result, const BCD& a, BCD& b)
 {
     // Special case: a - 0 = a
     if (isExpZeroMag(b.exp.data())) {
@@ -219,12 +221,9 @@ bool expSub(BCD& result, const BCD& a, const BCD& b)
     }
 
     // a - b = a + (-b)
-    BCD negB = b;
-    negB.esign = !b.esign;
-    expAdd(result, a, negB);
+    b.esign = !b.esign;
+    bool ofuf = expAdd(result, a, b);
+    b.esign = !b.esign;  // XXX Prhaps we don't need to save/restore?
 
-    // Return true if underflowed to zero (check if result is zero BCD)
-    if (isExpZeroMag(result.exp.data()))
-        return isMantZero(result);
-    return false;
+    return ofuf;
 }

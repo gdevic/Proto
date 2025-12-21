@@ -19,14 +19,13 @@ void expInc(BCD& x);
 bool expDec(BCD& x);
 
 // Add exponents: result.exp = a.exp + b.exp
-// Overflow: result > +99 (e.g., +50 + (+50) = +100) sets FLAG_OF, saturates at +99
-// Underflow: result < -99 (e.g., -50 + (-50) = -100) clears result to zero
-// Normalizes -0 to +0
-void expAdd(BCD& result, const BCD& a, const BCD& b);
+// Returns true if overflow or underflow occurred
+// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Underflow: result < -99 sets exponent to zero (mantissa untouched)
+bool expAdd(BCD& result, const BCD& a, const BCD& b);
 
 // Subtract exponents: result.exp = a.exp - b.exp
-// Overflow: result > +99 (e.g., +99 - (-99) = +198) sets FLAG_OF, saturates at +99
-// Underflow: result < -99 (e.g., -99 - (+99) = -198) clears result to zero
-// Normalizes -0 to +0
-// Returns true if underflowed to zero
-bool expSub(BCD& result, const BCD& a, const BCD& b);
+// Returns true if overflow or underflow occurred
+// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Underflow: result < -99 sets exponent to zero (mantissa untouched)
+bool expSub(BCD& result, const BCD& a, BCD& b);

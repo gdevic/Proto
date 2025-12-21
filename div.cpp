@@ -42,11 +42,12 @@ void div(BCD& S0, BCD& S1, BCD& R)
     if (FLAG_S0_ZERO)
         return;
 
+    // Exponent: difference of exponents (direct BCD subtraction)
+    if (expSub(R, S0, S1))
+        return;  // Overflow or underflow
+
     // Sign: XOR of input signs
     R.sign = (S0.sign != S1.sign);
-
-    // Exponent: difference of exponents (direct BCD subtraction)
-    expSub(R, S0, S1);
 
     // Long division using 17-digit arrays (16 significant + 1 for normalization)
     constexpr int DIVLEN = 17;
