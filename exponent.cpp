@@ -31,14 +31,18 @@ static void expSubMag(uint8_t* result, const uint8_t* a, const uint8_t* b)
     result[0] = a[0] - b[0] - borrow; // "das"
 }
 
-// Compare two 2-digit BCD magnitudes: returns -1 (a<b), 0 (a==b), +1 (a>b)
-static int expCmpMag(const uint8_t* a, const uint8_t* b)
+// Returns true if two 2-digit BCD magnitudes are equal
+static bool isExpEQMag(const uint8_t* a, const uint8_t* b)
+{
+    return (a[0] == b[0]) && (a[1] == b[1]);
+}
+
+// Returns true if 2-digit BCD magnitude a > b
+static bool isExpGTMag(const uint8_t* a, const uint8_t* b)
 {
     if (a[0] != b[0])
-        return (a[0] > b[0]) ? 1 : -1;
-    if (a[1] != b[1])
-        return (a[1] > b[1]) ? 1 : -1;
-    return 0;
+        return a[0] > b[0];
+    return a[1] > b[1];
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +54,7 @@ bool isExpEQ(const BCD &a, const BCD &b)
 {
     if (a.esign != b.esign)
         return false;
-    return expCmpMag(a.exp.data(), b.exp.data()) == 0;
+    return isExpEQMag(a.exp.data(), b.exp.data());
 }
 
 // Returns true if exponent of a > exponent of b
@@ -60,13 +64,10 @@ bool isExpGT(const BCD& a, const BCD& b)
     if (a.esign != b.esign)
         return !a.esign;  // positive > negative
 
-    // Same sign: compare magnitude
-    int cmp = expCmpMag(a.exp.data(), b.exp.data());
-    if (cmp == 0)
-        return false;
-
     // If both negative, larger magnitude = smaller value
-    return a.esign ? (cmp < 0) : (cmp > 0);
+    if (a.esign)
+        return isExpGTMag(b.exp.data(), a.exp.data());
+    return isExpGTMag(a.exp.data(), b.exp.data());
 }
 
 // Copy exponent from src to dst
@@ -171,14 +172,13 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
     }
     else {
         // Different signs: subtract smaller magnitude from larger
-        int cmp = expCmpMag(a.exp.data(), b.exp.data());
-        if (cmp == 0) {
+        if (isExpEQMag(a.exp.data(), b.exp.data())) {
             // Equal magnitudes, opposite signs: result is zero
             result.esign = false;
             result.exp[0] = 0;
             result.exp[1] = 0;
         }
-        else if (cmp > 0) {
+        else if (isExpGTMag(a.exp.data(), b.exp.data())) {
             // |a| > |b|: result has sign of a
             expSubMag(result.exp.data(), a.exp.data(), b.exp.data());
             result.esign = a.esign;
