@@ -66,7 +66,7 @@ void normalize(BCD& x)
 
 // Shift mantissa right by one digit
 // Returns true if a non-zero digit shifted out
-static bool shiftRightOne(uint8_t* mant)
+bool mantShr(uint8_t* mant)
 {
     bool sticky = mant[MAX_MANT - 1] != 0;
     for (uint i = MAX_MANT - 1; i > 0; i--)
@@ -81,7 +81,7 @@ bool shiftRight(uint8_t* mant, uint n)
 {
     bool sticky = false;
     for (uint i = 0; i < n; i++)
-        sticky |= shiftRightOne(mant);
+        sticky |= mantShr(mant);
     return sticky;
 }
 

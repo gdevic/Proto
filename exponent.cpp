@@ -65,17 +65,12 @@ bool isExpGT(const BCD& a, const BCD& b)
     return a.esign ? (cmp < 0) : (cmp > 0);
 }
 
-// Compute |expA - expB| as int (for shift amount, loop counter)
-int expDiff(const BCD& a, const BCD& b)
+// Returns true if exponent of a == exponent of b
+bool isExpEQ(const BCD& a, const BCD& b)
 {
-    // Convert to magnitude for subtraction
-    // Result is int for loop counter (per user requirement)
-    int magA = a.exp[0] * 10 + a.exp[1];
-    int magB = b.exp[0] * 10 + b.exp[1];
-    int valA = a.esign ? -magA : magA;
-    int valB = b.esign ? -magB : magB;
-    int diff = valA - valB;
-    return (diff >= 0) ? diff : -diff;
+    if (a.esign != b.esign)
+        return false;
+    return bcdCmpMag(a.exp.data(), b.exp.data()) == 0;
 }
 
 // Copy exponent from src to dst

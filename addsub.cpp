@@ -18,11 +18,12 @@ void add(BCD& S0, BCD& S1, BCD& R)
     if (isExpGT(S1, S0))
         swapReg(S0, S1);
 
-    // Shift S1, sticky tracks digits shifted out
+    // Shift S1 until exponents match, sticky tracks digits shifted out
     bool sticky = false;
-    int shift = expDiff(S0, S1);
-    if (shift > 0)
-        sticky = shiftRight(S1.mant.data(), shift);
+    while (!isExpEQ(S0, S1)) {
+        sticky |= mantShr(S1.mant.data());
+        expInc(S1);  // Should never overflow!
+    }
 
     expCopy(R, S0);
     R.sticky = sticky;
