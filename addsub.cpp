@@ -4,17 +4,20 @@
 #include "mantissa.h"
 
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
-BCD add(const BCD& a, const BCD& b)
+// Reads from S0 and S1, stores result in R
+void add(BCD& S0, BCD& S1, BCD& R)
 {
+    preCalc(S0, S1, R);
+
     // Handle zero cases
-    if (isZero(a)) return b;
-    if (isZero(b)) return a;
+    if (FLAG_S0_ZERO) { R = S1; return; }
+    if (FLAG_S1_ZERO) { R = S0; return; }
 
     // Ensure A has larger or equal exponent (swap if needed)
     // This means only B ever needs shifting
-    const BCD* pA = &a;
-    const BCD* pB = &b;
-    if (expCompare(b, a) > 0)
+    BCD* pA = &S0;
+    BCD* pB = &S1;
+    if (expCompare(S1, S0) > 0)
         std::swap(pA, pB);
 
     // Work copies
@@ -30,21 +33,20 @@ BCD add(const BCD& a, const BCD& b)
     if (shift > 0)
         sticky = shiftRight(mantB, shift);
 
-    BCD result{};
-    expCopy(result, *pA);
-    result.sticky = sticky;  // Accumulate sticky from shift
+    expCopy(R, *pA);
+    R.sticky = sticky;  // Accumulate sticky from shift
 
     // Same signs: add magnitudes
     if (pA->sign == pB->sign) {
-        int carry = addAlignedMagnitudes(mantA, mantB, result.mant.data());
-        result.sign = pA->sign;
+        int carry = addAlignedMagnitudes(mantA, mantB, R.mant.data());
+        R.sign = pA->sign;
 
         // Handle carry overflow: shift result right, bringing in carry
         if (carry) {
-            if (shiftRight(result.mant.data(), 1))
-                result.sticky = true;
-            result.mant[0] = 1;
-            expInc(result);
+            if (shiftRight(R.mant.data(), 1))
+                R.sticky = true;
+            R.mant[0] = 1;
+            expInc(R);
         }
     }
     // Different signs: subtract smaller from larger magnitude
@@ -52,31 +54,37 @@ BCD add(const BCD& a, const BCD& b)
         int cmp = compareMagnitudes(mantA, mantB);
 
         // Check for exact zero (magnitudes equal and no sticky)
-        if ((cmp == 0) && !sticky)
-            return BCD{};
+        if ((cmp == 0) && !sticky) {
+            R = BCD{};
+            return;
+        }
 
         if (cmp > 0) {
             // |A| > |B|: compute A - B, sticky generates borrow
-            subtractAlignedMagnitudes(mantA, mantB, result.mant.data(), sticky);
-            result.sign = pA->sign;
+            subtractAlignedMagnitudes(mantA, mantB, R.mant.data(), sticky);
+            R.sign = pA->sign;
         } else {
             // |B| >= |A|: compute B - A, no sticky (A has no extra precision)
-            subtractAlignedMagnitudes(mantB, mantA, result.mant.data(), false);
-            result.sign = pB->sign;
+            subtractAlignedMagnitudes(mantB, mantA, R.mant.data(), false);
+            R.sign = pB->sign;
         }
     }
 
-    normalize(result);
-    return result;
+    normalize(R);
 }
 
-// Subtract two BCD numbers: a - b = a + (-b)
-BCD subtract(const BCD& a, const BCD& b)
+// Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
+// Reads from S0 and S1, stores result in R
+void sub(BCD& S0, BCD& S1, BCD& R)
 {
-    BCD negB = b;
-    if (!isZero(b))
-        negB.sign = !b.sign;
-    return add(a, negB);
+    preCalc(S0, S1, R);
+
+    if (FLAG_S1_ZERO) {
+        R = S0;
+        return;
+    }
+    S1.sign = !S1.sign;
+    add(S0, S1, R);
 }
 
 // IEEE operations for test runner
@@ -132,7 +140,7 @@ void testSubtraction()
         "1e-50",
     };
 
-    if (!runCombTests("SUB", subtract, ieeeSub, val, sizeof(val) / sizeof(val[0])))
+    if (!runCombTests("SUB", sub, ieeeSub, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("SUB", subtract, ieeeSub, OPTS_ADDSUB);
+    runRandomTests("SUB", sub, ieeeSub, OPTS_ADDSUB);
 }

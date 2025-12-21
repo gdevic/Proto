@@ -1,4 +1,5 @@
 #include "testbench.h"
+#include "proto.h"
 #include <cmath>
 #include <iostream>
 #include <iomanip>
@@ -206,13 +207,14 @@ bool runCombTests(const char* opName,
 
     for (size_t i = 0; i < valueCount; i++) {
         for (size_t j = 0; j < valueCount; j++) {
-            BCD a(values[i]), b(values[j]);
-            Real ieee = ieeeOp(a.value, b.value);
-            BCD result = bcdOp(a, b);
-            MatchLevel level = checkTolerance(ieee, result.toReal(), result);
+            S0 = BCD(values[i]);
+            S1 = BCD(values[j]);
+            Real ieee = ieeeOp(S0.value, S1.value);
+            bcdOp(S0, S1, R);
+            MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
             g_testIndex++;
-            if (printTestResult(opName, a, b, result, level, ieee))
+            if (printTestResult(opName, S0, S1, R, level, ieee))
                 return false;
 
             switch (level) {
@@ -244,13 +246,14 @@ bool runRandomTests(const char* opName,
         std::string strA = generateRandomBCD(rng, opts);
         std::string strB = generateRandomBCD(rng, opts);
 
-        BCD a(strA), b(strB);
-        Real ieee = ieeeOp(a.value, b.value);
-        BCD result = bcdOp(a, b);
-        MatchLevel level = checkTolerance(ieee, result.toReal(), result);
+        S0 = BCD(strA);
+        S1 = BCD(strB);
+        Real ieee = ieeeOp(S0.value, S1.value);
+        bcdOp(S0, S1, R);
+        MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
         g_testIndex++;
-        if (printTestResult(opName, a, b, result, level, ieee))
+        if (printTestResult(opName, S0, S1, R, level, ieee))
             return false;
 
         switch (level) {

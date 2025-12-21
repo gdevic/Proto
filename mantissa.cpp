@@ -9,6 +9,14 @@ bool isZero(const BCD& x)
     return true;
 }
 
+// Pre-calculation setup: set zero flags and clear R
+void preCalc(BCD& S0, BCD& S1, BCD& R)
+{
+    FLAG_S0_ZERO = isZero(S0);
+    FLAG_S1_ZERO = isZero(S1);
+    R = BCD{};
+}
+
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x)
 {

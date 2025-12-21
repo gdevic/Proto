@@ -4,19 +4,20 @@
 #include "mantissa.h"
 
 // Multiply two BCD numbers
-BCD mul(const BCD& a, const BCD& b)
+// Reads from S0 and S1, stores result in R
+void mul(BCD& S0, BCD& S1, BCD& R)
 {
-    // Handle zero cases
-    if (isZero(a) || isZero(b))
-        return BCD{};
+    preCalc(S0, S1, R);
 
-    BCD result{};
+    // Handle zero cases
+    if (FLAG_S0_ZERO || FLAG_S1_ZERO)
+        return;
 
     // Sign: XOR of input signs
-    result.sign = (a.sign != b.sign);
+    R.sign = (S0.sign != S1.sign);
 
     // Exponent: sum of exponents (direct BCD addition)
-    expAdd(result, a, b);
+    expAdd(R, S0, S1);
 
     // Multiply mantissas (16x16 digits = up to 32 digits)
     // Use int array for intermediate sums to handle multi-digit products
@@ -24,7 +25,7 @@ BCD mul(const BCD& a, const BCD& b)
     int prod[32] = {0};
     for (uint i = 0; i < MAX_MANT; i++)
         for (uint j = 0; j < MAX_MANT; j++)
-            prod[i + j + 1] += a.mant[i] * b.mant[j];
+            prod[i + j + 1] += S0.mant[i] * S1.mant[j];
 
     // Propagate carries (right to left)
     for (int i = 31; i > 0; i--) {
@@ -38,20 +39,19 @@ BCD mul(const BCD& a, const BCD& b)
     // If prod[0] == 0: result is 0d.xxx, start at prod[1]
     int startIdx = (prod[0] != 0) ? 0 : 1;
     if (prod[0] != 0)
-        expInc(result);
+        expInc(R);
 
     // Copy 16 significant digits to result mantissa
     for (uint i = 0; i < MAX_MANT; i++)
-        result.mant[i] = uint8_t(prod[startIdx + i]);
+        R.mant[i] = uint8_t(prod[startIdx + i]);
 
     // Set sticky if any digits beyond position 16 are non-zero
-    result.sticky = false;
+    R.sticky = false;
     for (uint i = startIdx + MAX_MANT; i < 32; i++)
         if (prod[i] != 0)
-            result.sticky = true;
+            R.sticky = true;
 
-    normalize(result);
-    return result;
+    normalize(R);
 }
 
 // IEEE multiplication for test runner

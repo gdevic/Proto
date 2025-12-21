@@ -52,7 +52,7 @@ constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
 std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts = {});
 
 // Function pointer types for generic test runners
-using BcdBinaryOp = BCD (*)(const BCD&, const BCD&);
+using BcdBinaryOp = void (*)(BCD&, BCD&, BCD&);
 using IeeeBinaryOp = Real (*)(Real, Real);
 
 // Combinatorial test runner - tests all pairs from values array

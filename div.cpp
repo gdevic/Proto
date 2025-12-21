@@ -28,35 +28,36 @@ static int multiplyByDigit(const uint8_t* divisor, int q, uint8_t* result, int n
     return carry;
 }
 
-// Divide two BCD numbers
-BCD bcdDiv(const BCD& a, const BCD& b)
+// Divide two BCD numbers: S0 / S1 = R
+// Reads from S0 and S1, stores result in R
+void div(BCD& S0, BCD& S1, BCD& R)
 {
+    preCalc(S0, S1, R);
+
     // Division by zero -> return zero
-    if (isZero(b))
-        return BCD{};
+    if (FLAG_S1_ZERO)
+        return;
 
     // Zero divided by anything -> zero
-    if (isZero(a))
-        return BCD{};
-
-    BCD result{};
+    if (FLAG_S0_ZERO)
+        return;
 
     // Sign: XOR of input signs
-    result.sign = (a.sign != b.sign);
+    R.sign = (S0.sign != S1.sign);
 
     // Exponent: difference of exponents (direct BCD subtraction)
-    expSub(result, a, b);
+    expSub(R, S0, S1);
 
     // Long division using 17-digit arrays (16 significant + 1 for normalization)
     constexpr int DIVLEN = 17;
     uint8_t divisor[DIVLEN] = {0};
     for (uint i = 0; i < MAX_MANT; i++)
-        divisor[i + 1] = b.mant[i];
+        divisor[i + 1] = S1.mant[i];
 
-    // Working partial dividend: starts as [0, a.mant[0..15]]
+    // Working partial dividend: starts as [0, S0.mant[0..15]]
     uint8_t partial[DIVLEN] = {0};
     for (uint i = 0; i < MAX_MANT; i++)
-        partial[i + 1] = a.mant[i];
+        partial[i + 1] = S0.mant[i];
 
     uint8_t quotient[DIVLEN] = {0};
     uint8_t temp[DIVLEN] = {0};
@@ -103,21 +104,20 @@ BCD bcdDiv(const BCD& a, const BCD& b)
     int startIdx = 0;
     if (quotient[0] == 0) {
         startIdx = 1;
-        expDec(result);
+        expDec(R);
     }
 
     // Copy 16 significant digits to result mantissa
     for (uint i = 0; i < MAX_MANT; i++)
-        result.mant[i] = quotient[startIdx + i];
+        R.mant[i] = quotient[startIdx + i];
 
     // Set sticky if remainder is non-zero (digits were truncated)
-    result.sticky = false;
+    R.sticky = false;
     for (uint i = 0; i < DIVLEN; i++)
         if (partial[i] != 0)
-            result.sticky = true;
+            R.sticky = true;
 
-    normalize(result);
-    return result;
+    normalize(R);
 }
 
 // IEEE division for test runner
@@ -148,7 +148,7 @@ void testDivision()
         "1.000000000000001",
     };
 
-    if (!runCombTests("DIV", bcdDiv, ieeeDiv, val, sizeof(val) / sizeof(val[0])))
+    if (!runCombTests("DIV", div, ieeeDiv, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("DIV", bcdDiv, ieeeDiv, OPTS_DIV);
+    runRandomTests("DIV", div, ieeeDiv, OPTS_DIV);
 }

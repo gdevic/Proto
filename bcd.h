@@ -23,7 +23,9 @@ constexpr uint MAX_MANT = 16;
 constexpr uint MAX_EXP = 2;
 
 // Global flags (must be explicitly cleared)
-inline bool FLAG_OF = false;  // Overflow: exponent exceeded +99
+inline bool FLAG_OF = false;       // Overflow: exponent exceeded +99
+inline bool FLAG_S0_ZERO = false;  // S0 is zero (set by preCalc)
+inline bool FLAG_S1_ZERO = false;  // S1 is zero (set by preCalc)
 
 struct BCD
 {
@@ -46,9 +48,3 @@ struct BCD
     // Convert BCD back to Real for verification
     Real toReal() const;
 };
-
-// Arithmetic operations
-BCD add(const BCD& a, const BCD& b);
-BCD subtract(const BCD& a, const BCD& b);
-BCD mul(const BCD& a, const BCD& b);
-BCD bcdDiv(const BCD& a, const BCD& b);
