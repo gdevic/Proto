@@ -1,4 +1,5 @@
 #include "exponent.h"
+#include "mantissa.h"
 #include "proto.h"
 #include "register.h"
 
@@ -45,6 +46,12 @@ static bool isExpGTMag(const uint8_t* a, const uint8_t* b)
     return a[1] > b[1];
 }
 
+// Returns true if 2-digit BCD exponent is zero
+static bool isExpZeroMag(const uint8_t* e)
+{
+    return (e[0] == 0) && (e[1] == 0);
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -83,7 +90,7 @@ void expInc(BCD& x)
 {
     if (x.esign) {
         // Negative exponent: incrementing moves toward zero
-        if ((x.exp[0] == 0) && (x.exp[1] == 0)) {
+        if (isExpZeroMag(x.exp.data())) {
             // -0 + 1 = +1 (edge case)
             x.esign = false;
             x.exp[1] = 1;
@@ -96,7 +103,7 @@ void expInc(BCD& x)
             x.exp[1] = 9;
         }
         // Normalize -0 to +0
-        if ((x.exp[0] == 0) && (x.exp[1] == 0))
+        if (isExpZeroMag(x.exp.data()))
             x.esign = false;
     }
     else {
@@ -120,7 +127,7 @@ bool expDec(BCD& x)
 {
     if (!x.esign) {
         // Positive exponent: decrementing moves toward zero
-        if ((x.exp[0] == 0) && (x.exp[1] == 0)) {
+        if (isExpZeroMag(x.exp.data())) {
             // 0 - 1 = -1
             x.esign = true;
             x.exp[1] = 1;
@@ -191,7 +198,7 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
     }
 
     // Normalize -0 to +0
-    if ((result.exp[0] == 0) && (result.exp[1] == 0))
+    if (isExpZeroMag(result.exp.data()))
         result.esign = false;
 }
 
@@ -203,17 +210,13 @@ bool expSub(BCD& result, const BCD& a, const BCD& b)
     BCD negB = b;
     negB.esign = !b.esign;
     // Handle -0 edge case
-    if ((b.exp[0] == 0) && (b.exp[1] == 0))
+    if (isExpZeroMag(b.exp.data()))
         negB.esign = false;
 
     expAdd(result, a, negB);
 
     // Return true if underflowed to zero (check if result is zero BCD)
-    if ((result.exp[0] == 0) && (result.exp[1] == 0)) {
-        for (uint i = 0; i < MAX_MANT; i++)
-            if (result.mant[i] != 0)
-                return false;  // Not underflow, just zero exponent
-        return true;  // Underflowed
-    }
+    if (isExpZeroMag(result.exp.data()))
+        return isMantZero(result);
     return false;
 }
