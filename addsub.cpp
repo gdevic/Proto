@@ -35,7 +35,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
 
         // Handle carry overflow: shift result right, bringing in carry
         if (carry) {
-            if (shiftRight(R.mant.data(), 1))
+            if (mantShr(R.mant.data()))
                 R.sticky = true;
             R.mant[0] = 1;
             expInc(R);

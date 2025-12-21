@@ -24,10 +24,6 @@ void mantShl(uint8_t* mant);
 // Returns true if a non-zero digit shifted out
 bool mantShr(uint8_t* mant);
 
-// Shift mantissa right by n digits
-// Returns sticky (true if any non-zero digit shifted out)
-bool shiftRight(uint8_t* mant, uint n);
-
 // Add magnitudes of two aligned mantissas (all 16 positions)
 // Returns carry (0 or 1)
 int addAlignedMagnitudes(const uint8_t* a, const uint8_t* b, uint8_t* r);
