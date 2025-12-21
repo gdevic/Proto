@@ -104,13 +104,20 @@ void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
     }
 }
 
-// Compare two aligned mantissas (all 16 positions)
-// Returns: >0 if a > b, <0 if a < b, 0 if equal
-int mantCmp(const uint8_t* a, const uint8_t* b)
+// Returns true if two mantissas are equal
+bool isMantEQ(const uint8_t* a, const uint8_t* b)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+        if (a[i] != b[i]) return false;
+    return true;
+}
+
+// Returns true if mantissa a > mantissa b
+bool isMantGT(const uint8_t* a, const uint8_t* b)
 {
     for (uint i = 0; i < MAX_MANT; i++) {
-        if (a[i] > b[i]) return 1;
-        if (a[i] < b[i]) return -1;
+        if (a[i] > b[i]) return true;
+        if (a[i] < b[i]) return false;
     }
-    return 0;
+    return false;
 }

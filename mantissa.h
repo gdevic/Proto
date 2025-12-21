@@ -32,6 +32,8 @@ int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r);
 // sticky generates initial borrow from beyond mant[15]
 void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky);
 
-// Compare two aligned mantissas (all 16 positions)
-// Returns: >0 if a > b, <0 if a < b, 0 if equal
-int mantCmp(const uint8_t* a, const uint8_t* b);
+// Returns true if two mantissas are equal
+bool isMantEQ(const uint8_t* a, const uint8_t* b);
+
+// Returns true if mantissa a > mantissa b
+bool isMantGT(const uint8_t* a, const uint8_t* b);

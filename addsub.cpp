@@ -43,17 +43,15 @@ void add(BCD& S0, BCD& S1, BCD& R)
     }
     // Different signs: subtract smaller from larger magnitude
     else {
-        int cmp = mantCmp(S0.mant.data(), S1.mant.data());
-
         // Check for exact zero (magnitudes equal and no sticky)
-        if ((cmp == 0) && !sticky) {
+        if (isMantEQ(S0.mant.data(), S1.mant.data()) && !sticky) {
             R = BCD{};
             return;
         }
 
         // Ensure |A| >= |B| for subtraction
         bool swapped = false;
-        if (cmp < 0) {
+        if (isMantGT(S1.mant.data(), S0.mant.data())) {
             swapMant(S0.mant.data(), S1.mant.data());
             swapped = true;
             sticky = false;  // S0 was not shifted, has no extra precision
