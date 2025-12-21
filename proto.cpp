@@ -1,4 +1,4 @@
-#include "bcd.h"
+#include "proto.h"
 #include "testbench.h"
 #include <iostream>
 #include <iomanip>

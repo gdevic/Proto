@@ -11,7 +11,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o: %.cpp bcd.h testbench.h exponent.h mantissa.h
+%.o: %.cpp bcd.h proto.h testbench.h exponent.h mantissa.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Build with double precision (for Windows compatibility testing)

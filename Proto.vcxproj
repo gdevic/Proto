@@ -156,6 +156,7 @@
     <ClInclude Include="bcd.h" />
     <ClInclude Include="exponent.h" />
     <ClInclude Include="mantissa.h" />
+    <ClInclude Include="proto.h" />
     <ClInclude Include="testbench.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
