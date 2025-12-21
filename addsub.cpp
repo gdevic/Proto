@@ -60,7 +60,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
     else {
         // Check for exact zero (magnitudes equal and no sticky)
         if (isMantEQ(S0.mant.data(), S1.mant.data()) && !sticky) {
-            R = BCD{};
+            regClear(R);
             return;
         }
 

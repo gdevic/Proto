@@ -1,5 +1,6 @@
 #include "exponent.h"
 #include "proto.h"
+#include "mantissa.h"
 
 // ---------------------------------------------------------------------------
 // Helper functions for 2-digit BCD exponent arithmetic (internal use only)
@@ -147,7 +148,7 @@ bool expDec(BCD& x)
             x.exp[0]++;
             if (x.exp[0] > 9) {
                 // Underflow: -99 - 1 = -100
-                x = BCD{};
+                regClear(x);
                 return true;
             }
         }
@@ -166,7 +167,7 @@ void expAdd(BCD& result, const BCD& a, const BCD& b)
             // Overflow: magnitude >= 100
             if (result.esign) {
                 // Negative overflow (underflow): set to zero
-                result = BCD{};
+                regClear(result);
             } else {
                 // Positive overflow: saturate at 99, set flag
                 FLAG_OF = true;

@@ -14,12 +14,18 @@ bool isMantZero(const BCD& x)
     return true;
 }
 
+// Clear a register to zero
+void regClear(BCD& x)
+{
+    x = BCD{};
+}
+
 // Pre-calculation setup: set zero flags and clear R
 void preCalc(BCD& S0, BCD& S1, BCD& R)
 {
     FLAG_S0_ZERO = isMantZero(S0);
     FLAG_S1_ZERO = isMantZero(S1);
-    R = BCD{};
+    regClear(R);
 }
 
 // Swap the complete content of two User Registers
