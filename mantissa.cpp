@@ -3,7 +3,7 @@
 #include "exponent.h"
 
 // Check if BCD mantissa is zero (checks all 16 positions)
-bool isZero(const BCD& x)
+bool isMantZero(const BCD& x)
 {
     for (uint i = 0; i < MAX_MANT; i++)
         if (x.mant[i] != 0) return false;
@@ -13,8 +13,8 @@ bool isZero(const BCD& x)
 // Pre-calculation setup: set zero flags and clear R
 void preCalc(BCD& S0, BCD& S1, BCD& R)
 {
-    FLAG_S0_ZERO = isZero(S0);
-    FLAG_S1_ZERO = isZero(S1);
+    FLAG_S0_ZERO = isMantZero(S0);
+    FLAG_S1_ZERO = isMantZero(S1);
     R = BCD{};
 }
 
@@ -38,7 +38,7 @@ void swapMant(uint8_t* a, uint8_t* b)
 void normalize(BCD& x)
 {
     // Check if entirely zero
-    if (isZero(x)) {
+    if (isMantZero(x)) {
         x.sign = false;
         x.esign = false;
         x.exp[0] = x.exp[1] = 0;

@@ -3,7 +3,7 @@
 #include "bcd.h"
 
 // Check if BCD mantissa is zero (checks all 16 positions)
-bool isZero(const BCD& x);
+bool isMantZero(const BCD& x);
 
 // Pre-calculation setup: set zero flags and clear R
 void preCalc(BCD& S0, BCD& S1, BCD& R);
