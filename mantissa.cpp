@@ -9,14 +9,6 @@ bool isZero(const BCD& x)
     return true;
 }
 
-// Check if raw mantissa array is zero
-bool isZeroMant(const uint8_t* mant)
-{
-    for (int i = 0; i < MAX_MANT; i++)
-        if (mant[i] != 0) return false;
-    return true;
-}
-
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x)
 {

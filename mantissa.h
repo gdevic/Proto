@@ -5,9 +5,6 @@
 // Check if BCD mantissa is zero (checks all 16 positions)
 bool isZero(const BCD& x);
 
-// Check if raw mantissa array is zero
-bool isZeroMant(const uint8_t* mant);
-
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x);
 
