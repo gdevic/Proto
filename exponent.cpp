@@ -49,20 +49,20 @@ static int bcdCmpMag(const uint8_t* a, const uint8_t* b)
 // Public API
 // ---------------------------------------------------------------------------
 
-// Compare exponents: returns -1 (a<b), 0 (a==b), +1 (a>b)
-int expCompare(const BCD& a, const BCD& b)
+// Returns true if exponent of a > exponent of b
+bool isExpGT(const BCD& a, const BCD& b)
 {
     // Handle sign cases first
     if (a.esign != b.esign)
-        return a.esign ? -1 : 1;  // negative < positive
+        return !a.esign;  // positive > negative
 
     // Same sign: compare magnitude
     int cmp = bcdCmpMag(a.exp.data(), b.exp.data());
     if (cmp == 0)
-        return 0;
+        return false;
 
     // If both negative, larger magnitude = smaller value
-    return a.esign ? -cmp : cmp;
+    return a.esign ? (cmp < 0) : (cmp > 0);
 }
 
 // Compute |expA - expB| as int (for shift amount, loop counter)

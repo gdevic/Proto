@@ -15,28 +15,21 @@ void add(BCD& S0, BCD& S1, BCD& R)
 
     // Ensure S0 has larger or equal exponent (swap if needed)
     // This means only S1 ever needs shifting
-    if (expCompare(S1, S0) > 0)
+    if (isExpGT(S1, S0))
         swapReg(S0, S1);
 
-    // Work copies
-    uint8_t mantA[MAX_MANT], mantB[MAX_MANT];
-    for (uint i = 0; i < MAX_MANT; i++) {
-        mantA[i] = S0.mant[i];
-        mantB[i] = S1.mant[i];
-    }
-
-    // Shift B, sticky tracks digits shifted out
+    // Shift S1, sticky tracks digits shifted out
     bool sticky = false;
     int shift = expDiff(S0, S1);
     if (shift > 0)
-        sticky = shiftRight(mantB, shift);
+        sticky = shiftRight(S1.mant.data(), shift);
 
     expCopy(R, S0);
-    R.sticky = sticky;  // Accumulate sticky from shift
+    R.sticky = sticky;
 
     // Same signs: add magnitudes
     if (S0.sign == S1.sign) {
-        int carry = addAlignedMagnitudes(mantA, mantB, R.mant.data());
+        int carry = addAlignedMagnitudes(S0.mant.data(), S1.mant.data(), R.mant.data());
         R.sign = S0.sign;
 
         // Handle carry overflow: shift result right, bringing in carry
@@ -49,7 +42,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
     }
     // Different signs: subtract smaller from larger magnitude
     else {
-        int cmp = compareMagnitudes(mantA, mantB);
+        int cmp = compareMagnitudes(S0.mant.data(), S1.mant.data());
 
         // Check for exact zero (magnitudes equal and no sticky)
         if ((cmp == 0) && !sticky) {
@@ -60,11 +53,11 @@ void add(BCD& S0, BCD& S1, BCD& R)
         // Ensure |A| >= |B| for subtraction
         bool swapped = false;
         if (cmp < 0) {
-            swapMant(mantA, mantB);
+            swapMant(S0.mant.data(), S1.mant.data());
             swapped = true;
-            sticky = false;  // A was not shifted, has no extra precision
+            sticky = false;  // S0 was not shifted, has no extra precision
         }
-        subtractAlignedMagnitudes(mantA, mantB, R.mant.data(), sticky);
+        subtractAlignedMagnitudes(S0.mant.data(), S1.mant.data(), R.mant.data(), sticky);
         R.sign = swapped ? S1.sign : S0.sign;
     }
 

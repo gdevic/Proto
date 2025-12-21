@@ -2,8 +2,8 @@
 
 #include "bcd.h"
 
-// Compare exponents: returns -1 (a<b), 0 (a==b), +1 (a>b)
-int expCompare(const BCD& a, const BCD& b);
+// Returns true if exponent of a > exponent of b
+bool isExpGT(const BCD& a, const BCD& b);
 
 // Compute |expA - expB| as int (for shift amount, loop counter)
 // Always returns non-negative value
