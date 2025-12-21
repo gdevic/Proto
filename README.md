@@ -143,21 +143,6 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Exponential | `exp(a)` | Planned |
 | Trigonometric | `tan(a)`, `atan(a)` | Planned |
 
-## Files
-
-| File | Purpose |
-|------|---------|
-| `bcd.h` | BCD struct, constants, function declarations |
-| `bcd.cpp` | Constructor, toReal() conversion |
-| `register.h/cpp` | Register utilities: regClear(), preCalc(), swapReg(), swapMant(), normalize(), round() |
-| `mantissa.h/cpp` | Mantissa utilities: isMantZero(), isMantEQ(), isMantGT(), mantShl(), mantShr(), mantAdd(), mantSub() |
-| `exponent.h/cpp` | Exponent utilities: isExpEQ(), isExpGT(), expCopy(), expInc(), expDec(), expAdd(), expSub() |
-| `addsub.cpp` | add(), sub(), testAddition(), testSubtraction() |
-| `mult.cpp` | mul(), testMultiplication() |
-| `div.cpp` | div(), testDivision() |
-| `testbench.h/cpp` | Test infrastructure: formatBCD(), printTestResult(), checkTolerance(), runCombTests(), runRandomTests() |
-| `proto.cpp` | Main driver, command-line parsing |
-
 ## Building
 
 ### Linux (GCC)

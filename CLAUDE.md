@@ -10,7 +10,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - Assume code might have changed externally at any time
 - No brackets for single-line statements in C/C++
 - Explicit parentheses in expressions (unless enclosing complete expression) when precedence is unclear
-- After every major change or addition of new functionality, update readme
+- After every major change or addition of new functionality, update readmes
 
 ## Current State
 
@@ -20,17 +20,6 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - `RoundMode` enum: HalfUp, HalfEven (for round() function)
 - Internal format: `d₁.d₂d₃...d₁₆ × 10^exp` (e.g., mant=1234, exp=0 → 1.234)
 - Single constructor: `BCD(std::string_view str)`
-
-### Files
-- `bcd.h/cpp` - BCD struct, string constructor, toReal()
-- `register.h/cpp` - regClear(), preCalc(), swapReg(), swapMant(), normalize(), round()
-- `mantissa.h/cpp` - isMantZero(), isMantEQ(), isMantGT(), mantShl(), mantShr(), mantAdd(), mantSub()
-- `exponent.h/cpp` - isExpEQ(), isExpGT(), expCopy(), expInc(), expDec(), expAdd(), expSub()
-- `addsub.cpp` - add(), sub(), testAddition(), testSubtraction()
-- `mult.cpp` - mul(), testMultiplication()
-- `div.cpp` - div(), testDivision()
-- `testbench.h/cpp` - formatBCD(), printTestResult(), checkTolerance(), generateRandomBCD()
-- `proto.cpp` - main(), argument parsing (-h, -t, -v, -e, -i)
 
 ### Output Format
 One test per line, fixed columns for HW parsing:
