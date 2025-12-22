@@ -49,10 +49,10 @@ static const uint8_t ln10_mant[MAX_MANT] = {2,3,0,2,5,8,5,0,9,2,9,9,4,0,4,6};
 // Uses registers: S0 (input), S1 (work/constants), S2 (temp), S3 (counter), S4 (complement), R (shifted/result)
 void ln(BCD& S0, BCD& R)
 {
-    regClear(R);
+    preCalc1(S0, R);
 
     // Special case: ln(x) undefined for x <= 0, return zero
-    if (S0.sign || isMantZero(S0))
+    if (S0.sign || FLAG_S0_ZERO)
         return;
 
     // Special case: ln(1.0) = 0 exactly

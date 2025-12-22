@@ -9,7 +9,7 @@
 // Uses shift-and-add algorithm with 32-digit accumulator (R + S2)
 void mul(BCD& S0, BCD& S1, BCD& R)
 {
-    preCalc(S0, S1, R);
+    preCalc2(S0, S1, R);
 
     // Handle zero cases
     if (FLAG_S0_ZERO || FLAG_S1_ZERO)

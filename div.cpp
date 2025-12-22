@@ -33,7 +33,7 @@ static uint8_t divDigit(uint8_t& overflow)
 // Uses shift-and-subtract algorithm with 16-digit BCD registers
 void div(BCD& S0, BCD& S1, BCD& R)
 {
-    preCalc(S0, S1, R);
+    preCalc2(S0, S1, R);
 
     // Division by zero
     if (FLAG_S1_ZERO)

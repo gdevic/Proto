@@ -5,8 +5,11 @@
 // Clear a register to zero
 void regClear(BCD& x);
 
-// Pre-calculation setup: set zero flags and clear R
-void preCalc(BCD& S0, BCD& S1, BCD& R);
+// Pre-calculation setup for unary operations: set zero flag and clear R
+void preCalc1(BCD& S0, BCD& R);
+
+// Pre-calculation setup for binary operations: set zero flags and clear R
+void preCalc2(BCD& S0, BCD& S1, BCD& R);
 
 // Swap the complete content of two User Registers
 void swapReg(BCD& a, BCD& b);

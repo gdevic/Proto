@@ -8,7 +8,7 @@
 // Reads from S0 and S1, stores result in R
 void sub(BCD &S0, BCD &S1, BCD &R)
 {
-    preCalc(S0, S1, R);
+    preCalc2(S0, S1, R);
 
     if (FLAG_S1_ZERO)
     {
@@ -23,7 +23,7 @@ void sub(BCD &S0, BCD &S1, BCD &R)
 // Reads from S0 and S1, stores result in R
 void add(BCD& S0, BCD& S1, BCD& R)
 {
-    preCalc(S0, S1, R);
+    preCalc2(S0, S1, R);
 
     // Handle zero cases
     if (FLAG_S0_ZERO) { R = S1; return; }
