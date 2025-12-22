@@ -7,6 +7,7 @@ inline BCD X;
 inline BCD Y;
 inline BCD S0;
 inline BCD S1;
+inline BCD S2;
 inline BCD R;
 
 // Global flags (must be explicitly cleared)
