@@ -4,8 +4,9 @@
 #include "mantissa.h"
 #include "register.h"
 
-// Multiply two BCD numbers
+// Multiply two BCD numbers: R = S0 * S1
 // Reads from S0 and S1, stores result in R
+// Uses shift-and-add algorithm with 32-digit accumulator (R + S2)
 void mul(BCD& S0, BCD& S1, BCD& R)
 {
     preCalc(S0, S1, R);

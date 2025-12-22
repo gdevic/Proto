@@ -22,6 +22,10 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - Internal format: `d₁.d₂d₃...d₁₆ × 10^exp` (e.g., mant=1234, exp=0 → 1.234)
 - Single constructor: `BCD(std::string_view str)`
 
+### Arithmetic Algorithms
+- **Multiplication** (`mult.cpp`): Shift-and-add with 32-digit accumulator (R + S2). Processes multiplier digits LSB to MSB, immediate carry propagation.
+- **Division** (`div.cpp`): Shift-and-subtract with 17-digit quotient. While dividend >= divisor: subtract and count. Produces 17 digits for normalization handling.
+
 ### Output Format
 One test per line, fixed columns for HW parsing:
 ```

@@ -10,6 +10,7 @@ struct BCD {
     array<uint8_t, 2> exp;    // 2-digit exponent (0-99)
     bool sign;                 // Number sign
     bool esign;                // Exponent sign
+    bool sticky;               // True if any non-zero digit shifted out
     Real value;                // Original input value (for verification)
 };
 ```

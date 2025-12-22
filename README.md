@@ -123,17 +123,17 @@ When subtracting nearly-equal numbers, leading digits cancel:
 
 ## Operations
 
-| Operation | Function | Status |
-|-----------|----------|--------|
-| Addition | `add(a, b)` | Implemented |
-| Subtraction | `subtract(a, b)` | Implemented |
-| Multiplication | `mul(a, b)` | Implemented |
-| Division | `bcdDiv(a, b)` | Implemented |
-| Rounding | `round(a, digits)` | Implemented |
-| Square Root | `sqrt(a)` | Planned |
-| Logarithm | `log(a)`, `ln(a)` | Planned |
-| Exponential | `exp(a)` | Planned |
-| Trigonometric | `tan(a)`, `atan(a)` | Planned |
+| Operation | Function | Algorithm | Status |
+|-----------|----------|-----------|--------|
+| Addition | `add(S0, S1, R)` | Mantissa alignment + BCD add | Implemented |
+| Subtraction | `sub(S0, S1, R)` | Mantissa alignment + BCD subtract | Implemented |
+| Multiplication | `mul(S0, S1, R)` | Shift-and-add with 32-digit accumulator | Implemented |
+| Division | `div(S0, S1, R)` | Shift-and-subtract with 17-digit quotient | Implemented |
+| Rounding | `round(S0, digits, R)` | Banker's rounding (round half to even) | Implemented |
+| Square Root | `sqrt(a)` | | Planned |
+| Logarithm | `log(a)`, `ln(a)` | | Planned |
+| Exponential | `exp(a)` | | Planned |
+| Trigonometric | `tan(a)`, `atan(a)` | | Planned |
 
 ## Building
 
@@ -204,13 +204,13 @@ SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 APPROX 
 
 Summary is printed to stderr (doesn't interfere with stdout redirection):
 ```
-ADD comb: 225 OK, 0 APPROX, 0 FAIL
+ADD comb: 361 OK, 0 APPROX, 0 FAIL
 ADD rand: 2 OK, 0 APPROX, 0 FAIL
-SUB comb: 25 OK, 0 APPROX, 0 FAIL
+SUB comb: 36 OK, 0 APPROX, 0 FAIL
 SUB rand: 2 OK, 0 APPROX, 0 FAIL
-MUL comb: 144 OK, 0 APPROX, 0 FAIL
+MUL comb: 529 OK, 0 APPROX, 0 FAIL
 MUL rand: 2 OK, 0 APPROX, 0 FAIL
-DIV comb: 144 OK, 0 APPROX, 0 FAIL
+DIV comb: 729 OK, 0 APPROX, 0 FAIL
 DIV rand: 2 OK, 0 APPROX, 0 FAIL
 ```
 
