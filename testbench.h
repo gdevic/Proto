@@ -3,17 +3,16 @@
 #include "bcd.h"
 #include <random>
 #include <string>
-
-#ifndef RANDOM_TEST_COUNT
-#define RANDOM_TEST_COUNT 2
-#endif
+#include <vector>
 
 // Output control flags (set from command line)
-inline bool g_verbose = false;    // -v: Print IEEE value even on OK
-inline bool g_traceAll = false;   // -t: Print all lines including OK
-inline bool g_showIndex = false;  // -i: Print test index before each line
-inline bool g_stopOnError = false;// -e: Stop on first error (FAIL)
-inline int g_testIndex = 0;       // Global test counter
+inline bool g_verbose = false;      // -v: Print IEEE value even on OK
+inline bool g_traceAll = false;     // -t: Print all lines including OK
+inline bool g_showIndex = false;    // -i: Print test index before each line
+inline bool g_stopOnError = false;  // -e: Stop on first error (FAIL)
+inline int g_testIndex = 0;         // Global test counter
+inline int g_randomCount = 10;      // -r: Number of random tests to run
+inline std::vector<std::string> g_testFilters; // -f: Filters to run only specific tests
 
 // Tolerance levels for verification (13-14 correct digits required)
 constexpr Real TIGHT_TOL = REAL_LITERAL(1e-14);  // 14 correct digits

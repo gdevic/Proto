@@ -163,16 +163,21 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
+| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln) |
 | `-i` | Show test index (1-based) at start of each line |
+| `-r NUM` | Number of random tests to run (default: 2) |
 | `-v` | Verbose: also print IEEE value on OK lines |
 | `-t` | Trace all: print all lines including OK (for HW file) |
 
 ```bash
-./proto              # Debug: show only problems
-./proto -e           # Stop at first failure
-./proto -v           # Debug: problems + IEEE on OK
-./proto -t > hw.txt  # Generate HW test file (all lines)
-./proto -t -v        # All lines with IEEE everywhere
+./proto               # Debug: show only problems
+./proto -e            # Stop at first failure
+./proto -f ln         # Run only ln tests
+./proto -f add -f sub # Run add and sub tests
+./proto -f ln -r 100  # Run ln tests with 100 random cases
+./proto -v            # Debug: problems + IEEE on OK
+./proto -t > hw.txt   # Generate HW test file (all lines)
+./proto -t -v         # All lines with IEEE everywhere
 ```
 
 ## Output Format

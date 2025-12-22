@@ -13,7 +13,9 @@ static void printHelp(const char* prog)
               << "Options:\n"
               << "  -h       Show this help message\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
+              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln)\n"
               << "  -i       Show test index (1-based) at start of each line\n"
+              << "  -r NUM   Number of random tests to run (default: 2)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
               << "  -v       Verbose: print IEEE value even on OK lines\n"
               << "\n"
@@ -24,9 +26,12 @@ static void printHelp(const char* prog)
               << "  -t -v        Print all lines with IEEE values\n"
               << "\n"
               << "Examples:\n"
-              << "  " << prog << "              # Debug: show only problems\n"
-              << "  " << prog << " -e           # Stop at first failure\n"
-              << "  " << prog << " -t > hw.txt  # Generate HW test file\n";
+              << "  " << prog << "               # Debug: show only problems\n"
+              << "  " << prog << " -e            # Stop at first failure\n"
+              << "  " << prog << " -f ln         # Run only ln tests\n"
+              << "  " << prog << " -f add -f sub # Run add and sub tests\n"
+              << "  " << prog << " -f ln -r 100  # Run ln tests with 100 random cases\n"
+              << "  " << prog << " -t > hw.txt   # Generate HW test file\n";
 }
 
 int main(int argc, char* argv[])
@@ -39,8 +44,24 @@ int main(int argc, char* argv[])
         }
         else if (strcmp(argv[i], "-e") == 0)
             g_stopOnError = true;
+        else if (strcmp(argv[i], "-f") == 0) {
+            if (i + 1 >= argc) {
+                std::cerr << "-f requires a test name (add, sub, mul, div, ln)\n";
+                return 1;
+            }
+            g_testFilters.push_back(argv[++i]);
+        }
         else if (strcmp(argv[i], "-i") == 0)
             g_showIndex = true;
+        else if (strcmp(argv[i], "-r") == 0) {
+            if (i + 1 >= argc) {
+                std::cerr << "-r requires a number\n";
+                return 1;
+            }
+            g_randomCount = std::atoi(argv[++i]);
+            if (g_randomCount < 0)
+                g_randomCount = 0;
+        }
         else if (strcmp(argv[i], "-v") == 0)
             g_verbose = true;
         else if (strcmp(argv[i], "-t") == 0)
@@ -61,13 +82,31 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_stopOnError || g_showIndex || g_traceAll || g_verbose)
-        std::cerr << "Flags: " << (g_stopOnError ? "-e " : "") << (g_showIndex ? "-i " : "") << (g_traceAll ? "-t " : "") << (g_verbose ? "-v" : "") << "\n";
+    if (g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10)) {
+        std::cerr << "Flags:";
+        if (g_stopOnError) std::cerr << " -e";
+        if (g_showIndex) std::cerr << " -i";
+        if (g_traceAll) std::cerr << " -t";
+        if (g_verbose) std::cerr << " -v";
+        for (const auto& f : g_testFilters) std::cerr << " -f " << f;
+        if (g_randomCount != 2) std::cerr << " -r " << g_randomCount;
+        std::cerr << "\n";
+    }
     std::cerr << "\n";
 
-    testAddition();
-    testSubtraction();
-    testMultiplication();
-    testDivision();
-    testLn();
+    // Helper to check if a test should run
+    auto shouldRun = [](const char* name) {
+        if (g_testFilters.empty())
+            return true;
+        for (const auto& f : g_testFilters)
+            if (f == name)
+                return true;
+        return false;
+    };
+
+    if (shouldRun("add")) testAddition();
+    if (shouldRun("sub")) testSubtraction();
+    if (shouldRun("mul")) testMultiplication();
+    if (shouldRun("div")) testDivision();
+    if (shouldRun("ln"))  testLn();
 }

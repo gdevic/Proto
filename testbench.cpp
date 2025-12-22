@@ -245,7 +245,7 @@ bool runRandomTests(const char* opName,
     for (const char* p = opName; *p; p++) seed += *p;
     std::mt19937 rng(seed);
 
-    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
+    for (int i = 0; i < g_randomCount; i++) {
         std::string strA = generateRandomBCD(rng, opts);
         std::string strB = generateRandomBCD(rng, opts);
 
@@ -350,7 +350,7 @@ bool runRandomUnaryTests(const char* opName,
     for (const char* p = opName; *p; p++) seed += *p;
     std::mt19937 rng(seed);
 
-    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
+    for (int i = 0; i < g_randomCount; i++) {
         std::string strA = generateRandomBCD(rng, opts);
 
         S0 = BCD(strA);
