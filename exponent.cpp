@@ -84,7 +84,8 @@ void expCopy(BCD& dst, const BCD& src)
     dst.exp[1] = src.exp[1];
 }
 
-// Increment exponent by 1. Sets FLAG_OF on overflow, saturates at 99.
+// Increment exponent by 1
+// Sets FLAG_OF on overflow, with register state undefined
 void expInc(BCD& x)
 {
     if (x.esign) {
@@ -111,12 +112,8 @@ void expInc(BCD& x)
         if (x.exp[1] > 9) {
             x.exp[1] = 0;
             x.exp[0]++;
-            if (x.exp[0] > 9) {
-                // Overflow: 99 + 1 = 100
-                FLAG_OF = true;
-                x.exp[0] = 9;
-                x.exp[1] = 9;  // XXX Saturate at 99 or leave it as-is due to FLAG_OF?
-            }
+            if (x.exp[0] > 9)
+                FLAG_OF = true;  // Overflow: register state undefined
         }
     }
 }

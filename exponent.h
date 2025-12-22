@@ -11,7 +11,8 @@ bool isExpGT(const BCD& a, const BCD& b);
 // Copy exponent from src to dst (copies esign, exp[0], exp[1])
 void expCopy(BCD& dst, const BCD& src);
 
-// Increment exponent by 1. Sets FLAG_OF on overflow, saturates at 99.
+// Increment exponent by 1
+// Sets FLAG_OF on overflow, with register state undefined
 void expInc(BCD& x);
 
 // Decrement exponent by 1
