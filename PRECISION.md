@@ -144,30 +144,61 @@ Started with 15 good digits in each operand; end with 1 significant digit. This 
 
 ### Multiplication
 
-A × B → 32-digit product, keep high 16, sticky from low 16.
+**Algorithm**: Shift-and-add with 32-digit accumulator (R.mant + S2.mant).
 
-**Normalization**: Product of two normalized numbers has leading digit pair in range 01-81. If a₁ × b₁ ≤ 9, the first digit is 0, requiring one left-shift.
+```
+For j = 15 down to 0 (multiplier digit, LSB to MSB):
+    Shift 32-digit accumulator right by 1 (S2[15] → sticky)
+    For i = 15 down to 0 (multiplicand digit):
+        prod = S0[i] × S1[j]  (0-81)
+        Add ones digit to position i+1, tens to position i
+        Immediate carry propagation upward
+```
+
+**Normalization**: Product of two normalized mantissas is in range [1, 100):
+- If R.mant[0] ≠ 0: product ≥ 10, increment exponent, all of S2 → sticky
+- If R.mant[0] = 0: product ∈ [1, 10), shift R left, S2[0] → R[15], S2[1..15] → sticky
 
 **Precision**:
-- 15 digits guaranteed after 16→15 rounding
+- 16 digits stored (15 significant + guard)
 - Correctly rounded to 0.5 ULP
 - Relative error < 5 × 10⁻¹⁶
 
-**Exponent**: exp(A × B) = exp(A) + exp(B) + (1 if no normalization shift, 0 if shifted)
+**Exponent**: exp(A × B) = exp(A) + exp(B) + (1 if R.mant[0] ≠ 0, else 0)
 
 ### Division
 
-Classic BCD division produces one quotient digit per iteration. To get 16 quotient digits plus correct rounding information, compute 16 digits then check if the 17th would be ≥ 5:
+**Algorithm**: Shift-and-subtract producing 17 quotient digits.
 
 ```
-After 16 iterations, compute R × 10 vs 5 × B
-If R × 10 ≥ 5 × B, round up
-Sticky from any remaining R ≠ 0
+divDigit(overflow):
+    q = 0
+    While [overflow, S0] >= S1:
+        S0 = S0 - S1 (with borrow into overflow)
+        q++
+    Return q
+
+Main loop (16 iterations, fits in 4-bit counter):
+    For i = 0 to 15:
+        R[i] = divDigit(overflow)
+        overflow = S0[0]
+        Shift S0 left
+
+17th iteration (epilogue):
+    q17 = divDigit(overflow)
+    hasRemainder = (overflow ≠ 0) OR (S0 ≠ 0)
 ```
 
-**Normalization**: If A < B (both normalized), quotient has leading digit 0—left-shift by 1, decrement exponent.
+**Normalization**: Quotient of two normalized mantissas is in range (0.1, 10):
+- If R.mant[0] ≠ 0: quotient ≥ 1, q17 and remainder → sticky
+- If R.mant[0] = 0: quotient ∈ [0.1, 1), shift R left, q17 → R[15], remainder → sticky, decrement exponent
 
-**Precision**: 15 digits guaranteed, correctly rounded to 0.5 ULP.
+**Precision**:
+- 16 digits stored (15 significant + guard)
+- Correctly rounded to 0.5 ULP
+- Relative error < 5 × 10⁻¹⁶
+
+**Exponent**: exp(A / B) = exp(A) - exp(B) - (1 if R.mant[0] = 0, else 0)
 
 ## Sticky Bit Semantics
 
