@@ -25,6 +25,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 ### Arithmetic Algorithms
 - **Multiplication** (`mult.cpp`): Shift-and-add with 32-digit accumulator (R + S2). Processes multiplier digits LSB to MSB, immediate carry propagation.
 - **Division** (`div.cpp`): Shift-and-subtract with 17-digit quotient. While dividend >= divisor: subtract and count. Produces 17 digits for normalization handling.
+- **Natural Log** (`log.cpp`): CORDIC digit-by-digit method (HP-35 style). 16 iterations with ln(1+10^-j) constants. See `docs/log-algorithm-research.md` for algorithm comparison.
 
 ### Output Format
 One test per line, fixed columns for HW parsing:
@@ -41,12 +42,12 @@ ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 Domain constraints for different operations:
 - OPTS_ADDSUB (maxExp=50)
 - OPTS_MUL, OPTS_DIV (maxExp=49)
-- OPTS_SQRT, OPTS_LN, OPTS_LOG (positiveOnly)
+- OPTS_LN (positiveOnly)
 - OPTS_EXP, OPTS_TAN (smallValue)
 - OPTS_ATAN (maxExp=99)
 
 ## Next Steps
-- Implement sqrt(), ln(), log(), exp(), tan(), atan()
+- Implement exp(), tan(), atan()
 - Add corresponding test functions
 - Each operation uses appropriate RandomBCDOptions preset
 

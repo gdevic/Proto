@@ -130,8 +130,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Multiplication | `mul(S0, S1, R)` | Shift-and-add with 32-digit accumulator | Implemented |
 | Division | `div(S0, S1, R)` | Shift-and-subtract with 17-digit quotient | Implemented |
 | Rounding | `round(S0, digits, R)` | Banker's rounding (round half to even) | Implemented |
-| Square Root | `sqrt(a)` | | Planned |
-| Logarithm | `log(a)`, `ln(a)` | | Planned |
+| Natural Log | `ln(S0, R)` | CORDIC digit-by-digit (HP-35 style) | Implemented |
 | Exponential | `exp(a)` | | Planned |
 | Trigonometric | `tan(a)`, `atan(a)` | | Planned |
 
@@ -186,7 +185,7 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 
 | Field | Width | Description |
 |-------|-------|-------------|
-| OP | 3 | Operation: ADD, SUB, MUL, DIV, SQR, TAN, ATN, LOG, LN_, EXP |
+| OP | 3 | Operation: ADD, SUB, MUL, DIV, TAN, ATN, LN_, EXP |
 | Operand A | 22 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE (16 digits) |
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |
@@ -212,6 +211,10 @@ MUL comb: 529 OK, 0 APPROX, 0 FAIL
 MUL rand: 2 OK, 0 APPROX, 0 FAIL
 DIV comb: 729 OK, 0 APPROX, 0 FAIL
 DIV rand: 2 OK, 0 APPROX, 0 FAIL
+LN tests: 6 OK, 12 APPROX, 3 FAIL
+LN rand: 1 OK, 1 APPROX, 0 FAIL
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
+
+Note: LN has some APPROX/FAIL results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.

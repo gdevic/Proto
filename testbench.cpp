@@ -269,3 +269,106 @@ bool runRandomTests(const char* opName,
     std::cerr << "= " << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
     return true;
 }
+
+// Print a single unary test result line to stdout
+// Format: OP +input +result STATUS [ieee] [err]
+// Returns true if execution should stop (FAIL with g_stopOnError)
+bool printUnaryResult(const char* op, const BCD& a,
+                      const BCD& result, MatchLevel level, Real ieee)
+{
+    bool shouldStop = (level == MatchLevel::FAIL) && g_stopOnError;
+
+    if ((level == MatchLevel::OK) && !g_traceAll)
+        return false;
+
+    if (g_showIndex)
+        std::cout << std::setw(5) << g_testIndex << " ";
+
+    std::cout << op << " "
+              << formatBCD(a) << " "
+              << formatBCD(result) << " ";
+
+    switch (level) {
+        case MatchLevel::OK:
+            std::cout << "OK";
+            if (g_verbose)
+                std::cout << " " << ieee;
+            break;
+        case MatchLevel::APPROX:
+            std::cout << "APPROX " << ieee << " err=" << std::fabs(result.toReal() - ieee);
+            break;
+        case MatchLevel::FAIL:
+            std::cout << "FAIL " << ieee << " err=" << std::fabs(result.toReal() - ieee);
+            break;
+    }
+    std::cout << "\n";
+
+    return shouldStop;
+}
+
+// Unary test runner - tests each value from array
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runUnaryTests(const char* opName,
+                   BcdUnaryOp bcdOp,
+                   IeeeUnaryOp ieeeOp,
+                   const std::string* values,
+                   size_t valueCount)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    for (size_t i = 0; i < valueCount; i++) {
+        S0 = BCD(values[i]);
+        Real ieee = ieeeOp(S0.value);
+        bcdOp(S0, R);
+        MatchLevel level = checkTolerance(ieee, R.toReal(), R);
+
+        g_testIndex++;
+        if (printUnaryResult(opName, S0, R, level, ieee))
+            return false;
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << "= " << opName << " tests: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}
+
+// Random unary test runner - generates random test values
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomUnaryTests(const char* opName,
+                         BcdUnaryOp bcdOp,
+                         IeeeUnaryOp ieeeOp,
+                         const RandomBCDOptions& opts)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    unsigned seed = 0;
+    for (const char* p = opName; *p; p++) seed += *p;
+    std::mt19937 rng(seed);
+
+    for (int i = 0; i < RANDOM_TEST_COUNT; i++) {
+        std::string strA = generateRandomBCD(rng, opts);
+
+        S0 = BCD(strA);
+        Real ieee = ieeeOp(S0.value);
+        bcdOp(S0, R);
+        MatchLevel level = checkTolerance(ieee, R.toReal(), R);
+
+        g_testIndex++;
+        if (printUnaryResult(opName, S0, R, level, ieee))
+            return false;
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << "= " << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}

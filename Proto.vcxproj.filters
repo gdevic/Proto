@@ -36,6 +36,9 @@
     <ClCompile Include="div.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="log.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="testbench.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -45,9 +45,7 @@ struct RandomBCDOptions {
 constexpr RandomBCDOptions OPTS_ADDSUB = { 50, false, false };
 constexpr RandomBCDOptions OPTS_MUL    = { 49, false, false };
 constexpr RandomBCDOptions OPTS_DIV    = { 49, false, false };
-constexpr RandomBCDOptions OPTS_SQRT   = { 98, true,  false };
 constexpr RandomBCDOptions OPTS_LN     = { 99, true,  false };
-constexpr RandomBCDOptions OPTS_LOG    = { 99, true,  false };
 constexpr RandomBCDOptions OPTS_EXP    = { 2,  false, true  };
 constexpr RandomBCDOptions OPTS_TAN    = { 1,  false, true  };
 constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
@@ -59,6 +57,8 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts = 
 // Function pointer types for generic test runners
 using BcdBinaryOp = void (*)(BCD&, BCD&, BCD&);
 using IeeeBinaryOp = Real (*)(Real, Real);
+using BcdUnaryOp = void (*)(BCD&, BCD&);
+using IeeeUnaryOp = Real (*)(Real);
 
 // Combinatorial test runner - tests all pairs from values array
 // Returns: false if stopped early (FAIL with -e flag), caller should return
@@ -74,3 +74,23 @@ bool runRandomTests(const char* opName,
                     BcdBinaryOp bcdOp,
                     IeeeBinaryOp ieeeOp,
                     const RandomBCDOptions& opts);
+
+// Unary test runner - tests each value from array
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runUnaryTests(const char* opName,
+                   BcdUnaryOp bcdOp,
+                   IeeeUnaryOp ieeeOp,
+                   const std::string* values,
+                   size_t valueCount);
+
+// Random unary test runner - generates random test values
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomUnaryTests(const char* opName,
+                         BcdUnaryOp bcdOp,
+                         IeeeUnaryOp ieeeOp,
+                         const RandomBCDOptions& opts);
+
+// Output a unary test result line
+// Returns true if execution should stop (FAIL with -e)
+bool printUnaryResult(const char* op, const BCD& a,
+                      const BCD& result, MatchLevel level, Real ieee);

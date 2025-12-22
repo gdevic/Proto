@@ -69,4 +69,5 @@ int main(int argc, char* argv[])
     testSubtraction();
     testMultiplication();
     testDivision();
+    testLn();
 }

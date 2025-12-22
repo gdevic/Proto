@@ -8,6 +8,8 @@ inline BCD Y;
 inline BCD S0;
 inline BCD S1;
 inline BCD S2;
+inline BCD S3;
+inline BCD S4;
 inline BCD R;
 
 // Global flags (must be explicitly cleared)
@@ -21,8 +23,12 @@ void sub(BCD &S0, BCD &S1, BCD &R);
 void mul(BCD &S0, BCD &S1, BCD &R);
 void div(BCD &S0, BCD &S1, BCD &R);
 
+// Transcendental operations: read from S0, write result to R
+void ln(BCD &S0, BCD &R);
+
 // Test functions
 void testAddition();
 void testSubtraction();
 void testMultiplication();
 void testDivision();
+void testLn();

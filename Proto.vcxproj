@@ -150,6 +150,7 @@
     <ClCompile Include="register.cpp" />
     <ClCompile Include="mult.cpp" />
     <ClCompile Include="div.cpp" />
+    <ClCompile Include="log.cpp" />
     <ClCompile Include="proto.cpp" />
     <ClCompile Include="testbench.cpp" />
   </ItemGroup>
