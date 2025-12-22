@@ -19,7 +19,7 @@ void mul(BCD& S0, BCD& S1, BCD& R)
         return;  // Overflow or underflow
 
     // Sign: XOR of input signs
-    R.sign = (S0.sign != S1.sign);
+    R.sign = S0.sign ^ S1.sign;
 
     // Multiply mantissas using shift-and-add algorithm
     // R.mant = high 16 digits, S2.mant = low 16 digits (for 17th digit and sticky)
