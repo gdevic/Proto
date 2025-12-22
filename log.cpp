@@ -78,7 +78,7 @@ void ln(BCD& S0, BCD& R)
             // Create shifted copy in R.mant: R = S1 >> j (shift right by j digits)
             for (uint i = 0; i < MAX_MANT; i++)
                 R.mant[i] = 0;
-            for (uint i = 0; i < MAX_MANT - j; i++)
+            for (uint i = 0; i < (MAX_MANT - j); i++)
                 R.mant[i + j] = S1.mant[i];
 
             // Try adding: S2 = S1 + R
