@@ -1,6 +1,7 @@
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"
+#include "mantissa.h"
 #include "register.h"
 
 // Multiply two BCD numbers
@@ -22,8 +23,7 @@ void mul(BCD& S0, BCD& S1, BCD& R)
 
     // Multiply mantissas using shift-and-add algorithm
     // R.mant = high 16 digits, S2.mant = low 16 digits (for 17th digit and sticky)
-    for (uint i = 0; i < MAX_MANT; i++)
-        S2.mant[i] = 0;
+    regClear(S2);
 
     bool sticky = false;
 
@@ -31,13 +31,9 @@ void mul(BCD& S0, BCD& S1, BCD& R)
     for (int j = MAX_MANT - 1; j >= 0; j--) {
 
         // Shift 32-digit accumulator right by 1 digit
-        sticky |= (S2.mant[MAX_MANT - 1] != 0);
-        for (int k = MAX_MANT - 1; k > 0; k--)
-            S2.mant[k] = S2.mant[k - 1];
+        sticky |= mantShr(S2.mant.data());
         S2.mant[0] = R.mant[MAX_MANT - 1];
-        for (int k = MAX_MANT - 1; k > 0; k--)
-            R.mant[k] = R.mant[k - 1];
-        R.mant[0] = 0;
+        mantShr(R.mant.data());
 
         // Multiply multiplicand by single multiplier digit, add to accumulator
         // Process i from high to low, with immediate carry propagation after each add
@@ -65,7 +61,7 @@ void mul(BCD& S0, BCD& S1, BCD& R)
             carry = sum / 10;
 
             // Propagate remaining carry upward (toward position 0)
-            for (int k = i - 1; carry && k >= 0; k--) {
+            for (int k = i - 1; carry && (k >= 0); k--) {
                 sum = R.mant[k] + carry;
                 R.mant[k] = sum % 10;
                 carry = sum / 10;
@@ -75,19 +71,17 @@ void mul(BCD& S0, BCD& S1, BCD& R)
 
     // Normalize: if R.mant[0] != 0, product >= 10, else product in [1, 10)
     if (R.mant[0] != 0) {
-        expInc(R);
+        expInc(R);  // Can overflow but we don't care
         // Check S2 for sticky
-        for (uint i = 0; i < MAX_MANT; i++)
-            sticky |= (S2.mant[i] != 0);
+        sticky |= !isMantZero(S2);
     }
     else {
         // Shift left: bring S2.mant[0] into R.mant[15]
-        for (uint i = 0; i < MAX_MANT - 1; i++)
-            R.mant[i] = R.mant[i + 1];
+        mantShl(R.mant.data());
         R.mant[MAX_MANT - 1] = S2.mant[0];
         // Check S2[1..15] for sticky
         for (uint i = 1; i < MAX_MANT; i++)
-            sticky |= (S2.mant[i] != 0);
+            sticky |= (S2.mant[i] != 0);  // We can do early exit here
     }
 
     R.sticky = sticky;
