@@ -4,6 +4,30 @@
 #include "mantissa.h"
 #include "register.h"
 
+// Compute one quotient digit: count subtractions while [overflow, S0] >= S1
+// Updates overflow and S0.mant in place
+// Returns the quotient digit (0-9)
+static uint8_t divDigit(uint8_t& overflow)
+{
+    uint8_t q = 0;
+    while ((overflow > 0) || (isMantGT(S1.mant.data(), S0.mant.data()) == false)) {
+        int borrow = 0;
+        for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
+            int diff = int(S0.mant[j]) - int(S1.mant[j]) - borrow;
+            if (diff < 0) {
+                diff += 10;
+                borrow = 1;
+            }
+            else
+                borrow = 0;
+            S0.mant[j] = uint8_t(diff);
+        }
+        overflow = uint8_t(int(overflow) - borrow);
+        q++;
+    }
+    return q;
+}
+
 // Divide two BCD numbers: R = S0 / S1
 // Reads from S0 and S1, stores result in R
 // Uses shift-and-subtract algorithm with 16-digit BCD registers
@@ -13,7 +37,7 @@ void div(BCD& S0, BCD& S1, BCD& R)
 
     // Division by zero
     if (FLAG_S1_ZERO)
-        return;  // We jump to a special "divide by zero" error handler
+        return;
 
     // Zero dividend
     if (FLAG_S0_ZERO)
@@ -30,43 +54,17 @@ void div(BCD& S0, BCD& S1, BCD& R)
     // [overflow, S0.mant] is the 17-digit partial dividend
     // S1.mant is the 16-digit divisor (unchanged)
     // R.mant accumulates the quotient
-    uint8_t overflow = 0;  // 17th digit of partial dividend
-    uint8_t q17 = 0;       // 17th quotient digit
+    uint8_t overflow = 0;
 
-    // Produce 17 quotient digits (16 for result + 1 for normalization)
-    for (uint i = 0; i <= MAX_MANT; i++) {
-        uint8_t q = 0;
-
-        // While [overflow, S0] >= [0, S1]: subtract and count
-        while ((overflow > 0) || (isMantGT(S1.mant.data(), S0.mant.data()) == false)) {
-            // Subtract: [overflow, S0] -= [0, S1]
-            int borrow = 0;
-            for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
-                int diff = int(S0.mant[j]) - int(S1.mant[j]) - borrow;
-                if (diff < 0) {
-                    diff += 10;
-                    borrow = 1;
-                }
-                else
-                    borrow = 0;
-                S0.mant[j] = uint8_t(diff);
-            }
-            overflow = uint8_t(int(overflow) - borrow);
-            q++;
-        }
-
-        // Store quotient digit
-        if (i < MAX_MANT)
-            R.mant[i] = q;
-        else
-            q17 = q;
-
-        // Shift partial dividend left (except last iteration)
-        if (i < MAX_MANT) {
-            overflow = S0.mant[0];
-            mantShl(S0.mant.data());
-        }
+    // Main loop: 16 iterations (i = 0..15, fits in 4-bit counter)
+    for (uint i = 0; i < MAX_MANT; i++) {
+        R.mant[i] = divDigit(overflow);
+        overflow = S0.mant[0];
+        mantShl(S0.mant.data());
     }
+
+    // 17th iteration: compute q17 only (no store to R.mant, no shift)
+    uint8_t q17 = divDigit(overflow);
 
     // Remainder is [overflow, S0], check if non-zero for sticky
     bool hasRemainder = (overflow != 0) || !isMantZero(S0);
