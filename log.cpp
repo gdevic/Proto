@@ -27,8 +27,7 @@ static const uint8_t ln_const[K][MAX_MANT] = {
 static void getLnConst(uint j, uint8_t* dst)
 {
     if (j < K) {
-        for (uint i = 0; i < MAX_MANT; i++)
-            dst[i] = ln_const[j][i];
+        mantCopy(dst, ln_const[j]);
     }
     else {
         // ln(1 + 10^-j) ≈ 10^-j for small values
@@ -66,8 +65,7 @@ void ln(BCD& S0, BCD& R)
         expValue = -expValue;
 
     // Initialize S1.mant as working mantissa (copy of S0's mantissa)
-    for (uint i = 0; i < MAX_MANT; i++)
-        S1.mant[i] = S0.mant[i];
+    mantCopy(S1.mant.data(), S0.mant.data());
 
     // Initialize S3 as counter array (all zeros)
     regClear(S3);
@@ -91,8 +89,7 @@ void ln(BCD& S0, BCD& R)
                 break;
 
             // Accept the result: S1 = S2
-            for (uint i = 0; i < MAX_MANT; i++)
-                S1.mant[i] = S2.mant[i];
+            mantCopy(S1.mant.data(), S2.mant.data());
             S3.mant[j]++;
 
             // Safety: counter[j] should never exceed 9 in theory
@@ -135,21 +132,18 @@ void ln(BCD& S0, BCD& R)
             if (carry)
                 break;
             // R = S2
-            for (uint i = 0; i < MAX_MANT; i++)
-                R.mant[i] = S2.mant[i];
+            mantCopy(R.mant.data(), S2.mant.data());
         }
     }
 
     // Add the complement from Part 2 (stored in S4.mant)
     mantAdd(R.mant.data(), S4.mant.data(), S2.mant.data());
-    for (uint i = 0; i < MAX_MANT; i++)
-        R.mant[i] = S2.mant[i];
+    mantCopy(R.mant.data(), S2.mant.data());
 
     // ---------- Part 4: Subtract from ln(10) ----------
     // For inputs in [1, 10), we computed ln(10/x), so result = ln(10) - result
     // Load ln10 into S1.mant
-    for (uint i = 0; i < MAX_MANT; i++)
-        S1.mant[i] = ln10_mant[i];
+    mantCopy(S1.mant.data(), ln10_mant);
 
     // Subtract: S1 - R -> R
     mantSub(S1.mant.data(), R.mant.data(), R.mant.data(), false);
@@ -173,8 +167,7 @@ void ln(BCD& S0, BCD& R)
 
         for (int i = 0; i < absExp; i++) {
             // Set up S1 as ln(10) BCD number (must be inside loop: add/sub modify inputs)
-            for (uint k = 0; k < MAX_MANT; k++)
-                S1.mant[k] = ln10_mant[k];
+            mantCopy(S1.mant.data(), ln10_mant);
             S1.exp[0] = 0;
             S1.exp[1] = 0;
             S1.esign = false;

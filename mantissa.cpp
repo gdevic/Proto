@@ -83,3 +83,10 @@ void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
         r[i] = uint8_t(diff);
     }
 }
+
+// Copy mantissa from src to dst
+void mantCopy(uint8_t* dst, const uint8_t* src)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+        dst[i] = src[i];
+}
