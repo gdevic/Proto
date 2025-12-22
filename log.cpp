@@ -56,15 +56,9 @@ void ln(BCD& S0, BCD& R)
         return;
 
     // Special case: ln(1.0) = 0 exactly
-    // Check if mantissa is 1.000...0 and exponent is 0
-    if (S0.mant[0] == 1 && S0.exp[0] == 0 && S0.exp[1] == 0 && !S0.esign) {
-        bool isOne = true;
-        for (uint i = 1; i < MAX_MANT; i++)
-            if (S0.mant[i] != 0)
-                isOne = false;
-        if (isOne)
-            return;  // ln(1) = 0
-    }
+    // Without this, algorithm produces ~3.4e-14 due to CORDIC precision loss
+    if (isRegOne(S0))
+        return;
 
     // Save the exponent for later (Part 5)
     int expValue = int(S0.exp[0]) * 10 + int(S0.exp[1]);
@@ -75,9 +69,8 @@ void ln(BCD& S0, BCD& R)
     for (uint i = 0; i < MAX_MANT; i++)
         S1.mant[i] = S0.mant[i];
 
-    // Initialize S3.mant as counter array (all zeros)
-    for (uint i = 0; i < MAX_MANT; i++)
-        S3.mant[i] = 0;
+    // Initialize S3 as counter array (all zeros)
+    regClear(S3);
 
     // ---------- Part 1: Digit extraction ----------
     // For each position j, keep multiplying work by (1 + 10^-j) until overflow
@@ -179,7 +172,7 @@ void ln(BCD& S0, BCD& R)
         int absExp = subtract ? -expValue : expValue;
 
         for (int i = 0; i < absExp; i++) {
-            // Set up S1 as ln(10) BCD number
+            // Set up S1 as ln(10) BCD number (must be inside loop: add/sub modify inputs)
             for (uint k = 0; k < MAX_MANT; k++)
                 S1.mant[k] = ln10_mant[k];
             S1.exp[0] = 0;
@@ -192,13 +185,7 @@ void ln(BCD& S0, BCD& R)
             else
                 add(R, S1, S2);
 
-            // Copy S2 to R
-            for (uint k = 0; k < MAX_MANT; k++)
-                R.mant[k] = S2.mant[k];
-            R.exp[0] = S2.exp[0];
-            R.exp[1] = S2.exp[1];
-            R.esign = S2.esign;
-            R.sign = S2.sign;
+            R = S2;
         }
     }
 }

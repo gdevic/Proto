@@ -13,6 +13,18 @@ void regClear(BCD& x)
     x = BCD{};
 }
 
+// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
+// Returns true if register value is one
+bool isRegOne(const BCD& x)
+{
+    if (x.mant[0] != 1)
+        return false;
+    for (uint i = 1; i < MAX_MANT; i++)
+        if (x.mant[i] != 0)
+            return false;
+    return (x.exp[0] | x.exp[1]) == 0;
+}
+
 // Pre-calculation setup for unary operations: set zero flag and clear R
 void preCalc1(BCD& S0, BCD& R)
 {

@@ -5,6 +5,10 @@
 // Clear a register to zero
 void regClear(BCD& x);
 
+// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
+// Returns true if register value is one
+bool isRegOne(const BCD& x);
+
 // Pre-calculation setup for unary operations: set zero flag and clear R
 void preCalc1(BCD& S0, BCD& R);
 
