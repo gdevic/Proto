@@ -1,124 +1,88 @@
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"
+#include "mantissa.h"
 #include "register.h"
 
-// Compare two digit arrays of length n
-// Returns: -1 if a < b, 0 if a == b, 1 if a > b
-static int compareMant(const uint8_t* a, const uint8_t* b, int n)
-{
-    for (uint i = 0; i < uint(n); i++) {
-        if (a[i] < b[i]) return -1;
-        if (a[i] > b[i]) return 1;
-    }
-    return 0;
-}
-
-// Multiply divisor by single digit q, store in result
-// Arrays are of length n
-// Returns: carry (overflow; if > 0, product has n+1 digits)
-static int multiplyByDigit(const uint8_t* divisor, int q, uint8_t* result, int n)
-{
-    int carry = 0;
-    for (int i = n - 1; i >= 0; i--) {
-        int prod = (divisor[i] * q) + carry;
-        result[i] = uint8_t(prod % 10);
-        carry = prod / 10;
-    }
-    return carry;
-}
-
-// Divide two BCD numbers: S0 / S1 = R
+// Divide two BCD numbers: R = S0 / S1
 // Reads from S0 and S1, stores result in R
+// Uses shift-and-subtract algorithm with 16-digit BCD registers
 void div(BCD& S0, BCD& S1, BCD& R)
 {
     preCalc(S0, S1, R);
 
-    // Division by zero -> return zero
+    // Division by zero
     if (FLAG_S1_ZERO)
-        return;
+        return;  // We jump to a special "divide by zero" error handler
 
-    // Zero divided by anything -> zero
+    // Zero dividend
     if (FLAG_S0_ZERO)
         return;
 
-    // Exponent: difference of exponents (direct BCD subtraction)
+    // Exponent: difference of exponents
     if (expSub(R, S0, S1))
         return;  // Overflow or underflow
 
     // Sign: XOR of input signs
-    R.sign = (S0.sign != S1.sign);
+    R.sign = S0.sign ^ S1.sign;
 
-    // Long division using 17-digit arrays (16 significant + 1 for normalization)
-    constexpr int DIVLEN = 17;
-    uint8_t divisor[DIVLEN] = {0};
-    for (uint i = 0; i < MAX_MANT; i++)
-        divisor[i + 1] = S1.mant[i];
+    // Division loop using shift-and-subtract
+    // [overflow, S0.mant] is the 17-digit partial dividend
+    // S1.mant is the 16-digit divisor (unchanged)
+    // R.mant accumulates the quotient
+    uint8_t overflow = 0;  // 17th digit of partial dividend
+    uint8_t q17 = 0;       // 17th quotient digit
 
-    // Working partial dividend: starts as [0, S0.mant[0..15]]
-    uint8_t partial[DIVLEN] = {0};
-    for (uint i = 0; i < MAX_MANT; i++)
-        partial[i + 1] = S0.mant[i];
+    // Produce 17 quotient digits (16 for result + 1 for normalization)
+    for (uint i = 0; i <= MAX_MANT; i++) {
+        uint8_t q = 0;
 
-    uint8_t quotient[DIVLEN] = {0};
-    uint8_t temp[DIVLEN] = {0};
-
-    // Perform long division, producing 17 quotient digits
-    for (uint i = 0; i < DIVLEN; i++) {
-        // Find largest q (0-9) such that q * divisor <= partial
-        int q = 0;
-        for (int trial = 9; trial >= 1; trial--) {
-            int carry = multiplyByDigit(divisor, trial, temp, DIVLEN);
-            // If carry > 0, product overflows, definitely > partial
-            if ((carry == 0) && (compareMant(temp, partial, DIVLEN) <= 0)) {
-                q = trial;
-                break;
-            }
-        }
-
-        quotient[i] = uint8_t(q);
-
-        // Subtract q * divisor from partial
-        if (q > 0) {
-            (void)multiplyByDigit(divisor, q, temp, DIVLEN);
+        // While [overflow, S0] >= [0, S1]: subtract and count
+        while ((overflow > 0) || (isMantGT(S1.mant.data(), S0.mant.data()) == false)) {
+            // Subtract: [overflow, S0] -= [0, S1]
             int borrow = 0;
-            for (int j = DIVLEN - 1; j >= 0; j--) {
-                int diff = (partial[j] - temp[j]) - borrow;
+            for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
+                int diff = int(S0.mant[j]) - int(S1.mant[j]) - borrow;
                 if (diff < 0) {
                     diff += 10;
                     borrow = 1;
-                } else {
-                    borrow = 0;
                 }
-                partial[j] = uint8_t(diff);
+                else
+                    borrow = 0;
+                S0.mant[j] = uint8_t(diff);
             }
+            overflow = uint8_t(int(overflow) - borrow);
+            q++;
         }
 
-        // Shift partial left by 1 digit (multiply by 10), bringing in 0
-        for (uint j = 0; j < DIVLEN - 1; j++)
-            partial[j] = partial[j + 1];
-        partial[DIVLEN - 1] = 0;
+        // Store quotient digit
+        if (i < MAX_MANT)
+            R.mant[i] = q;
+        else
+            q17 = q;
+
+        // Shift partial dividend left (except last iteration)
+        if (i < MAX_MANT) {
+            overflow = S0.mant[0];
+            mantShl(S0.mant.data());
+        }
     }
 
-    // If quotient[0] is 0, result needs normalization (dividend < divisor case)
-    // This means result is 0.xxx, so we decrement exponent
-    int startIdx = 0;
-    if (quotient[0] == 0) {
-        startIdx = 1;
-        expDec(R);
+    // Remainder is [overflow, S0], check if non-zero for sticky
+    bool hasRemainder = (overflow != 0) || !isMantZero(S0);
+
+    // Normalize: if first quotient digit is 0, shift left and decrement exponent
+    if (R.mant[0] == 0) {
+        if (expDec(R))
+            return;  // Underflow
+        mantShl(R.mant.data());
+        R.mant[MAX_MANT - 1] = q17;
+        R.sticky = hasRemainder;
     }
-
-    // Copy 16 significant digits to result mantissa
-    for (uint i = 0; i < MAX_MANT; i++)
-        R.mant[i] = quotient[startIdx + i];
-
-    // Set sticky if remainder is non-zero (digits were truncated)
-    R.sticky = false;
-    for (uint i = 0; i < DIVLEN; i++)
-        if (partial[i] != 0)
-            R.sticky = true;
-
-    normalize(R);
+    else {
+        // 17th digit and remainder contribute to sticky
+        R.sticky = (q17 != 0) || hasRemainder;
+    }
 }
 
 // IEEE division for test runner
@@ -147,6 +111,21 @@ void testDivision()
         "1.0000000000001",
         "1.00000000000001",
         "1.000000000000001",
+        // Normalization boundary: 5/6 < 1 (needs shift), 6/5 > 1 (no shift)
+        "5",
+        "6",
+        // Max quotient digit: 9/1 = 9, tests q=9 case
+        "9",
+        // Exact division: 8/4 = 2, 2.5/5 = 0.5 (sticky should be false)
+        "4",
+        "8",
+        "2.5",
+        // All 1s - tests quotient accumulation pattern
+        "1111111111111111",
+        // Exponent near overflow: 49 - (-49) = 98 (just under +99)
+        "1e49",
+        // Exponent near underflow: -50 - 49 = -99 (at limit)
+        "1e-50",
     };
 
     if (!runCombTests("DIV", div, ieeeDiv, val, sizeof(val) / sizeof(val[0])))
