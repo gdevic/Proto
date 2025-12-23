@@ -1,5 +1,6 @@
 #include "proto.h"
 #include "testbench.h"
+#include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
 #include <cmath>
@@ -59,10 +60,7 @@ void ln(BCD& S0, BCD& R)
     if (isRegOne(S0))
         return;
 
-    // Save the exponent for later (Part 5)
-    int expValue = int(S0.exp[0]) * 10 + int(S0.exp[1]);
-    if (S0.esign)
-        expValue = -expValue;
+    // We are keeping S0's exponent for later in part 5
 
     // Initialize S1.mant as working mantissa (copy of S0's mantissa)
     mantCopy(S1.mant.data(), S0.mant.data());
@@ -160,22 +158,25 @@ void ln(BCD& S0, BCD& R)
     // ---------- Part 5: Exponent adjustment ----------
     // ln(m * 10^e) = ln(m) + e * ln(10)
     // Add or subtract e copies of ln(10)
-
-    if (expValue != 0) {
-        bool subtract = (expValue < 0);
-        int absExp = subtract ? -expValue : expValue;
+    // Note: S0's exponent is still intact from input
+    if (S0.exp[0] | S0.exp[1]) { // If the exponent is non-zero
+        // Save S0's exponent to S4 before the loop overwrites S0
+        regCopy(S4, S0);
 
         // Set up S3 as ln(10) template (sign depends on whether we add or subtract)
         mantCopy(S3.mant.data(), ln10_mant);
         S3.exp[0] = 0;
         S3.exp[1] = 0;
         S3.esign = false;
-        S3.sign = subtract;
+        S3.sign = S4.esign;
 
-        for (int i = 0; i < absExp; i++) {
+        // Use S4's exponent magnitude as loop counter (force positive for expDec)
+        S4.esign = false;
+        while (S4.exp[0] | S4.exp[1]) {
             regCopy(S0, R);   // Current result to S0
             regCopy(S1, S3);  // ln(10) template to S1
             add(S0, S1, R);
+            expDec(S4);
         }
     }
 }
