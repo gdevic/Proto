@@ -165,19 +165,16 @@ void ln(BCD& S0, BCD& R)
         bool subtract = (expValue < 0);
         int absExp = subtract ? -expValue : expValue;
 
+        // Set up S3 as ln(10) template (sign depends on whether we add or subtract)
+        mantCopy(S3.mant.data(), ln10_mant);
+        S3.exp[0] = 0;
+        S3.exp[1] = 0;
+        S3.esign = false;
+        S3.sign = subtract;
+
         for (int i = 0; i < absExp; i++) {
-            // Set up S1 as ln(10) BCD number (must be inside loop: add/sub modify inputs)
-            mantCopy(S1.mant.data(), ln10_mant);
-            S1.exp[0] = 0;
-            S1.exp[1] = 0;
-            S1.esign = false;
-            S1.sign = false;
-
-            if (subtract)
-                sub(R, S1, S2);
-            else
-                add(R, S1, S2);
-
+            S1 = S3;  // Copy template (add/sub modifies its inputs)
+            add(R, S1, S2);
             R = S2;
         }
     }
