@@ -200,6 +200,54 @@ Main loop (16 iterations, fits in 4-bit counter):
 
 **Exponent**: exp(A / B) = exp(A) - exp(B) - (1 if R.mant[0] = 0, else 0)
 
+### Natural Logarithm
+
+**Algorithm**: CORDIC digit-by-digit method (Meggitt, same as HP-35).
+
+```
+Part 1 - Digit extraction:
+    For j = 0 to 15:
+        While work × (1 + 10^-j) < 10:
+            work = work × (1 + 10^-j)
+            counter[j]++
+
+Part 2 - Complement:
+    complement = (10 - work) / 10
+
+Part 3 - Accumulate:
+    result = Σ counter[j] × ln(1 + 10^-j) + complement
+
+Part 4 - Adjust for range:
+    result = ln(10) - result  (input was in [1,10))
+
+Part 5 - Exponent adjustment:
+    result += exponent × ln(10)
+```
+
+**Precision ceiling**: ~14 digits, not 15-16.
+
+Unlike add/sub/mult/div which produce correctly-rounded results with 15 significant digits, ln() has inherent algorithmic error that limits precision to approximately 14 digits.
+
+**Error sources**:
+1. **Truncated constants**: ln(2), ln(1.1), ln(10), etc. stored as 16 digits
+2. **Approximation**: ln(1 + 10^-j) ≈ 10^-j for j ≥ 8 (valid but adds ~10^-16 per use)
+3. **Accumulated arithmetic**: 16 iterations of 16-digit addition compounds small errors
+
+**Why sticky tracking doesn't help**:
+
+Sticky captures truncation error—digits 17+ that were discarded. It helps round correctly when the computed value is accurate but truncated.
+
+ln()'s error is different: digits 14-16 are sometimes *computed wrong* due to algorithm limitations, not truncated. Tracking what was lost beyond digit 16 cannot fix an error in digit 15.
+
+| Error type | Sticky helps? | Example |
+|------------|---------------|---------|
+| Truncation (digits 17+ lost) | Yes | mult: 32→16 digits |
+| Algorithmic (digits 14-16 wrong) | No | ln: CORDIC accumulation |
+
+**What would improve precision**:
+
+Guard digits—computing internally with 18-digit precision and outputting 16. This architectural change would push the algorithmic error beyond the output precision. The current 16-digit implementation accepts ~14 digits as the practical limit.
+
 ## Sticky Bit Semantics
 
 **Definition**: Sticky = 1 iff any digit beyond the guard is nonzero.
