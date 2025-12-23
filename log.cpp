@@ -174,6 +174,8 @@ void ln(BCD& S0, BCD& R)
         S3.sign = S4.esign;
 
         // Use S4's exponent magnitude as loop counter (force positive for expDec)
+        // TODO: This is inefficient for larger exponents and also accumulates errors
+        //       Since mul is implemented, use it: R = R + (exp * ln(10)
         S4.esign = false;
         while (S4.exp[0] | S4.exp[1]) {
             regCopy(S0, R);   // Current result to S0
