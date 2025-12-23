@@ -13,6 +13,13 @@ void regClear(BCD& x)
     x = BCD{};
 }
 
+// Copy register from src to dst
+void regCopy(BCD& dst, const BCD& src)
+{
+    // In microcode, we jumop into mantCopy() after copying exp + sign nibbles
+    dst = src;
+}
+
 // Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
 // Returns true if register value is one
 bool isRegOne(const BCD& x)
@@ -82,7 +89,7 @@ void round(BCD& S0, uint digits, BCD& R)
 {
     // No rounding needed
     if (digits == 0) {
-        R = S0;
+        regCopy(R, S0);
         R.sticky = false;
         return;
     }
@@ -94,7 +101,7 @@ void round(BCD& S0, uint digits, BCD& R)
     }
 
     // Copy input to output
-    R = S0;
+    regCopy(R, S0);
 
     // Check if there are any non-zero digits after the rounding position
     // Start from position 15 (tainted by sticky) and walk backwards

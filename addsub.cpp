@@ -12,7 +12,7 @@ void sub(BCD &S0, BCD &S1, BCD &R)
 
     if (FLAG_S1_ZERO)
     {
-        R = S0;
+        regCopy(R, S0);
         return;
     }
     S1.sign = !S1.sign;
@@ -26,8 +26,8 @@ void add(BCD& S0, BCD& S1, BCD& R)
     preCalc2(S0, S1, R);
 
     // Handle zero cases
-    if (FLAG_S0_ZERO) { R = S1; return; }
-    if (FLAG_S1_ZERO) { R = S0; return; }
+    if (FLAG_S0_ZERO) { regCopy(R, S1); return; }
+    if (FLAG_S1_ZERO) { regCopy(R, S0); return; }
 
     // Ensure S0 has larger or equal exponent (swap if needed)
     // This means only S1 ever needs shifting

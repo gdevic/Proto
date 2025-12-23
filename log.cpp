@@ -173,9 +173,9 @@ void ln(BCD& S0, BCD& R)
         S3.sign = subtract;
 
         for (int i = 0; i < absExp; i++) {
-            S1 = S3;  // Copy template (add/sub modifies its inputs)
-            add(R, S1, S2);
-            R = S2;
+            regCopy(S0, R);   // Current result to S0
+            regCopy(S1, S3);  // ln(10) template to S1
+            add(S0, S1, R);
         }
     }
 }
