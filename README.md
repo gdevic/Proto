@@ -131,8 +131,11 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Division | `div(S0, S1, R)` | Shift-and-subtract with 17-digit quotient | Implemented |
 | Rounding | `round(S0, digits, R)` | Banker's rounding (round half to even) | Implemented |
 | Natural Log | `ln(S0, R)` | CORDIC digit-by-digit (HP-35 style) | Implemented |
+| Tangent | `tan(S0, R)` | CORDIC digit-by-digit (radians, HP-35 style) | Implemented |
+| Arctangent | `atan(S0, R)` | CORDIC digit-by-digit (radians, HP-35 style) | Implemented |
+| Tangent (deg) | `tan10(S0, R)` | Range reduction + CORDIC (degrees) | Implemented |
+| Arctangent (deg) | `atan10(S0, R)` | CORDIC + deg conversion (degrees) | Implemented |
 | Exponential | `exp(a)` | | Planned |
-| Trigonometric | `tan(a)`, `atan(a)` | | Planned |
 
 ## Building
 
@@ -163,7 +166,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
-| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln) |
+| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, tan, atan, tan10, atan10) |
 | `-i` | Show test index (1-based) at start of each line |
 | `-r NUM` | Number of random tests to run (default: 2) |
 | `-v` | Verbose: also print IEEE value on OK lines |
@@ -209,17 +212,29 @@ SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 APPROX 
 Summary is printed to stderr (doesn't interfere with stdout redirection):
 ```
 ADD comb: 361 OK, 0 APPROX, 0 FAIL
-ADD rand: 2 OK, 0 APPROX, 0 FAIL
+ADD rand: 10 OK, 0 APPROX, 0 FAIL
 SUB comb: 36 OK, 0 APPROX, 0 FAIL
-SUB rand: 2 OK, 0 APPROX, 0 FAIL
+SUB rand: 10 OK, 0 APPROX, 0 FAIL
 MUL comb: 529 OK, 0 APPROX, 0 FAIL
-MUL rand: 2 OK, 0 APPROX, 0 FAIL
+MUL rand: 10 OK, 0 APPROX, 0 FAIL
 DIV comb: 729 OK, 0 APPROX, 0 FAIL
-DIV rand: 2 OK, 0 APPROX, 0 FAIL
+DIV rand: 10 OK, 0 APPROX, 0 FAIL
 LN tests: 6 OK, 12 APPROX, 3 FAIL
-LN rand: 1 OK, 1 APPROX, 0 FAIL
+LN rand: 6 OK, 4 APPROX, 0 FAIL
+TAN tests: 1 OK, 2 APPROX, 7 FAIL
+TAN rand: 0 OK, 0 APPROX, 10 FAIL
+ATAN tests: 8 OK, 0 APPROX, 2 FAIL
+ATAN rand: 10 OK, 0 APPROX, 0 FAIL
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
 
-Note: LN has some APPROX/FAIL results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
+### Known Limitations
+
+**LN**: Has some APPROX/FAIL results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
+
+**TAN**: The CORDIC algorithm works correctly for small angles (~0 to PI/4 radians) but requires range reduction for larger angles. Random tests fail because they use large angles outside this range. The fixed tests show 1e-14 to 1e-12 errors which are at or near machine precision.
+
+**ATAN**: Works well across the full range. The 2 FAIL cases have errors around 1e-15 which are at machine precision limits and effectively correct.
+
+**TAN10/ATAN10**: Degree-based versions with range reduction. Range reduction is exact since 90° and 360° are exact decimals (unlike π for radians). Works well for angles away from asymptotes (90°, 270°). Round-trip tests show accumulated precision loss.

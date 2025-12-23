@@ -48,6 +48,8 @@ constexpr RandomBCDOptions OPTS_LN     = { 99, true,  false };
 constexpr RandomBCDOptions OPTS_EXP    = { 2,  false, true  };
 constexpr RandomBCDOptions OPTS_TAN    = { 1,  false, true  };
 constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
+constexpr RandomBCDOptions OPTS_TAN10  = { 3,  false, false };  // degrees 0-999
+constexpr RandomBCDOptions OPTS_ATAN10 = { 99, false, false };  // any value
 
 // Generate a random BCD string with configurable domain constraints
 // Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)
@@ -88,6 +90,25 @@ bool runRandomUnaryTests(const char* opName,
                          BcdUnaryOp bcdOp,
                          IeeeUnaryOp ieeeOp,
                          const RandomBCDOptions& opts);
+
+// Round-trip test runner - tests forward(inverse(x)) = x for inverse function pairs
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRoundTripTests(const char* opName,
+                       BcdUnaryOp forwardOp,
+                       BcdUnaryOp inverseOp,
+                       IeeeUnaryOp ieeeForward,
+                       IeeeUnaryOp ieeeInverse,
+                       const std::string* values,
+                       size_t valueCount);
+
+// Random round-trip test runner - generates random test values for round-trip tests
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomRoundTripTests(const char* opName,
+                             BcdUnaryOp forwardOp,
+                             BcdUnaryOp inverseOp,
+                             IeeeUnaryOp ieeeForward,
+                             IeeeUnaryOp ieeeInverse,
+                             const RandomBCDOptions& opts);
 
 // Output a unary test result line
 // Returns true if execution should stop (FAIL with -e)

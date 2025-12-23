@@ -1,5 +1,6 @@
 #include "testbench.h"
 #include "proto.h"
+#include "register.h"
 #include <cmath>
 #include <iostream>
 #include <iomanip>
@@ -370,5 +371,85 @@ bool runRandomUnaryTests(const char* opName,
     }
 
     std::cerr << "= " << opName << " rand: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}
+
+// Round-trip test runner - tests forward(inverse(x)) = x for inverse function pairs
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRoundTripTests(const char* opName,
+                       BcdUnaryOp forwardOp,
+                       BcdUnaryOp inverseOp,
+                       IeeeUnaryOp ieeeForward,
+                       IeeeUnaryOp ieeeInverse,
+                       const std::string* values,
+                       size_t valueCount)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    for (size_t i = 0; i < valueCount; i++) {
+        S0 = BCD(values[i]);
+        Real ieee = ieeeForward(ieeeInverse(S0.value));
+
+        // Compute inverse(x) -> R, then forward(R) -> R
+        inverseOp(S0, R);
+        regCopy(S0, R);
+        forwardOp(S0, R);
+
+        MatchLevel level = checkTolerance(ieee, R.toReal(), R);
+
+        g_testIndex++;
+        if (printUnaryResult(opName, BCD(values[i]), R, level, ieee))
+            return false;
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << "= " << opName << " trip: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    return true;
+}
+
+// Random round-trip test runner - generates random test values for round-trip tests
+// Returns: false if stopped early (FAIL with -e flag), caller should return
+bool runRandomRoundTripTests(const char* opName,
+                             BcdUnaryOp forwardOp,
+                             BcdUnaryOp inverseOp,
+                             IeeeUnaryOp ieeeForward,
+                             IeeeUnaryOp ieeeInverse,
+                             const RandomBCDOptions& opts)
+{
+    int ok = 0, approx = 0, fail = 0;
+
+    unsigned seed = 0;
+    for (const char* p = opName; *p; p++) seed += *p;
+    std::mt19937 rng(seed);
+
+    for (int i = 0; i < g_randomCount; i++) {
+        std::string strA = generateRandomBCD(rng, opts);
+
+        S0 = BCD(strA);
+        Real ieee = ieeeForward(ieeeInverse(S0.value));
+
+        inverseOp(S0, R);
+        regCopy(S0, R);
+        forwardOp(S0, R);
+
+        MatchLevel level = checkTolerance(ieee, R.toReal(), R);
+
+        g_testIndex++;
+        if (printUnaryResult(opName, BCD(strA), R, level, ieee))
+            return false;
+
+        switch (level) {
+            case MatchLevel::OK: ok++; break;
+            case MatchLevel::APPROX: approx++; break;
+            case MatchLevel::FAIL: fail++; break;
+        }
+    }
+
+    std::cerr << "= " << opName << " rand trip: " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
     return true;
 }

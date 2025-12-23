@@ -152,6 +152,8 @@
     <ClCompile Include="div.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="proto.cpp" />
+    <ClCompile Include="tan.cpp" />
+    <ClCompile Include="tan10.cpp" />
     <ClCompile Include="testbench.cpp" />
   </ItemGroup>
   <ItemGroup>

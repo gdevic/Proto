@@ -45,6 +45,12 @@
     <ClCompile Include="register.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tan10.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">
