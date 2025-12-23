@@ -90,6 +90,7 @@ void normalize(BCD& x)
 // digits=0: no rounding (copy S0 to R)
 // digits=1-15: round to that many significant digits
 // Uses sticky bit for precise tie-breaking (banker's rounding)
+// Uses registers: S0 (input), R (result)
 void round(BCD& S0, uint digits, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));

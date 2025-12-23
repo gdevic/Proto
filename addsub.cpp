@@ -7,6 +7,7 @@
 
 // Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
 // Reads from S0 and S1, stores result in R
+// Uses registers: S0 (input), S1 (input, sign flipped), R (result)
 void sub(BCD &S0, BCD &S1, BCD &R)
 {
     assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
@@ -24,6 +25,7 @@ void sub(BCD &S0, BCD &S1, BCD &R)
 
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
 // Reads from S0 and S1, stores result in R
+// Uses registers: S0 (input, may swap), S1 (input, may swap/shift), R (result)
 void add(BCD& S0, BCD& S1, BCD& R)
 {
     assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));

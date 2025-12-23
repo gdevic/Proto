@@ -8,6 +8,7 @@
 // Multiply two BCD numbers: R = S0 * S1
 // Reads from S0 and S1, stores result in R
 // Uses shift-and-add algorithm with 32-digit accumulator (R + S2)
+// Uses registers: S0 (input), S1 (input), S2 (accumulator low), R (result)
 void mul(BCD& S0, BCD& S1, BCD& R)
 {
     assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
