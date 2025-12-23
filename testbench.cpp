@@ -217,7 +217,7 @@ bool runCombTests(const char* opName,
             MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
             g_testIndex++;
-            if (printTestResult(opName, S0, S1, R, level, ieee))
+            if (printTestResult(opName, BCD(values[i]), BCD(values[j]), R, level, ieee))
                 return false;
 
             switch (level) {
@@ -256,7 +256,7 @@ bool runRandomTests(const char* opName,
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
         g_testIndex++;
-        if (printTestResult(opName, S0, S1, R, level, ieee))
+        if (printTestResult(opName, BCD(strA), BCD(strB), R, level, ieee))
             return false;
 
         switch (level) {
@@ -323,7 +323,7 @@ bool runUnaryTests(const char* opName,
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
         g_testIndex++;
-        if (printUnaryResult(opName, S0, R, level, ieee))
+        if (printUnaryResult(opName, BCD(values[i]), R, level, ieee))
             return false;
 
         switch (level) {
@@ -359,7 +359,7 @@ bool runRandomUnaryTests(const char* opName,
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
         g_testIndex++;
-        if (printUnaryResult(opName, S0, R, level, ieee))
+        if (printUnaryResult(opName, BCD(strA), R, level, ieee))
             return false;
 
         switch (level) {
