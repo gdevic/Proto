@@ -34,9 +34,11 @@ BCD A.value + BCD B.value ─────────► Long Double Result (ref
 Since each BCD stores its original input as `Real`, the golden value computation uses long double precision automatically:
 
 ```cpp
-BCD a(123.456), b(789.012);           // Plain double literals
-Real expected = a.value + b.value;    // Computed at long double precision
-Real actual = add(a, b).toReal();     // BCD result converted back
+S0 = BCD("123.456");
+S1 = BCD("789.012");
+Real expected = S0.value + S1.value;  // Computed at long double precision
+add(S0, S1, R);                       // BCD addition: S0 + S1 -> R
+Real actual = R.toReal();             // BCD result converted back
 withinTolerance(expected, actual);    // Compare
 ```
 
