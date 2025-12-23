@@ -3,6 +3,7 @@
 #include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
+#include <cassert>
 #include <cmath>
 
 // CORDIC constants for natural logarithm (Meggitt's digit-by-digit method)
@@ -49,6 +50,8 @@ static const uint8_t ln10_mant[MAX_MANT] = {2,3,0,2,5,8,5,0,9,2,9,9,4,0,4,6};
 // Uses registers: S0 (input), S1 (work/constants), S2 (temp), S3 (counter), S4 (complement), R (shifted/result)
 void ln(BCD& S0, BCD& R)
 {
+    assert((&S0 == &::S0) && (&R == &::R));
+
     preCalc1(S0, R);
 
     // Special case: ln(x) undefined for x <= 0, return zero

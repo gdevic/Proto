@@ -3,11 +3,14 @@
 #include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
+#include <cassert>
 
 // Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
 // Reads from S0 and S1, stores result in R
 void sub(BCD &S0, BCD &S1, BCD &R)
 {
+    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+
     preCalc2(S0, S1, R);
 
     if (FLAG_S1_ZERO)
@@ -23,6 +26,8 @@ void sub(BCD &S0, BCD &S1, BCD &R)
 // Reads from S0 and S1, stores result in R
 void add(BCD& S0, BCD& S1, BCD& R)
 {
+    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+
     preCalc2(S0, S1, R);
 
     // Handle zero cases

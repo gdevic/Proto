@@ -3,12 +3,15 @@
 #include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
+#include <cassert>
 
 // Multiply two BCD numbers: R = S0 * S1
 // Reads from S0 and S1, stores result in R
 // Uses shift-and-add algorithm with 32-digit accumulator (R + S2)
 void mul(BCD& S0, BCD& S1, BCD& R)
 {
+    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+
     preCalc2(S0, S1, R);
 
     // Handle zero cases

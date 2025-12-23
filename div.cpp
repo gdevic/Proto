@@ -3,6 +3,7 @@
 #include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
+#include <cassert>
 
 // Compute one quotient digit: count subtractions while [overflow, S0] >= S1
 // Updates overflow and S0.mant in place
@@ -33,6 +34,8 @@ static uint8_t divDigit(uint8_t& overflow)
 // Uses shift-and-subtract algorithm with 16-digit BCD registers
 void div(BCD& S0, BCD& S1, BCD& R)
 {
+    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+
     preCalc2(S0, S1, R);
 
     // Division by zero

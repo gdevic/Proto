@@ -2,6 +2,7 @@
 #include "proto.h"
 #include "mantissa.h"
 #include "exponent.h"
+#include <cassert>
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -35,6 +36,8 @@ bool isRegOne(const BCD& x)
 // Pre-calculation setup for unary operations: set zero flag and clear R
 void preCalc1(BCD& S0, BCD& R)
 {
+    assert((&S0 == &::S0) && (&R == &::R));
+
     FLAG_S0_ZERO = isMantZero(S0);
     regClear(R);
 }
@@ -42,6 +45,8 @@ void preCalc1(BCD& S0, BCD& R)
 // Pre-calculation setup for binary operations: set zero flags and clear R
 void preCalc2(BCD& S0, BCD& S1, BCD& R)
 {
+    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+
     FLAG_S0_ZERO = isMantZero(S0);
     FLAG_S1_ZERO = isMantZero(S1);
     regClear(R);
@@ -87,6 +92,8 @@ void normalize(BCD& x)
 // Uses sticky bit for precise tie-breaking (banker's rounding)
 void round(BCD& S0, uint digits, BCD& R)
 {
+    assert((&S0 == &::S0) && (&R == &::R));
+
     // No rounding needed
     if (digits == 0) {
         regCopy(R, S0);
