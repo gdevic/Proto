@@ -494,14 +494,14 @@ void testTan10()
         "15",     // tan(15) = 2 - sqrt(3)
     };
 
-    if (!runTests<Arity::Unary>("TN10", tan10, ieeeTan10, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("TAN10", tan10, ieeeTan10, val, sizeof(val) / sizeof(val[0])))
         return;
     // Round-trip tests: tan10(atan10(x)) = x
     if (!runRoundTripTests<false>("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
         return;
     if (!runRoundTripTests<true>("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, nullptr, 0, OPTS_ATAN10))
         return;
-    runRandomTests<Arity::Unary>("TN10", tan10, ieeeTan10, OPTS_TAN10);
+    runRandomTests<Arity::Unary>("TAN10", tan10, ieeeTan10, OPTS_TAN10);
 }
 
 // Run arctangent (degrees) tests
@@ -521,7 +521,7 @@ void testAtan10()
         "0.2679491924311227",     // tan(15): atan=15
     };
 
-    if (!runTests<Arity::Unary>("AT10", atan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("ATAN10", atan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("AT10", atan10, ieeeAtan10, OPTS_ATAN10);
+    runRandomTests<Arity::Unary>("ATAN10", atan10, ieeeAtan10, OPTS_ATAN10);
 }
