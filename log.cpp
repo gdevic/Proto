@@ -184,6 +184,266 @@ void ln(BCD& S0, BCD& R)
     }
 }
 
+// Compute exponential: R = exp(S0)
+// Uses CORDIC (Meggitt's digit-by-digit method) - inverse of ln()
+// Algorithm: exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
+// Reads from S0, stores result in R
+// Uses registers: S0 (input/work), S1 (work), S2 (temp), S3 (counter), S4 (k), R (result)
+void exp(BCD& S0, BCD& R)
+{
+    assert((&S0 == &::S0) && (&R == &::R));
+
+    preCalc1(S0, R);
+
+    // Special case: exp(0) = 1 exactly
+    if (FLAG_S0_ZERO) {
+        R.mant[0] = 1;
+        return;
+    }
+
+    // Store sign and work with positive value
+    // exp(-x) = 1/exp(x), computed at the end
+    bool inputSign = S0.sign;
+    S0.sign = false;
+
+    // ---------- Part 1: Range reduction ----------
+    // exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
+    // Use division: k = floor(x / ln(10)), r = x - k*ln(10)
+
+    // Set up S1 = ln(10)
+    mantCopy(S1.mant.data(), ln10_mant);
+    S1.exp[0] = 0;
+    S1.exp[1] = 0;
+    S1.esign = false;
+    S1.sign = false;
+
+    // Save input x to S4 for later
+    regCopy(S4, S0);
+
+    // R = x / ln(10)
+    div(S0, S1, R);
+
+    // Truncate R to integer k = floor(R)
+    // If exponent is negative, floor = 0
+    // Otherwise, zero out digits after the decimal point
+    // Nibble-safe: compare each position against 2-digit exponent
+    if (R.esign) {
+        regClear(R);
+    }
+    else {
+        // Zero fractional digits: position i is fractional if i > exp
+        // For i in 1..15, compare (i_hi, i_lo) > (exp[0], exp[1])
+        for (uint8_t i = 1; i < MAX_MANT; i++) {
+            uint8_t i_hi = (i >= 10) ? 1 : 0;
+            uint8_t i_lo = (i >= 10) ? (i - 10) : i;
+            // Position i is fractional if i > exp
+            if (i_hi > R.exp[0] || (i_hi == R.exp[0] && i_lo > R.exp[1]))
+                R.mant[i] = 0;
+        }
+    }
+
+    // Save k in S3 (as BCD number for later exponent)
+    regCopy(S3, R);
+
+    // Compute r = x - k*ln(10)
+    // S1 = ln(10), R = k, S4 = x
+    regCopy(S0, R);
+    mantCopy(S1.mant.data(), ln10_mant);
+    S1.exp[0] = 0;
+    S1.exp[1] = 0;
+    S1.esign = false;
+    S1.sign = false;
+
+    mul(S0, S1, R);  // R = k * ln(10)
+
+    // r = x - k*ln(10) = S4 - R
+    regCopy(S0, S4);
+    regCopy(S1, R);
+    S1.sign = true;  // Negate for subtraction
+    add(S0, S1, R);  // R = x - k*ln(10) = r
+
+    // Now R = r (remainder, 0 ≤ r < ln(10))
+    // S3 = k (integer exponent)
+
+    // ---------- Part 2: Normalize remainder ----------
+    // For small r (negative exponent), shift mantissa right until exponent is zero
+    regCopy(S0, R);
+    if (S0.esign) {
+        while (S0.exp[0] || S0.exp[1]) {
+            mantShr(S0.mant.data());
+            expInc(S0);
+        }
+    }
+
+    // Copy working mantissa to S1
+    mantCopy(S1.mant.data(), S0.mant.data());
+
+    // Initialize R.mant as counter array (all zeros)
+    regClear(R);
+
+    // ---------- Part 3: Pseudo-division ----------
+    // Subtract ln constants from remainder, count iterations
+    // This decomposes r as sum of counter[j] * ln(1 + 10^-j)
+    for (uint j = 0; j < MAX_MANT; j++) {
+        // Get the ln constant for this position into S4.mant
+        getLnConst(j, S4.mant.data());
+
+        while (true) {
+            // Try subtracting: S2 = S1 - S4
+            int borrow = 0;
+            for (int i = int(MAX_MANT) - 1; i >= 0; i--) {
+                int diff = int(S1.mant[i]) - int(S4.mant[i]) - borrow;
+                if (diff < 0) {
+                    diff += 10;
+                    borrow = 1;
+                }
+                else
+                    borrow = 0;
+                S2.mant[i] = uint8_t(diff);
+            }
+
+            // If borrow (underflow), can't subtract anymore
+            if (borrow)
+                break;
+
+            // Accept the result: S1 = S2
+            mantCopy(S1.mant.data(), S2.mant.data());
+            R.mant[j]++;
+
+            // Safety: counter should not exceed 9
+            if (R.mant[j] >= 10)
+                break;
+        }
+    }
+
+    // Save counters to S4
+    regCopy(S4, R);
+
+    // ---------- Part 4: Pseudo-multiplication ----------
+    // Build exp(r) by starting with 1.0 and multiplying by (1 + 10^-j)
+    // for each counter[j] times
+    // exp(r) = (1+10^-0)^c0 * (1+10^-1)^c1 * ... * (1+10^-15)^c15
+
+    // Initialize result = 1.0
+    mantClear(R.mant.data());
+    R.mant[0] = 1;
+
+    for (uint j = 0; j < MAX_MANT; j++) {
+        for (uint8_t c = 0; c < S4.mant[j]; c++) {
+            // Multiply result by (1 + 10^-j)
+            // This is: result = result + (result >> j)
+
+            // S1 = result >> j (shifted copy)
+            mantClear(S1.mant.data());
+            for (uint i = 0; i + j < MAX_MANT; i++)
+                S1.mant[i + j] = R.mant[i];
+
+            // result = result + shifted
+            int carry = mantAdd(R.mant.data(), S1.mant.data(), S2.mant.data());
+            mantCopy(R.mant.data(), S2.mant.data());
+
+            // Handle carry: result exceeded 9.xxx, normalize by shifting
+            if (carry) {
+                mantShr(R.mant.data());
+                R.mant[0] = uint8_t(carry);
+                // Increment k stored in S3 (as BCD integer with exp=0 for small k)
+                // For k < 10: increment mant[0]
+                // For k >= 10: mant = d0.d1..., so increment d0.d1 as 2-digit BCD
+                if (S3.exp[1] == 0 && !S3.esign) {
+                    // k is single digit (0-9) stored in mant[0]
+                    S3.mant[0]++;
+                    if (S3.mant[0] >= 10) {
+                        // k was 9, now k=10: need 1.0e1 representation
+                        S3.mant[0] = 1;
+                        S3.mant[1] = 0;
+                        S3.exp[1] = 1;
+                    }
+                }
+                else if (S3.exp[1] == 1 && !S3.esign) {
+                    // k is two digits (10-99) stored in mant[0].mant[1]
+                    S3.mant[1]++;
+                    if (S3.mant[1] >= 10) {
+                        S3.mant[1] = 0;
+                        S3.mant[0]++;
+                        // k >= 100 will be caught by overflow check later
+                    }
+                }
+            }
+        }
+    }
+
+    // ---------- Part 5: Set exponent from k ----------
+    // Extract integer k from S3 and set as exponent
+    // S3 contains k as a BCD number: d0.d1d2... × 10^exp
+    // Nibble-safe: only compare/copy single digits, no multi-digit arithmetic
+
+    if (isMantZero(S3.mant.data())) {
+        // k = 0
+        R.exp[0] = 0;
+        R.exp[1] = 0;
+        R.esign = false;
+    }
+    else if (S3.esign) {
+        // Negative exponent means k < 1, floor to 0
+        R.exp[0] = 0;
+        R.exp[1] = 0;
+        R.esign = false;
+    }
+    else if (S3.exp[0] > 0 || S3.exp[1] > 1) {
+        // Exponent >= 2 means k >= 100 -> overflow/underflow
+        if (inputSign) {
+            // Negative input with large magnitude -> underflow to zero
+            regClear(R);
+            return;
+        }
+        // Positive input with large magnitude -> overflow to max
+        for (uint8_t i = 0; i < MAX_MANT; i++)
+            R.mant[i] = 9;
+        R.exp[0] = 9;
+        R.exp[1] = 9;
+        R.esign = false;
+        R.sign = false;
+        return;
+    }
+    else if (S3.exp[1] == 1) {
+        // Exponent = 1: k is 2-digit number (10-99)
+        // k = d0*10 + d1, so exp[0] = d0, exp[1] = d1
+        R.exp[0] = S3.mant[0];
+        R.exp[1] = S3.mant[1];
+        R.esign = false;
+    }
+    else {
+        // Exponent = 0: k is 1-digit number (1-9)
+        // k = d0, so exp[0] = 0, exp[1] = d0
+        R.exp[0] = 0;
+        R.exp[1] = S3.mant[0];
+        R.esign = false;
+    }
+
+    R.sign = false;
+    normalize(R);
+
+    // ---------- Part 6: Handle negative input ----------
+    // exp(-x) = 1/exp(x)
+    if (inputSign) {
+        // Check for underflow before division
+        // If exp >= 99 (positive), 1/exp(|x|) will underflow
+        // Nibble-safe: compare exp[0] > 9 or (exp[0] == 9 && exp[1] >= 9)
+        if (!R.esign && R.exp[0] == 9 && R.exp[1] == 9) {
+            // Result will underflow to zero
+            regClear(R);
+            return;
+        }
+
+        // R = 1 / R (compute 1 / exp(|x|))
+        // div expects: S0 = numerator, S1 = denominator
+        regCopy(S1, R);  // S1 = exp(|x|) (denominator)
+        regClear(S0);
+        S0.mant[0] = 1;  // S0 = 1 (numerator)
+        div(S0, S1, R);  // R = 1 / exp(|x|)
+    }
+}
+
 // IEEE ln for test runner
 static Real ieeeLn(Real x) { return std::log(x); }
 
@@ -217,4 +477,59 @@ void testLn()
     if (!runUnaryTests("LN", ln, ieeeLn, val, sizeof(val) / sizeof(val[0])))
         return;
     runRandomUnaryTests("LN", ln, ieeeLn, OPTS_LN);
+}
+
+// IEEE exp for test runner
+static Real ieeeExp(Real x) { return std::exp(x); }
+
+// Run exponential tests
+void testExp()
+{
+    static const std::string val[] = {
+        "0",                      // exp(0) = 1 exactly
+        "1",                      // exp(1) = e
+        "2",                      // exp(2) = e^2
+        "2.302585092994046",      // exp(ln(10)) = 10
+        "-1",                     // exp(-1) = 1/e
+        "-2.302585092994046",     // exp(-ln(10)) = 0.1
+        "0.5",                    // exp(0.5) = sqrt(e)
+        "0.1",                    // Small positive
+        "0.01",                   // Very small
+        "0.001",                  // Very very small
+        "0.693147180559945",      // exp(ln(2)) = 2
+        "-0.693147180559945",     // exp(-ln(2)) = 0.5
+        "3.141592653589793",      // exp(pi)
+        "10",                     // exp(10) ~= 22026
+        "-10",                    // exp(-10) ~= 4.5e-5
+        "1e-10",                  // Very small exponent
+        "1e-14",                  // Near precision limit
+        "4.605170185988092",      // exp(2*ln(10)) = 100
+        "1.000000000000001",      // Very close to 1
+        "0.000000000000001",      // Very close to 0
+    };
+
+    if (!runUnaryTests("EXP", exp, ieeeExp, val, sizeof(val) / sizeof(val[0])))
+        return;
+    // Round-trip tests: exp(ln(x)) = x (for positive x)
+    // Use positive values only since ln requires x > 0
+    static const std::string tripVal[] = {
+        "1",                      // ln(1) = 0, exp(0) = 1
+        "2",                      // ln(2) = 0.693..., exp back to 2
+        "10",                     // ln(10) = 2.302...
+        "100",                    // ln(100) = 4.605...
+        "0.1",                    // ln(0.1) = -2.302...
+        "0.5",                    // ln(0.5) = -0.693...
+        "2.718281828459045",      // e: ln(e) = 1, exp(1) = e
+        "7.389056098930650",      // e^2
+        "0.3678794411714423",     // 1/e
+        "1e10",                   // Large
+        "1e-10",                  // Small
+        "1e50",                   // Very large
+        "1e-50",                  // Very small
+    };
+    if (!runRoundTripTests("RTRIP_EXP", exp, ln, ieeeExp, ieeeLn, tripVal, sizeof(tripVal) / sizeof(tripVal[0])))
+        return;
+    if (!runRandomRoundTripTests("RTRIP_EXP", exp, ln, ieeeExp, ieeeLn, OPTS_LN))
+        return;
+    runRandomUnaryTests("EXP", exp, ieeeExp, OPTS_EXP);
 }

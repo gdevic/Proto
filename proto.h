@@ -25,6 +25,7 @@ void div(BCD &S0, BCD &S1, BCD &R);
 
 // Transcendental operations: read from S0, write result to R
 void ln(BCD &S0, BCD &R);
+void exp(BCD &S0, BCD &R);
 void tan(BCD &S0, BCD &R);
 void atan(BCD &S0, BCD &R);
 void tan10(BCD &S0, BCD &R);
@@ -37,6 +38,7 @@ void testSubtraction();
 void testMultiplication();
 void testDivision();
 void testLn();
+void testExp();
 void testTan();
 void testAtan();
 void testTan10();
