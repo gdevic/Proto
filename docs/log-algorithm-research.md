@@ -188,10 +188,17 @@ Output: exp(x)
 1. Handle sign:
    - If x < 0, compute exp(|x|) then return 1/exp(|x|)
 
-2. Range reduction:
-   - Compute k = floor(x / ln(10))
-   - Compute r = x - k*ln(10), where 0 <= r < ln(10)
-   - exp(x) = exp(r) * 10^k
+2. Range reduction (two methods available):
+   Method A (repeated subtraction - hardware-friendly):
+     k = 0
+     While x >= ln(10):
+       x = x - ln(10)
+       k++
+     r = x
+   Method B (division-based - fewer iterations):
+     k = floor(x / ln(10))
+     r = x - k*ln(10)
+   Both yield: exp(x) = exp(r) * 10^k, where 0 <= r < ln(10)
 
 3. Pseudo-division (decompose r):
    For j = 0 to 15:
@@ -215,7 +222,11 @@ Output: exp(x)
 
 ### Key Implementation Details
 
-**Range Reduction**: Uses division by ln(10) to split the input into an integer part `k` (which becomes the exponent) and a fractional remainder `r` (which is computed via CORDIC).
+**Range Reduction**: Two methods available:
+- *Repeated subtraction*: Subtract ln(10) until remainder < ln(10), counting iterations. Uses only add/sub - hardware-friendly, up to ~99 iterations.
+- *Division-based*: Compute k = floor(x / ln(10)), then r = x - k*ln(10). Constant operation count but requires div/mul.
+
+Both produce identical results; choice depends on hardware constraints.
 
 **Shared Constants**: Uses the same `ln_const[]` table as `ln()`, enabling efficient code sharing in `log.cpp`.
 
@@ -227,7 +238,7 @@ Output: exp(x)
 
 ### Performance
 - **Convergence**: Same as ln() - approximately one digit per iteration
-- **Operations**: ~100 BCD operations (shifts/adds) plus range reduction (div, mul)
+- **Operations**: ~100 BCD operations (shifts/adds) for pseudo-division/multiplication, plus range reduction (either ~k subtractions or one div+mul)
 - **Precision**: Achieves 13-14 correct digits, matching ln()
 
 ### Round-Trip Testing

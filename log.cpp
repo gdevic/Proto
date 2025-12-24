@@ -174,8 +174,6 @@ void ln(BCD& S0, BCD& R)
         S3.sign = S4.esign;
 
         // Use S4's exponent magnitude as loop counter (force positive for expDec)
-        // TODO: This is inefficient for larger exponents and also accumulates errors
-        //       Since mul is implemented, use it: R = R + (exp * ln(10)
         S4.esign = false;
         while (S4.exp[0] | S4.exp[1]) {
             regCopy(S0, R);   // Current result to S0
@@ -185,6 +183,11 @@ void ln(BCD& S0, BCD& R)
         }
     }
 }
+
+// Range reduction algorithm selection for exp()
+// 0 = repeated-subtraction method (uses only add/sub, hardware-friendly)
+// 1 = division-based method (uses div/mul/add, fewer iterations)
+static const int use_new_range_reduction = 0;
 
 // Compute exponential: R = exp(S0)
 // Uses CORDIC (Meggitt's digit-by-digit method) - inverse of ln()
@@ -210,59 +213,152 @@ void exp(BCD& S0, BCD& R)
 
     // ---------- Part 1: Range reduction ----------
     // exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
-    // Use division: k = floor(x / ln(10)), r = x - k*ln(10)
 
-    // Set up S1 = ln(10)
-    mantCopy(S1.mant.data(), ln10_mant);
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+    if (use_new_range_reduction)
+    {
+        // Division-based method: k = floor(x / ln(10)), r = x - k*ln(10)
+        // Uses div/mul/add but constant number of operations regardless of k
 
-    // Save input x to S4 for later
-    regCopy(S4, S0);
+        // Set up S1 = ln(10)
+        mantCopy(S1.mant.data(), ln10_mant);
+        S1.exp[0] = 0;
+        S1.exp[1] = 0;
+        S1.esign = false;
+        S1.sign = false;
 
-    // R = x / ln(10)
-    div(S0, S1, R);
+        // Save input x to S4 for later
+        regCopy(S4, S0);
 
-    // Truncate R to integer k = floor(R)
-    // If exponent is negative, floor = 0
-    // Otherwise, zero out digits after the decimal point
-    // Nibble-safe: compare each position against 2-digit exponent
-    if (R.esign) {
-        regClear(R);
-    }
-    else {
-        // Zero fractional digits: position i is fractional if i > exp
-        // For i in 1..15, compare (i_hi, i_lo) > (exp[0], exp[1])
-        for (uint8_t i = 1; i < MAX_MANT; i++) {
-            uint8_t i_hi = (i >= 10) ? 1 : 0;
-            uint8_t i_lo = (i >= 10) ? (i - 10) : i;
-            // Position i is fractional if i > exp
-            if ((i_hi > R.exp[0]) || (i_hi == R.exp[0] && i_lo > R.exp[1]))
-                R.mant[i] = 0;
+        // R = x / ln(10)
+        div(S0, S1, R);
+
+        // Truncate R to integer k = floor(R)
+        // If exponent is negative, floor = 0
+        // Otherwise, zero out digits after the decimal point
+        // Nibble-safe: compare each position against 2-digit exponent
+        if (R.esign) {
+            regClear(R);
         }
+        else {
+            // Zero fractional digits: position i is fractional if i > exp
+            // For i in 1..15, compare (i_hi, i_lo) > (exp[0], exp[1])
+            for (uint8_t i = 1; i < MAX_MANT; i++) {
+                uint8_t i_hi = (i >= 10) ? 1 : 0;
+                uint8_t i_lo = (i >= 10) ? (i - 10) : i;
+                // Position i is fractional if i > exp
+                if ((i_hi > R.exp[0]) || (i_hi == R.exp[0] && i_lo > R.exp[1]))
+                    R.mant[i] = 0;
+            }
+        }
+
+        // Extract k from R and store in S3.exp field directly
+        // R contains k as BCD: mant[0].mant[1]... × 10^exp
+        regClear(S3);
+        if (R.esign || isMantZero(R.mant.data())) {
+            // k = 0: S3.exp already 0 from regClear
+        }
+        else if ((R.exp[0] > 0) || (R.exp[1] > 1)) {
+            // k >= 100: overflow/underflow
+            if (inputSign) {
+                regClear(R);
+                return;
+            }
+            FLAG_OF_ERR = true;
+            return;
+        }
+        else if (R.exp[1] == 1) {
+            // k = 10-99: stored as d0.d1 × 10^1
+            S3.exp[0] = R.mant[0];
+            S3.exp[1] = R.mant[1];
+        }
+        else {
+            // k = 1-9: stored as d0 × 10^0
+            S3.exp[0] = 0;
+            S3.exp[1] = R.mant[0];
+        }
+
+        // Compute r = x - k*ln(10)
+        // S1 = ln(10), R = k, S4 = x
+        regCopy(S0, R);
+        mantCopy(S1.mant.data(), ln10_mant);
+        S1.exp[0] = 0;
+        S1.exp[1] = 0;
+        S1.esign = false;
+        S1.sign = false;
+
+        mul(S0, S1, R);  // R = k * ln(10)
+
+        // r = x - k*ln(10) = S4 - R
+        regCopy(S0, S4);
+        regCopy(S1, R);
+        S1.sign = true;  // Negate for subtraction
+        add(S0, S1, R);  // R = x - k*ln(10) = r
     }
+    else // !use_new_range_reduction
+    {
+        // Repeated subtraction method: subtract ln(10) until result goes negative
+        // Hardware-friendly: uses only add/subtract, no div/mul
+        // Up to ~99 iterations for inputs in valid range (|x| < ~228)
 
-    // Save k in S3 (as BCD number for later exponent)
-    regCopy(S3, R);
+        // Early overflow check: if input exponent >= 3 (value >= 100),
+        // then k >= floor(100/ln(10)) = 43, and we'd need too many iterations
+        // for values like 1e99. Check if input is too large for this method.
+        if (!S0.esign && ((S0.exp[0] > 0) || (S0.exp[1] >= 3))) {
+            // Input magnitude >= 100, check if it would overflow
+            // exp(230) already overflows, so any exp >= 3 with positive input overflows
+            // For negative input, exp(-x) = 1/exp(x), handle at end
+            // But we'd need 100+ iterations which is still manageable
+            // However, for exp >= 3, shifting ln(10) during add alignment
+            // loses all precision. Use overflow flag for positive inputs.
+            if (!inputSign) {
+                FLAG_OF_ERR = true;
+                return;
+            }
+            // For negative inputs with large magnitude, result underflows to 0
+            regClear(R);
+            return;
+        }
 
-    // Compute r = x - k*ln(10)
-    // S1 = ln(10), R = k, S4 = x
-    regCopy(S0, R);
-    mantCopy(S1.mant.data(), ln10_mant);
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+        // Initialize k = 0 in S3
+        regClear(S3);
 
-    mul(S0, S1, R);  // R = k * ln(10)
+        // Repeated subtraction: while (x >= ln(10)), x -= ln(10), k++
+        // Loop terminates when R goes negative or k >= 100 (overflow)
+        while (true) {
+            // Save S0 as remainder candidate (add() modifies S0)
+            regCopy(S4, S0);
 
-    // r = x - k*ln(10) = S4 - R
-    regCopy(S0, S4);
-    regCopy(S1, R);
-    S1.sign = true;  // Negate for subtraction
-    add(S0, S1, R);  // R = x - k*ln(10) = r
+            // Set up S1 = -ln(10) for subtraction (add() modifies S1)
+            mantCopy(S1.mant.data(), ln10_mant);
+            S1.exp[0] = 0;
+            S1.exp[1] = 0;
+            S1.esign = false;
+            S1.sign = true;  // Negative for subtraction
+
+            add(S0, S1, R);  // R = S0 - ln(10)
+
+            // If result is negative, stop - S4 has the valid remainder
+            if (R.sign) {
+                regCopy(R, S4);  // R = remainder
+                break;
+            }
+
+            // Accept result: S0 = R
+            regCopy(S0, R);
+
+            // Increment k in S3.exp (using expInc which handles BCD and overflow)
+            expInc(S3);
+            if (FLAG_OF_ERR) {
+                // k >= 100: overflow/underflow
+                if (inputSign) {
+                    FLAG_OF_ERR = false;  // Clear flag, handle as underflow
+                    regClear(R);
+                    return;
+                }
+                return;  // FLAG_OF_ERR already set for overflow
+            }
+        }
+    } // end: use_new_range_reduction
 
     // Now R = r (remainder, 0 ≤ r < ln(10))
     // S3 = k (integer exponent)
@@ -336,9 +432,9 @@ void exp(BCD& S0, BCD& R)
             // This is: result = result + (result >> j)
 
             // S1 = result >> j (shifted copy)
-            mantClear(S1.mant.data());
-            for (uint i = 0; (i + j) < MAX_MANT; i++)
-                S1.mant[i + j] = R.mant[i];
+            mantCopy(S1.mant.data(), R.mant.data());
+            for (uint8_t s = 0; s < j; s++)
+                mantShr(S1.mant.data());
 
             // result = result + shifted
             int carry = mantAdd(R.mant.data(), S1.mant.data(), S2.mant.data());
@@ -348,74 +444,30 @@ void exp(BCD& S0, BCD& R)
             if (carry) {
                 mantShr(R.mant.data());
                 R.mant[0] = uint8_t(carry);
-                // Increment k stored in S3 (as BCD integer with exp=0 for small k)
-                // For k < 10: increment mant[0]
-                // For k >= 10: mant = d0.d1..., so increment d0.d1 as 2-digit BCD
-                if (S3.exp[1] == 0 && !S3.esign) {
-                    // k is single digit (0-9) stored in mant[0]
-                    S3.mant[0]++;
-                    if (S3.mant[0] >= 10) {
-                        // k was 9, now k=10: need 1.0e1 representation
-                        S3.mant[0] = 1;
-                        S3.mant[1] = 0;
-                        S3.exp[1] = 1;
-                    }
-                }
-                else if (S3.exp[1] == 1 && !S3.esign) {
-                    // k is two digits (10-99) stored in mant[0].mant[1]
-                    S3.mant[1]++;
-                    if (S3.mant[1] >= 10) {
-                        S3.mant[1] = 0;
-                        S3.mant[0]++;
-                        // k >= 100 will be caught by overflow check later
-                    }
-                }
+                // Increment k in S3.exp
+                expInc(S3);
+                // Note: FLAG_OF_ERR checked in Part 5 below
             }
         }
     }
 
     // ---------- Part 5: Set exponent from k ----------
-    // Extract integer k from S3 and set as exponent
-    // S3 contains k as a BCD number: d0.d1d2... × 10^exp
-    // Nibble-safe: only compare/copy single digits, no multi-digit arithmetic
+    // k is stored directly in S3.exp[0] and S3.exp[1]
 
-    if (isMantZero(S3.mant.data())) {
-        // k = 0
-        R.exp[0] = 0;
-        R.exp[1] = 0;
-        R.esign = false;
-    }
-    else if (S3.esign) {
-        // Negative exponent means k < 1, floor to 0
-        R.exp[0] = 0;
-        R.exp[1] = 0;
-        R.esign = false;
-    }
-    else if (S3.exp[0] > 0 || S3.exp[1] > 1) {
-        // Exponent >= 2 means k >= 100
+    // Check for overflow from Part 4 carry handling
+    if (FLAG_OF_ERR) {
         if (inputSign) {
-            // Negative input with large magnitude -> underflow to zero
+            FLAG_OF_ERR = false;  // Clear flag, handle as underflow
             regClear(R);
             return;
         }
-        // Positive input with large magnitude -> overflow
-        FLAG_OF_ERR = true;
-        return;
+        return;  // FLAG_OF_ERR already set for overflow
     }
-    else if (S3.exp[1] == 1) {
-        // Exponent = 1: k is 2-digit number (10-99)
-        // k = d0*10 + d1, so exp[0] = d0, exp[1] = d1
-        R.exp[0] = S3.mant[0];
-        R.exp[1] = S3.mant[1];
-        R.esign = false;
-    }
-    else {
-        // Exponent = 0: k is 1-digit number (1-9)
-        // k = d0, so exp[0] = 0, exp[1] = d0
-        R.exp[0] = 0;
-        R.exp[1] = S3.mant[0];
-        R.esign = false;
-    }
+
+    // Copy k directly to R's exponent
+    R.exp[0] = S3.exp[0];
+    R.exp[1] = S3.exp[1];
+    R.esign = false;
 
     R.sign = false;
     normalize(R);
