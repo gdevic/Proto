@@ -11,6 +11,7 @@
 // Clear a register to zero
 void regClear(BCD& x)
 {
+    // In microcode, we jumop into mantClear() after zeroing exp + sign nibbles
     x = BCD{};
 }
 

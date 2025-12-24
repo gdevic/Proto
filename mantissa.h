@@ -2,6 +2,12 @@
 
 #include "bcd.h"
 
+// Clear mantissa to all zeros
+void mantClear(uint8_t *mant);
+
+// Copy mantissa from src to dst
+void mantCopy(uint8_t *dst, const uint8_t *src);
+
 // Check if mantissa is zero (checks all 16 positions)
 // Returns true if all mantissa digits are zero
 bool isMantZero(const uint8_t* mant);
@@ -26,6 +32,3 @@ int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r);
 // Subtract two aligned mantissas: r = a - b (assumes |a| >= |b|)
 // sticky generates initial borrow from beyond mant[15]
 void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky);
-
-// Copy mantissa from src to dst
-void mantCopy(uint8_t* dst, const uint8_t* src);
