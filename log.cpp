@@ -392,20 +392,14 @@ void exp(BCD& S0, BCD& R)
         R.esign = false;
     }
     else if (S3.exp[0] > 0 || S3.exp[1] > 1) {
-        // Exponent >= 2 means k >= 100 -> overflow error
-        FLAG_OF_ERR = true;
+        // Exponent >= 2 means k >= 100
         if (inputSign) {
             // Negative input with large magnitude -> underflow to zero
             regClear(R);
             return;
         }
-        // Positive input with large magnitude -> overflow to max
-        for (uint8_t i = 0; i < MAX_MANT; i++)
-            R.mant[i] = 9;
-        R.exp[0] = 9;
-        R.exp[1] = 9;
-        R.esign = false;
-        R.sign = false;
+        // Positive input with large magnitude -> overflow
+        FLAG_OF_ERR = true;
         return;
     }
     else if (S3.exp[1] == 1) {
