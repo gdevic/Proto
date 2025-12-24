@@ -237,7 +237,7 @@ void exp(BCD& S0, BCD& R)
             uint8_t i_hi = (i >= 10) ? 1 : 0;
             uint8_t i_lo = (i >= 10) ? (i - 10) : i;
             // Position i is fractional if i > exp
-            if (i_hi > R.exp[0] || (i_hi == R.exp[0] && i_lo > R.exp[1]))
+            if ((i_hi > R.exp[0]) || (i_hi == R.exp[0] && i_lo > R.exp[1]))
                 R.mant[i] = 0;
         }
     }
@@ -335,7 +335,7 @@ void exp(BCD& S0, BCD& R)
 
             // S1 = result >> j (shifted copy)
             mantClear(S1.mant.data());
-            for (uint i = 0; i + j < MAX_MANT; i++)
+            for (uint i = 0; (i + j) < MAX_MANT; i++)
                 S1.mant[i + j] = R.mant[i];
 
             // result = result + shifted
