@@ -8,6 +8,30 @@ This document analyzes algorithms for computing natural logarithm with BCD arith
 
 ---
 
+## Why Natural Logarithm (ln) Instead of Common Logarithm (log10)?
+
+### Mathematical Relationship
+The two are trivially related: `log10(x) = ln(x) / ln(10)` or equivalently `ln(x) * log10(e)`.
+
+Once you have `ln(x)`, computing `log10(x)` requires just one multiplication by a constant (~0.4342944819032518).
+
+### CORDIC Naturally Produces ln(x)
+The digit-by-digit algorithm accumulates `ln(1 + 10^-j)` constants. You *could* use `log10(1 + 10^-j)` constants instead to produce log10 directly, but it's the same algorithm with different constant tables.
+
+### Why ln is the Better Primitive
+1. **Natural inverse**: `exp()` and `ln()` are inverses, simplifying implementation of both
+2. **Mathematical convention**: Most formulas use natural log (calculus, compound growth, decay, etc.)
+3. **Trivial conversion**: log10(x) = ln(x) × 0.4342944819... (one multiplication)
+
+### How Calculators Handle log10
+HP-35 and similar BCD calculators:
+1. Compute `ln(x)` using CORDIC/digit-by-digit
+2. Multiply by `log10(e)` ≈ 0.4342944819032518 to get log10(x)
+
+Most scientific calculators expose both `LN` and `LOG` keys - internally they share the same ln() routine, with log10 adding one final constant multiplication.
+
+---
+
 ## Algorithm Comparison
 
 | Algorithm | Iterations | Total Ops | Code Complexity | Prerequisites | BCD Fit |
