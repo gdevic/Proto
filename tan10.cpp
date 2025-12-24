@@ -504,9 +504,9 @@ void testTan10()
     if (!runUnaryTests("TN10", tan10, ieeeTan10, val, sizeof(val) / sizeof(val[0])))
         return;
     // Round-trip tests: tan10(atan10(x)) = x
-    if (!runRoundTripTests("TR10", tan10, atan10, ieeeTan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
+    if (!runRoundTripTests("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
         return;
-    if (!runRandomRoundTripTests("TR10", tan10, atan10, ieeeTan10, ieeeAtan10, OPTS_ATAN10))
+    if (!runRandomRoundTripTests("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, OPTS_ATAN10))
         return;
     runRandomUnaryTests("TN10", tan10, ieeeTan10, OPTS_TAN10);
 }

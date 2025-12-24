@@ -335,9 +335,9 @@ void testTan()
     if (!runUnaryTests("TAN", tan, ieeeTan, val, sizeof(val) / sizeof(val[0])))
         return;
     // Round-trip tests: tan(atan(x)) = x
-    if (!runRoundTripTests("TRIP", tan, atan, ieeeTan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
+    if (!runRoundTripTests("RTRIP_TAN", tan, atan, ieeeTan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
         return;
-    if (!runRandomRoundTripTests("TRIP", tan, atan, ieeeTan, ieeeAtan, OPTS_ATAN))
+    if (!runRandomRoundTripTests("RTRIP_TAN", tan, atan, ieeeTan, ieeeAtan, OPTS_ATAN))
         return;
     runRandomUnaryTests("TAN", tan, ieeeTan, OPTS_TAN);
 }
