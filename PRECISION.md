@@ -14,7 +14,7 @@
 - **Exponent**: 2 BCD digits, signed, range -99 to +99
 - **Zero**: Mantissa all zeros; exponent/sign don't matter
 - **Normalization**: Digit 1 ∈ {1..9} always (except zero)
-- **Rounding**: Half-up, applied when collapsing 16→15 for final result
+- **Rounding**: Banker's rounding (round half to even), applied when collapsing 16→15 for final result
 
 ## The Problem: Catastrophic Cancellation
 
@@ -252,18 +252,25 @@ Guard digits—computing internally with 18-digit precision and outputting 16. T
 
 **Definition**: Sticky = 1 iff any digit beyond the guard is nonzero.
 
-**Half-up rounding rule**:
+**Banker's rounding (round half to even) rule**:
 ```
-if guard ≥ 5: round up
-else: truncate
+if guard > 5: round up
+if guard < 5: truncate
+if guard == 5:
+    if sticky is set OR LSB of digit 15 is 1:
+        round up
+    else:
+        truncate
 ```
 
-For pure half-up, sticky doesn't affect the rounding decision—it matters for half-to-even (banker's rounding).
+The sticky bit is essential for tie-breaking. If the guard digit is exactly 5, the sticky bit tells us if the "true" value was X.500...0 or X.5... with some non-zero digits following.
+- If sticky is set, the value is > X.5, so we round up.
+- If sticky is clear, the value is exactly X.5. We round to make the last significant digit (digit 15) even.
 
 **Why keep sticky?**
-1. **Chain detection**: Tells whether result is exact or had discarded information
-2. **Division termination**: Distinguishes "quotient is exact" from "quotient was truncated"
-3. **Future flexibility**: Needed for half-even rounding mode
+1.  **Correct rounding**: Essential for unbiased "round half to even" tie-breaking.
+2.  **Chain detection**: Tells whether a result is exact or had discarded information.
+3.  **Division termination**: Distinguishes "quotient is exact" from "quotient was truncated."
 
 ## Chained Operations: Round Intermediate or Not?
 
@@ -286,11 +293,9 @@ Let ε = 0.5 × 10⁻¹⁵ (half ULP in 15-digit precision).
 - Final rounding adds at most ε
 - Total error ≈ n × 10⁻¹⁶ + ε ≈ ε for moderate n
 
-### Example: Newton-Raphson Square Root
+### Example: Iterative Algorithms (e.g., Sqrt, Log)
 
-x_{n+1} = 0.5 × (x_n + S / x_n)
-
-Typically 4-5 iterations for 15 digits.
+A typical iterative algorithm might take 4-5 iterations to converge to 15 digits of precision.
 
 | Strategy | Expected precision | Worst case |
 |----------|-------------------|------------|
@@ -328,7 +333,7 @@ If the true guard digit is 4 but you computed 5 (due to accumulated error), you 
 | Add/Sub (with cancellation) | 15 - k digits | k = cancelled digits; intrinsic |
 | Multiply | 15.0 digits | Correctly rounded |
 | Divide | 15.0 digits | Correctly rounded |
-| Sqrt | 14.9 digits | 4-5 Newton iterations |
+| Sqrt | 14.9 digits | Iterative digit-by-digit |
 | Log/Exp | 14.5 digits | Argument reduction matters |
 | Atan | 14.8 digits | CORDIC, 16 iterations |
 | Sin/Cos/Tan | 14.3-14.5 digits | Via atan + identities |
