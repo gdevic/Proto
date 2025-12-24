@@ -15,41 +15,18 @@
 static uint8_t ext32Shl(uint8_t* high, uint8_t* low)
 {
     uint8_t out = high[0];
-
-    // Shift high left
-    for (uint i = 0; i < MAX_MANT - 1; i++)
-        high[i] = high[i + 1];
-
-    // Carry from low[0] to high[15]
-    high[MAX_MANT - 1] = low[0];
-
-    // Shift low left
-    for (uint i = 0; i < MAX_MANT - 1; i++)
-        low[i] = low[i + 1];
-
-    low[MAX_MANT - 1] = 0;
-
+    uint8_t carry = low[0];
+    mantShl(high);
+    mantShl(low);
+    high[MAX_MANT - 1] = carry;
     return out;
 }
 
-// Add small value (0-9) to 32-digit number
-static void ext32AddSmall(uint8_t* high, uint8_t* low, uint8_t val)
+// Increment 32-digit number by 1
+static void ext32Inc(uint8_t* high, uint8_t* low)
 {
-    int carry = val;
-
-    // Add to low part from right
-    for (int i = MAX_MANT - 1; i >= 0 && carry > 0; i--) {
-        int sum = low[i] + carry;
-        low[i] = uint8_t(sum % 10);
-        carry = sum / 10;
-    }
-
-    // Propagate carry to high part
-    for (int i = MAX_MANT - 1; i >= 0 && carry > 0; i--) {
-        int sum = high[i] + carry;
-        high[i] = uint8_t(sum % 10);
-        carry = sum / 10;
-    }
+    if (mantInc(low))
+        mantInc(high);
 }
 
 // Compare 32-digit numbers
@@ -58,87 +35,74 @@ static bool ext32Ge(const uint8_t* highA, const uint8_t* lowA,
                     const uint8_t* highB, const uint8_t* lowB)
 {
     // Compare high parts first
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (highA[i] > highB[i])
-            return true;
-        if (highA[i] < highB[i])
-            return false;
-    }
+    if (isMantGT(highA, highB))
+        return true;
+    if (isMantGT(highB, highA))
+        return false;
 
     // High parts equal, compare low parts
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (lowA[i] > lowB[i])
-            return true;
-        if (lowA[i] < lowB[i])
-            return false;
-    }
+    if (isMantGT(lowA, lowB))
+        return true;
+    if (isMantGT(lowB, lowA))
+        return false;
 
     return true;  // Equal
 }
 
+// Subtract mantissas in place with borrow in/out: A -= B
+// Returns borrow
+static bool mantSubBorrow(uint8_t* a, const uint8_t* b, bool borrow)
+{
+    for (int i = MAX_MANT - 1; i >= 0; i--) {
+        int diff = a[i] - b[i] - borrow;
+        if (diff < 0) {
+            diff += 10;
+            borrow = true;
+        }
+        else
+            borrow = false;
+        a[i] = uint8_t(diff);
+    }
+    return borrow;
+}
+
 // Subtract 32-digit numbers: A -= B
 // Assumes A >= B
-static void ext32Sub(uint8_t* highA, uint8_t* lowA,
-                     const uint8_t* highB, const uint8_t* lowB)
+static void ext32Sub(uint8_t* highA,       uint8_t* lowA,
+               const uint8_t* highB, const uint8_t* lowB)
 {
-    int borrow = 0;
-
-    // Subtract low parts from right
-    for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int diff = lowA[i] - lowB[i] - borrow;
-        if (diff < 0) {
-            diff += 10;
-            borrow = 1;
-        }
-        else
-            borrow = 0;
-        lowA[i] = uint8_t(diff);
-    }
-
-    // Subtract high parts with borrow
-    for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int diff = highA[i] - highB[i] - borrow;
-        if (diff < 0) {
-            diff += 10;
-            borrow = 1;
-        }
-        else
-            borrow = 0;
-        highA[i] = uint8_t(diff);
-    }
+    bool borrow = mantSubBorrow(lowA, lowB, false);
+    mantSubBorrow(highA, highB, borrow);
 }
 
 // Check if 32-digit number is zero
 // Returns true if all digits are zero
 static bool ext32IsZero(const uint8_t* high, const uint8_t* low)
 {
-    for (uint i = 0; i < MAX_MANT; i++)
-        if (high[i] != 0)
-            return false;
-    for (uint i = 0; i < MAX_MANT; i++)
-        if (low[i] != 0)
-            return false;
-    return true;
+    return isMantZero(high) && isMantZero(low);
+}
+
+// Double a 16-digit mantissa in place with carry in/out
+// Uses 5-threshold trick: all intermediates fit in a nibble (0-9)
+// Returns carry
+static bool mantDouble(uint8_t* mant, bool carry)
+{
+    for (int i = MAX_MANT - 1; i >= 0; i--) {
+        uint8_t d = mant[i];
+        bool next_carry = (d >= 5);
+        if (d >= 5) d -= 5;
+        d = d + d + carry;  // max: 4+4+1 = 9
+        mant[i] = d;
+        carry = next_carry;
+    }
+    return carry;
 }
 
 // Double a 32-digit number in place: A = A * 2
 static void ext32Double(uint8_t* high, uint8_t* low)
 {
-    int carry = 0;
-
-    // Double low part
-    for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int sum = low[i] * 2 + carry;
-        low[i] = uint8_t(sum % 10);
-        carry = sum / 10;
-    }
-
-    // Double high part with carry
-    for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int sum = high[i] * 2 + carry;
-        high[i] = uint8_t(sum % 10);
-        carry = sum / 10;
-    }
+    bool carry = mantDouble(low, false);
+    mantDouble(high, carry);
 }
 
 // Compute square root: R = sqrt(S0)
@@ -161,40 +125,34 @@ void sqrt(BCD& S0, BCD& R)
     if (FLAG_S0_ZERO)
         return;
 
-    // Compute result exponent
+    // Compute result exponent using nibble-safe operations
     // sqrt(M * 10^e) = sqrt(M) * 10^(e/2) for even e
     // sqrt(M * 10^e) = sqrt(10*M) * 10^((e-1)/2) for odd e
-    int expVal = S0.esign ? -(S0.exp[0] * 10 + S0.exp[1]) : (S0.exp[0] * 10 + S0.exp[1]);
-    int resExpVal;
 
-    if (expVal % 2 != 0) {
-        // Odd exponent: mantissa represents d0d1.d2d3... (no shift)
-        // Result exponent = floor(e/2)
-        if (expVal >= 0)
-            resExpVal = expVal / 2;
-        else
-            resExpVal = (expVal - 1) / 2;
-    }
-    else {
-        // Even exponent: shift mantissa right to represent 0d0.d1d2...
+    // 1. Check oddness (just bit 0 of low digit, since 10 is even)
+    bool odd = (S0.exp[1] & 1) != 0;
+
+    // 2. If even exponent, shift mantissa right
+    if (!odd)
         mantShr(S0.mant.data());
-        resExpVal = expVal / 2;
+
+    // 3. BCD divide exponent by 2 (all values stay 0-9)
+    uint8_t half0 = S0.exp[0] / 2;  // 0-9 / 2 = 0-4
+    uint8_t half1 = (S0.exp[0] & 1) ? (S0.exp[1] / 2) + 5 : S0.exp[1] / 2;
+
+    // 4. For odd negative: floor(-E/2) = -(E+1)/2 = -(E/2) - 1, so increment result
+    if (odd && S0.esign) {
+        half1++;
+        if (half1 >= 10) {
+            half1 -= 10;
+            half0++;
+        }
     }
 
-    // Set result exponent
-    if (resExpVal < 0) {
-        R.esign = true;
-        resExpVal = -resExpVal;
-    }
-    else
-        R.esign = false;
-
-    if (resExpVal > 99) {
-        FLAG_OF = true;
-        resExpVal = resExpVal % 100;
-    }
-    R.exp[0] = uint8_t(resExpVal / 10);
-    R.exp[1] = uint8_t(resExpVal % 10);
+    // 5. Set result exponent
+    R.exp[0] = half0;
+    R.exp[1] = half1;
+    R.esign = S0.esign;
 
     // Clear working registers
     // Remainder: S3.mant (high 16) + S1.mant (low 16) = 32 digits
@@ -225,8 +183,7 @@ void sqrt(BCD& S0, BCD& R)
 
         // 2. Form subtrahend base: 20 * current result
         // Clear high part, copy R to low part
-        for (uint j = 0; j < MAX_MANT; j++)
-            S4.mant[j] = 0;
+        mantClear(S4.mant.data());
         mantCopy(S2.mant.data(), R.mant.data());
 
         // Double it: 2 * R
@@ -236,7 +193,7 @@ void sqrt(BCD& S0, BCD& R)
         ext32Shl(S4.mant.data(), S2.mant.data());
 
         // Initial subtrahend = 20*R + 1
-        ext32AddSmall(S4.mant.data(), S2.mant.data(), 1);
+        ext32Inc(S4.mant.data(), S2.mant.data());
 
         // 3. Find digit q by repeated subtraction
         // Each iteration: if remainder >= subtrahend, subtract and increment q
@@ -250,7 +207,8 @@ void sqrt(BCD& S0, BCD& R)
                          S4.mant.data(), S2.mant.data());
                 q++;
                 // Next subtrahend: add 2
-                ext32AddSmall(S4.mant.data(), S2.mant.data(), 2);
+                ext32Inc(S4.mant.data(), S2.mant.data());
+                ext32Inc(S4.mant.data(), S2.mant.data());
             }
             else
                 break;
@@ -276,16 +234,10 @@ void sqrt(BCD& S0, BCD& R)
         roundUp = sticky || ((R.mant[MAX_MANT - 1] & 1) != 0);
 
     if (roundUp) {
-        // Add 1 to result using S3 as scratch
-        regClear(S3);
-        S3.mant[MAX_MANT - 1] = 1;
-        int carry = mantAdd(R.mant.data(), S3.mant.data(), R.mant.data());
-
-        if (carry) {
+        if (mantInc(R.mant.data())) {
             // Overflow: 9.999...9 + 1 = 10.000...0
             // Shift right and increment exponent
-            for (uint j = 0; j < MAX_MANT; j++)
-                R.mant[j] = 0;
+            mantClear(R.mant.data());
             R.mant[0] = 1;
             expInc(R);
         }
