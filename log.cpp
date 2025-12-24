@@ -77,8 +77,7 @@ void ln(BCD& S0, BCD& R)
     for (uint j = 0; j < MAX_MANT; j++) {
         while (true) {
             // Create shifted copy in R.mant: R = S1 >> j (shift right by j digits)
-            for (uint i = 0; i < MAX_MANT; i++)
-                R.mant[i] = 0;
+            mantClear(R.mant.data());
             for (uint i = 0; i < (MAX_MANT - j); i++)
                 R.mant[i + j] = S1.mant[i];
 
@@ -120,8 +119,7 @@ void ln(BCD& S0, BCD& R)
     // ---------- Part 3: Accumulate ln constants ----------
     // Result = sum of counter[j] * ln_const[j] for j = 15 down to 0
     // Store result in R.mant
-    for (uint i = 0; i < MAX_MANT; i++)
-        R.mant[i] = 0;
+    mantClear(R.mant.data());
 
     for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
         // Get the ln constant for this position into S1.mant

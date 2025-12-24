@@ -161,19 +161,16 @@ static void cordicTan(BCD& S0, BCD& R)
     // Part 2: CORDIC rotation (pseudo-multiplication)
     mantCopy(S0.mant.data(), S1.mant.data());
 
-    for (uint i = 0; i < MAX_MANT; i++)
-        S1.mant[i] = 0;
+    mantClear(S1.mant.data());
     S1.mant[0] = 1;
 
     for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
         for (uint8_t k = 0; k < S3.mant[j]; k++) {
-            for (uint i = 0; i < MAX_MANT; i++)
-                S4.mant[i] = 0;
+            mantClear(S4.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S4.mant[i + j] = S1.mant[i];
 
-            for (uint i = 0; i < MAX_MANT; i++)
-                S2.mant[i] = 0;
+            mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S2.mant[i + j] = S0.mant[i];
 
@@ -397,8 +394,7 @@ void atan10(BCD& S0, BCD& R)
     // CORDIC vectoring
     for (uint j = 0; j < K; j++) {
         while (true) {
-            for (uint i = 0; i < MAX_MANT; i++)
-                S2.mant[i] = 0;
+            mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 S2.mant[i + j] = S1.mant[i];
 
@@ -417,8 +413,7 @@ void atan10(BCD& S0, BCD& R)
             if (borrow)
                 break;
 
-            for (uint i = 0; i < MAX_MANT; i++)
-                R.mant[i] = 0;
+            mantClear(R.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 R.mant[i + j] = S0.mant[i];
 

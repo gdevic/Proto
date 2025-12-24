@@ -115,22 +115,19 @@ void tan(BCD& S0, BCD& R)
     mantCopy(S0.mant.data(), S1.mant.data());
 
     // S1 = x = 1.0 (1 followed by zeros)
-    for (uint i = 0; i < MAX_MANT; i++)
-        S1.mant[i] = 0;
+    mantClear(S1.mant.data());
     S1.mant[0] = 1;
 
     // Rotate from j = K-1 down to 0
     for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
         for (uint8_t k = 0; k < S3.mant[j]; k++) {
             // x_shifted = x >> j (S1 >> j)
-            for (uint i = 0; i < MAX_MANT; i++)
-                S4.mant[i] = 0;
+            mantClear(S4.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S4.mant[i + j] = S1.mant[i];
 
             // y_shifted = y >> j (S0 >> j)
-            for (uint i = 0; i < MAX_MANT; i++)
-                S2.mant[i] = 0;
+            mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S2.mant[i + j] = S0.mant[i];
 
@@ -233,8 +230,7 @@ void atan(BCD& S0, BCD& R)
     for (uint j = 0; j < K; j++) {
         while (true) {
             // Compute x_shifted = x >> j (into S2)
-            for (uint i = 0; i < MAX_MANT; i++)
-                S2.mant[i] = 0;
+            mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 S2.mant[i + j] = S1.mant[i];
 
@@ -256,8 +252,7 @@ void atan(BCD& S0, BCD& R)
                 break;
 
             // Compute y_shifted = y >> j BEFORE updating y (into R.mant as temp)
-            for (uint i = 0; i < MAX_MANT; i++)
-                R.mant[i] = 0;
+            mantClear(R.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 R.mant[i + j] = S0.mant[i];
 
