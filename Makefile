@@ -1,3 +1,6 @@
+# Use all available cores for parallel compilation
+MAKEFLAGS += -j$(shell nproc)
+
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -DUSE_LONG_DOUBLE
 TARGET = proto
