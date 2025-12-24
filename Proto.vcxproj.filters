@@ -74,5 +74,8 @@
     <ClInclude Include="register.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="testbench.inl">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

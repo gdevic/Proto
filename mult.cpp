@@ -139,7 +139,7 @@ void testMultiplication()
         "1e-50",
     };
 
-    if (!runCombTests("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Binary>("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("MUL", mul, ieeeMul, OPTS_MUL);
+    runRandomTests<Arity::Binary>("MUL", mul, ieeeMul, OPTS_MUL);
 }

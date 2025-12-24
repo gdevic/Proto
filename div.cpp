@@ -132,7 +132,7 @@ void testDivision()
         "1e-50",
     };
 
-    if (!runCombTests("DIV", div, ieeeDiv, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Binary>("DIV", BcdBinaryOp(div), ieeeDiv, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("DIV", div, ieeeDiv, OPTS_DIV);
+    runRandomTests<Arity::Binary>("DIV", BcdBinaryOp(div), ieeeDiv, OPTS_DIV);
 }

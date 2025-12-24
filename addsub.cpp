@@ -121,9 +121,9 @@ void testAddition()
         "1.000000000000009",
     };
 
-    if (!runCombTests("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Binary>("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("ADD", add, ieeeAdd, OPTS_ADDSUB);
+    runRandomTests<Arity::Binary>("ADD", add, ieeeAdd, OPTS_ADDSUB);
 }
 
 // Run minimal combinatorial and random subtraction tests
@@ -139,7 +139,7 @@ void testSubtraction()
         "1e-50",
     };
 
-    if (!runCombTests("SUB", sub, ieeeSub, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Binary>("SUB", sub, ieeeSub, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests("SUB", sub, ieeeSub, OPTS_ADDSUB);
+    runRandomTests<Arity::Binary>("SUB", sub, ieeeSub, OPTS_ADDSUB);
 }

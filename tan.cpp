@@ -326,14 +326,14 @@ void testTan()
         "0.125",                  // Eighth radian
     };
 
-    if (!runUnaryTests("TAN", tan, ieeeTan, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("TAN", BcdUnaryOp(tan), ieeeTan, val, sizeof(val) / sizeof(val[0])))
         return;
     // Round-trip tests: tan(atan(x)) = x
-    if (!runRoundTripTests("RTRIP_TAN", tan, atan, ieeeTan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
+    if (!runRoundTripTests<false>("RTRIP_TAN", BcdUnaryOp(tan), BcdUnaryOp(atan), ieeeTan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
         return;
-    if (!runRandomRoundTripTests("RTRIP_TAN", tan, atan, ieeeTan, ieeeAtan, OPTS_ATAN))
+    if (!runRoundTripTests<true>("RTRIP_TAN", BcdUnaryOp(tan), BcdUnaryOp(atan), ieeeTan, ieeeAtan, nullptr, 0, OPTS_ATAN))
         return;
-    runRandomUnaryTests("TAN", tan, ieeeTan, OPTS_TAN);
+    runRandomTests<Arity::Unary>("TAN", BcdUnaryOp(tan), ieeeTan, OPTS_TAN);
 }
 
 // Run arctangent tests
@@ -352,7 +352,7 @@ void testAtan()
         "1.732050807568877",      // sqrt(3): atan = PI/3
     };
 
-    if (!runUnaryTests("ATAN", atan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("ATAN", BcdUnaryOp(atan), ieeeAtan, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomUnaryTests("ATAN", atan, ieeeAtan, OPTS_ATAN);
+    runRandomTests<Arity::Unary>("ATAN", BcdUnaryOp(atan), ieeeAtan, OPTS_ATAN);
 }

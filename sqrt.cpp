@@ -285,7 +285,7 @@ void testSqrt()
         "1.000000000000001",
     };
 
-    if (!runUnaryTests("SQRT", sqrt, ieeeSqrt, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("SQRT", BcdUnaryOp(sqrt), ieeeSqrt, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomUnaryTests("SQRT", sqrt, ieeeSqrt, OPTS_SQRT);
+    runRandomTests<Arity::Unary>("SQRT", BcdUnaryOp(sqrt), ieeeSqrt, OPTS_SQRT);
 }

@@ -20,6 +20,9 @@ constexpr Real LOOSE_TOL = REAL_LITERAL(1e-13);  // 13 correct digits (acceptabl
 
 enum class MatchLevel { OK, APPROX, FAIL };
 
+// Arity tag for compile-time dispatch (C++17 if constexpr)
+enum class Arity { Unary, Binary };
+
 // Check tolerance with IEEE noise detection
 // Returns MatchLevel indicating accuracy classification
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
@@ -27,11 +30,6 @@ MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, 16 significant digits)
 // Returns formatted string representation
 std::string formatBCD(const BCD& x);
-
-// Output a test result line
-// Returns true if execution should stop (FAIL with -e)
-bool printTestResult(const char* op, const BCD& a, const BCD& b,
-                     const BCD& result, MatchLevel level, Real ieee);
 
 // Options for random BCD generation with domain constraints
 struct RandomBCDOptions {
@@ -62,56 +60,30 @@ using IeeeBinaryOp = Real (*)(Real, Real);
 using BcdUnaryOp = void (*)(BCD&, BCD&);
 using IeeeUnaryOp = Real (*)(Real);
 
-// Combinatorial test runner - tests all pairs from values array
-// Returns: false if stopped early (FAIL with -e flag), caller should return
-bool runCombTests(const char* opName,
-                  BcdBinaryOp bcdOp,
-                  IeeeBinaryOp ieeeOp,
-                  const std::string* values,
-                  size_t valueCount);
+// ---------------------------------------------------------------------------
+// Unified test runners using C++17 if constexpr
+// ---------------------------------------------------------------------------
 
-// Random test runner - generates random test pairs
-// Returns: false if stopped early (FAIL with -e flag), caller should return
-bool runRandomTests(const char* opName,
-                    BcdBinaryOp bcdOp,
-                    IeeeBinaryOp ieeeOp,
-                    const RandomBCDOptions& opts);
+// Combinatorial/fixed-value test runner
+// For Binary: tests all pairs from values array
+// For Unary: tests each value from array
+// Returns: false if stopped early (FAIL with -e flag)
+template<Arity arity, typename BcdOp, typename IeeeOp>
+bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string* values, size_t count);
 
-// Unary test runner - tests each value from array
-// Returns: false if stopped early (FAIL with -e flag), caller should return
-bool runUnaryTests(const char* opName,
-                   BcdUnaryOp bcdOp,
-                   IeeeUnaryOp ieeeOp,
-                   const std::string* values,
-                   size_t valueCount);
+// Random test runner
+// Returns: false if stopped early (FAIL with -e flag)
+template<Arity arity, typename BcdOp, typename IeeeOp>
+bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const RandomBCDOptions& opts);
 
-// Random unary test runner - generates random test values
-// Returns: false if stopped early (FAIL with -e flag), caller should return
-bool runRandomUnaryTests(const char* opName,
-                         BcdUnaryOp bcdOp,
-                         IeeeUnaryOp ieeeOp,
-                         const RandomBCDOptions& opts);
-
-// Round-trip test runner - tests forward(inverse(x)) = x for inverse function pairs
-// Returns: false if stopped early (FAIL with -e flag), caller should return
+// Round-trip test runner - tests forward(inverse(x)) = x
+// Returns: false if stopped early (FAIL with -e flag)
+template<bool IsRandom>
 bool runRoundTripTests(const char* opName,
-                       BcdUnaryOp forwardOp,
-                       BcdUnaryOp inverseOp,
-                       IeeeUnaryOp ieeeForward,
-                       IeeeUnaryOp ieeeInverse,
-                       const std::string* values,
-                       size_t valueCount);
+                       BcdUnaryOp forwardOp, BcdUnaryOp inverseOp,
+                       IeeeUnaryOp ieeeForward, IeeeUnaryOp ieeeInverse,
+                       const std::string* values = nullptr, size_t count = 0,
+                       const RandomBCDOptions& opts = {});
 
-// Random round-trip test runner - generates random test values for round-trip tests
-// Returns: false if stopped early (FAIL with -e flag), caller should return
-bool runRandomRoundTripTests(const char* opName,
-                             BcdUnaryOp forwardOp,
-                             BcdUnaryOp inverseOp,
-                             IeeeUnaryOp ieeeForward,
-                             IeeeUnaryOp ieeeInverse,
-                             const RandomBCDOptions& opts);
-
-// Output a unary test result line
-// Returns true if execution should stop (FAIL with -e)
-bool printUnaryResult(const char* op, const BCD& a,
-                      const BCD& result, MatchLevel level, Real ieee);
+// Include template implementations
+#include "testbench.inl"

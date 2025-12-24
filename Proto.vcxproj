@@ -168,6 +168,7 @@
     <ClInclude Include="register.h" />
     <ClInclude Include="proto.h" />
     <ClInclude Include="testbench.h" />
+    <ClInclude Include="testbench.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

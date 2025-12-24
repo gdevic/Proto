@@ -513,9 +513,9 @@ void testLn()
         "8",                      // ln(8) = 3*ln(2)
     };
 
-    if (!runUnaryTests("LN", ln, ieeeLn, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("LN", ln, ieeeLn, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomUnaryTests("LN", ln, ieeeLn, OPTS_LN);
+    runRandomTests<Arity::Unary>("LN", ln, ieeeLn, OPTS_LN);
 }
 
 // IEEE exp for test runner
@@ -550,7 +550,7 @@ void testExp()
         "-1.2345e99"              // Very large value
     };
 
-    if (!runUnaryTests("EXP", exp, ieeeExp, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("EXP", BcdUnaryOp(exp), ieeeExp, val, sizeof(val) / sizeof(val[0])))
         return;
     // Round-trip tests: exp(ln(x)) = x (for positive x)
     // Use positive values only since ln requires x > 0
@@ -569,9 +569,9 @@ void testExp()
         "1e50",                   // Very large
         "1e-50",                  // Very small
     };
-    if (!runRoundTripTests("RTRIP_EXP", exp, ln, ieeeExp, ieeeLn, tripVal, sizeof(tripVal) / sizeof(tripVal[0])))
+    if (!runRoundTripTests<false>("RTRIP_EXP", BcdUnaryOp(exp), ln, ieeeExp, ieeeLn, tripVal, sizeof(tripVal) / sizeof(tripVal[0])))
         return;
-    if (!runRandomRoundTripTests("RTRIP_EXP", exp, ln, ieeeExp, ieeeLn, OPTS_LN))
+    if (!runRoundTripTests<true>("RTRIP_EXP", BcdUnaryOp(exp), ln, ieeeExp, ieeeLn, nullptr, 0, OPTS_LN))
         return;
-    runRandomUnaryTests("EXP", exp, ieeeExp, OPTS_EXP);
+    runRandomTests<Arity::Unary>("EXP", BcdUnaryOp(exp), ieeeExp, OPTS_EXP);
 }
