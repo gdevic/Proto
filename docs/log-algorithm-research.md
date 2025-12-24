@@ -175,6 +175,66 @@ Hybrid approach: Reduce argument to small range, apply Chebyshev/minimax polynom
 
 ---
 
+## Exponential Function (exp) - Inverse of ln
+
+### Overview
+The exponential function `exp(x)` is implemented as the inverse of `ln(x)` using the same CORDIC digit-by-digit approach. Since `ln()` decomposes a number using pseudo-division, `exp()` reconstructs it using pseudo-multiplication.
+
+### Algorithm
+```
+Input: x (BCD number)
+Output: exp(x)
+
+1. Handle sign:
+   - If x < 0, compute exp(|x|) then return 1/exp(|x|)
+
+2. Range reduction:
+   - Compute k = floor(x / ln(10))
+   - Compute r = x - k*ln(10), where 0 <= r < ln(10)
+   - exp(x) = exp(r) * 10^k
+
+3. Pseudo-division (decompose r):
+   For j = 0 to 15:
+     counter[j] = 0
+     While r >= ln_const[j]:
+       r = r - ln_const[j]
+       counter[j]++
+
+4. Pseudo-multiplication (build result):
+   result = 1.0
+   For j = 0 to 15:
+     For c = 0 to counter[j]-1:
+       result = result + (result >> j)
+       if overflow:
+         result = result / 10
+         k++
+
+5. Apply exponent:
+   result = result * 10^k
+```
+
+### Key Implementation Details
+
+**Range Reduction**: Uses division by ln(10) to split the input into an integer part `k` (which becomes the exponent) and a fractional remainder `r` (which is computed via CORDIC).
+
+**Shared Constants**: Uses the same `ln_const[]` table as `ln()`, enabling efficient code sharing in `log.cpp`.
+
+**Overflow/Underflow Handling**:
+- If result would exceed 10^99: return maximum value (9.999...e+99)
+- If result would be less than 10^-99: return zero
+
+**Negative Input**: Computed as `1/exp(|x|)` using the div() function, avoiding the need for a separate algorithm.
+
+### Performance
+- **Convergence**: Same as ln() - approximately one digit per iteration
+- **Operations**: ~100 BCD operations (shifts/adds) plus range reduction (div, mul)
+- **Precision**: Achieves 13-14 correct digits, matching ln()
+
+### Round-Trip Testing
+The implementation is verified using round-trip tests: `exp(ln(x)) = x` for positive values. This confirms that exp() correctly inverts ln() within tolerance.
+
+---
+
 ## References
 
 ### CORDIC and Digit-by-Digit Methods

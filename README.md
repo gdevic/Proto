@@ -136,7 +136,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Tangent (deg) | `tan10(S0, R)` | Range reduction + CORDIC (degrees) | Implemented |
 | Arctangent (deg) | `atan10(S0, R)` | CORDIC + deg conversion (degrees) | Implemented |
 | Square Root | `sqrt(S0, R)` | Digit-by-digit (like long division) | Implemented |
-| Exponential | `exp(a)` | | Planned |
+| Exponential | `exp(S0, R)` | CORDIC digit-by-digit (inverse of ln) | Implemented |
 
 ## Building
 
@@ -167,7 +167,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
-| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, tan, atan, tan10, atan10, sqrt) |
+| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
 | `-i` | Show test index (1-based) at start of each line |
 | `-r NUM` | Number of random tests to run (default: 2) |
 | `-v` | Verbose: also print IEEE value on OK lines |
@@ -239,3 +239,5 @@ Tests are split into combinatorial (fixed test values) and random (generated val
 **ATAN**: Works well across the full range. The 2 FAIL cases have errors around 1e-15 which are at machine precision limits and effectively correct.
 
 **TAN10/ATAN10**: Degree-based versions with range reduction. Range reduction is exact since 90° and 360° are exact decimals (unlike π for radians). Works well for angles away from asymptotes (90°, 270°). Round-trip tests show accumulated precision loss.
+
+**EXP**: CORDIC digit-by-digit method (inverse of ln). Uses range reduction via division by ln(10): exp(x) = exp(r) × 10^k where k = floor(x/ln(10)) and r = x - k×ln(10). Overflow (exp(x) > 10^99) returns max value; underflow (exp(-x) < 10^-99) returns zero. Achieves 13-14 digits of precision.

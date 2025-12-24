@@ -26,6 +26,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Multiplication** (`mult.cpp`): Shift-and-add with 32-digit accumulator (R + S2). Processes multiplier digits LSB to MSB, immediate carry propagation.
 - **Division** (`div.cpp`): Shift-and-subtract with 17-digit quotient. While dividend >= divisor: subtract and count. Produces 17 digits for normalization handling.
 - **Natural Log** (`log.cpp`): CORDIC digit-by-digit method (HP-35 style). 16 iterations with ln(1+10^-j) constants. See `docs/log-algorithm-research.md` for algorithm comparison.
+- **Exponential** (`log.cpp`): CORDIC digit-by-digit method (inverse of ln). Range reduction via division by ln(10), pseudo-division to decompose remainder, pseudo-multiplication to build result. Shares ln constant table with ln().
 - **Tangent** (`tan.cpp`): CORDIC digit-by-digit method using atan constants. Works for small angles (~0 to PI/4); requires range reduction for larger angles.
 - **Arctangent** (`tan.cpp`): CORDIC digit-by-digit method. Works across full range. See `docs/tan-algorithm-research.md` for algorithm comparison.
 
@@ -49,7 +50,6 @@ Domain constraints for different operations:
 - OPTS_ATAN (maxExp=99)
 
 ## Next Steps
-- Implement exp()
 - Implement range reduction for tan() (currently only works for small angles)
 - Each operation uses appropriate RandomBCDOptions preset
 
