@@ -50,6 +50,7 @@ constexpr RandomBCDOptions OPTS_TAN    = { 1,  false, true  };
 constexpr RandomBCDOptions OPTS_ATAN   = { 99, false, false };
 constexpr RandomBCDOptions OPTS_TAN10  = { 3,  false, false };  // degrees 0-999
 constexpr RandomBCDOptions OPTS_ATAN10 = { 99, false, false };  // any value
+constexpr RandomBCDOptions OPTS_SQRT   = { 50, true,  false };  // positive only
 
 // Generate a random BCD string with configurable domain constraints
 // Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)

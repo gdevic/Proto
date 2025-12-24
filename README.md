@@ -135,6 +135,7 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Arctangent | `atan(S0, R)` | CORDIC digit-by-digit (radians, HP-35 style) | Implemented |
 | Tangent (deg) | `tan10(S0, R)` | Range reduction + CORDIC (degrees) | Implemented |
 | Arctangent (deg) | `atan10(S0, R)` | CORDIC + deg conversion (degrees) | Implemented |
+| Square Root | `sqrt(S0, R)` | Digit-by-digit (like long division) | Implemented |
 | Exponential | `exp(a)` | | Planned |
 
 ## Building
@@ -166,7 +167,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
-| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, tan, atan, tan10, atan10) |
+| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, tan, atan, tan10, atan10, sqrt) |
 | `-i` | Show test index (1-based) at start of each line |
 | `-r NUM` | Number of random tests to run (default: 2) |
 | `-v` | Verbose: also print IEEE value on OK lines |

@@ -29,6 +29,7 @@ void tan(BCD &S0, BCD &R);
 void atan(BCD &S0, BCD &R);
 void tan10(BCD &S0, BCD &R);
 void atan10(BCD &S0, BCD &R);
+void sqrt(BCD &S0, BCD &R);
 
 // Test functions
 void testAddition();
@@ -40,3 +41,4 @@ void testTan();
 void testAtan();
 void testTan10();
 void testAtan10();
+void testSqrt();

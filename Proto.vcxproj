@@ -158,6 +158,7 @@
     <ClCompile Include="proto.cpp" />
     <ClCompile Include="tan.cpp" />
     <ClCompile Include="tan10.cpp" />
+    <ClCompile Include="sqrt.cpp" />
     <ClCompile Include="testbench.cpp" />
   </ItemGroup>
   <ItemGroup>
