@@ -12,7 +12,7 @@ bool isExpGT(const BCD& a, const BCD& b);
 void expCopy(BCD& dst, const BCD& src);
 
 // Increment exponent by 1
-// Sets FLAG_OF on overflow, with register state undefined
+// Sets FLAG_OF_ERR on overflow, with register state undefined
 void expInc(BCD& x);
 
 // Decrement exponent by 1
@@ -21,12 +21,12 @@ bool expDec(BCD& x);
 
 // Add exponents: result.exp = a.exp + b.exp
 // Returns true if overflow or underflow occurred
-// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Overflow: result > +99 sets FLAG_OF_ERR, register state undefined
 // Underflow: result < -99 sets exponent to zero (mantissa untouched)
 bool expAdd(BCD& result, const BCD& a, const BCD& b);
 
 // Subtract exponents: result.exp = a.exp - b.exp
 // Returns true if overflow or underflow occurred
-// Overflow: result > +99 sets FLAG_OF, register state undefined
+// Overflow: result > +99 sets FLAG_OF_ERR, register state undefined
 // Underflow: result < -99 sets exponent to zero (mantissa untouched)
 bool expSub(BCD& result, const BCD& a, BCD& b);

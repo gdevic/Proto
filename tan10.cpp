@@ -184,6 +184,7 @@ static void cordicTan(BCD& S0, BCD& R)
 
     // Part 3: Handle overflow
     if (isMantZero(S1.mant.data())) {
+        FLAG_OF_ERR = true;
         for (uint i = 0; i < MAX_MANT; i++)
             R.mant[i] = 9;
         R.exp[0] = 9;
@@ -291,6 +292,7 @@ void tan10(BCD& S0, BCD& R)
         regClear(R);
         // But if useReciprocal was set, we would have tan(90) = infinity
         if (useReciprocal) {
+            FLAG_OF_ERR = true;
             for (uint i = 0; i < MAX_MANT; i++)
                 R.mant[i] = 9;
             R.exp[0] = 9;

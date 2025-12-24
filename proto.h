@@ -13,9 +13,11 @@ inline BCD S4;
 inline BCD R;
 
 // Global flags (must be explicitly cleared)
-inline bool FLAG_OF = false;       // Overflow: exponent exceeded +99
-inline bool FLAG_S0_ZERO = false;  // S0 is zero (set by preCalc)
-inline bool FLAG_S1_ZERO = false;  // S1 is zero (set by preCalc)
+inline bool FLAG_DOM_ERR = false;   // Domain error: input invalid for function
+inline bool FLAG_OF_ERR = false;    // Overflow error: result too large to represent
+inline bool FLAG_DIV0_ERR = false;  // Division by zero error
+inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
+inline bool FLAG_S1_ZERO = false;   // S1 is zero (set by preCalc)
 
 // Arithmetic operations: read from S0 and S1, write result to R
 void add(BCD &S0, BCD &S1, BCD &R);

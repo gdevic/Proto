@@ -117,9 +117,11 @@ void sqrt(BCD& S0, BCD& R)
 
     preCalc1(S0, R);
 
-    // Domain check: sqrt(negative) is undefined, return 0
-    if (S0.sign)
+    // Domain error: sqrt(negative) is undefined
+    if (S0.sign) {
+        FLAG_DOM_ERR = true;
         return;
+    }
 
     // Zero check: sqrt(0) = 0
     if (FLAG_S0_ZERO)

@@ -39,9 +39,11 @@ void div(BCD& S0, BCD& S1, BCD& R)
 
     preCalc2(S0, S1, R);
 
-    // Division by zero
-    if (FLAG_S1_ZERO)
+    // Division by zero error
+    if (FLAG_S1_ZERO) {
+        FLAG_DIV0_ERR = true;
         return;
+    }
 
     // Zero dividend
     if (FLAG_S0_ZERO)

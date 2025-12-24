@@ -54,9 +54,11 @@ void ln(BCD& S0, BCD& R)
 
     preCalc1(S0, R);
 
-    // Special case: ln(x) undefined for x <= 0, return zero
-    if (S0.sign || FLAG_S0_ZERO)
+    // Domain error: ln(x) undefined for x <= 0
+    if (S0.sign || FLAG_S0_ZERO) {
+        FLAG_DOM_ERR = true;
         return;
+    }
 
     // Special case: ln(1.0) = 0 exactly
     // Without this, algorithm produces ~3.4e-14 due to CORDIC precision loss
@@ -390,7 +392,8 @@ void exp(BCD& S0, BCD& R)
         R.esign = false;
     }
     else if (S3.exp[0] > 0 || S3.exp[1] > 1) {
-        // Exponent >= 2 means k >= 100 -> overflow/underflow
+        // Exponent >= 2 means k >= 100 -> overflow error
+        FLAG_OF_ERR = true;
         if (inputSign) {
             // Negative input with large magnitude -> underflow to zero
             regClear(R);
@@ -430,7 +433,8 @@ void exp(BCD& S0, BCD& R)
         // If exp >= 99 (positive), 1/exp(|x|) will underflow
         // Nibble-safe: compare exp[0] > 9 or (exp[0] == 9 && exp[1] >= 9)
         if (!R.esign && R.exp[0] == 9 && R.exp[1] == 9) {
-            // Result will underflow to zero
+            // Result will underflow to zero (overflow error)
+            FLAG_OF_ERR = true;
             regClear(R);
             return;
         }
