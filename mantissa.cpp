@@ -66,6 +66,19 @@ bool mantShr(uint8_t* mant)
     return sticky;
 }
 
+// Increment mantissa by 1
+// Returns carry (0 or 1)
+int mantInc(uint8_t* mant)
+{
+    int carry = 1;
+    for (int i = MAX_MANT - 1; (i >= 0) && carry; i--) {
+        int sum = mant[i] + carry;
+        mant[i] = uint8_t(sum % 10);
+        carry = sum / 10;
+    }
+    return carry;
+}
+
 // Add magnitudes of two aligned mantissas (all 16 positions)
 // Returns carry (0 or 1)
 int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r)
