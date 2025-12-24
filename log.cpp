@@ -33,10 +33,10 @@ static void getLnConst(uint j, uint8_t* dst)
     }
     else {
         // ln(1 + 10^-j) ≈ 10^-j for small values
-        // This is (j+1) leading zeros followed by 9s
-        // e.g., j=8: positions 0-8 are 0, positions 9-15 are 9
-        for (uint i = 0; i < MAX_MANT; i++)
-            dst[i] = (i <= j) ? 0 : 9;
+        // Start from ln_const[K-1] and shift right to add more leading zeros
+        mantCopy(dst, ln_const[K - 1]);
+        for (uint8_t s = K - 1; s < j; s++)
+            mantShr(dst);
     }
 }
 
