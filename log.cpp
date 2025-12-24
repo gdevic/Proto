@@ -428,19 +428,8 @@ void exp(BCD& S0, BCD& R)
 
     // ---------- Part 6: Handle negative input ----------
     // exp(-x) = 1/exp(x)
+    // Note: Large negative inputs cause underflow, div() handles gracefully
     if (inputSign) {
-        // Check for underflow before division
-        // If exp >= 99 (positive), 1/exp(|x|) will underflow
-        // Nibble-safe: compare exp[0] > 9 or (exp[0] == 9 && exp[1] >= 9)
-        if (!R.esign && R.exp[0] == 9 && R.exp[1] == 9) {
-            // Result will underflow to zero (overflow error)
-            FLAG_OF_ERR = true;
-            regClear(R);
-            return;
-        }
-
-        // R = 1 / R (compute 1 / exp(|x|))
-        // div expects: S0 = numerator, S1 = denominator
         regCopy(S1, R);  // S1 = exp(|x|) (denominator)
         regClear(S0);
         S0.mant[0] = 1;  // S0 = 1 (numerator)
@@ -510,6 +499,9 @@ void testExp()
         "4.605170185988092",      // exp(2*ln(10)) = 100
         "1.000000000000001",      // Very close to 1
         "0.000000000000001",      // Very close to 0
+        "-227.955924",            // Last value before underflow (≈ 99*ln(10))
+        "-228",                   // Underflows to 0
+        "-1.2345e99"              // Very large value
     };
 
     if (!runUnaryTests("EXP", exp, ieeeExp, val, sizeof(val) / sizeof(val[0])))
