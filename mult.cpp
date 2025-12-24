@@ -78,7 +78,7 @@ void mul(BCD& S0, BCD& S1, BCD& R)
     if (R.mant[0] != 0) {
         expInc(R);  // Can overflow but we don't care
         // Check S2 for sticky
-        sticky |= !isMantZero(S2);
+        sticky |= !isMantZero(S2.mant.data());
     }
     else {
         // Shift left: bring S2.mant[0] into R.mant[15]

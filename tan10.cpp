@@ -186,7 +186,7 @@ static void cordicTan(BCD& S0, BCD& R)
     }
 
     // Part 3: Handle overflow
-    if (isMantZero(S1)) {
+    if (isMantZero(S1.mant.data())) {
         for (uint i = 0; i < MAX_MANT; i++)
             R.mant[i] = 9;
         R.exp[0] = 9;
@@ -290,7 +290,7 @@ void tan10(BCD& S0, BCD& R)
     // Now S0 is in [0, 45] degrees
 
     // Handle tan(0) = 0 after reduction
-    if (isMantZero(S0)) {
+    if (isMantZero(S0.mant.data())) {
         regClear(R);
         // But if useReciprocal was set, we would have tan(90) = infinity
         if (useReciprocal) {

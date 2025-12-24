@@ -38,7 +38,7 @@ void preCalc1(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
-    FLAG_S0_ZERO = isMantZero(S0);
+    FLAG_S0_ZERO = isMantZero(S0.mant.data());
     regClear(R);
 }
 
@@ -47,8 +47,8 @@ void preCalc2(BCD& S0, BCD& S1, BCD& R)
 {
     assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
 
-    FLAG_S0_ZERO = isMantZero(S0);
-    FLAG_S1_ZERO = isMantZero(S1);
+    FLAG_S0_ZERO = isMantZero(S0.mant.data());
+    FLAG_S1_ZERO = isMantZero(S1.mant.data());
     regClear(R);
 }
 
@@ -72,7 +72,7 @@ void swapMant(uint8_t* a, uint8_t* b)
 void normalize(BCD& x)
 {
     // Check if entirely zero
-    if (isMantZero(x)) {
+    if (isMantZero(x.mant.data())) {
         x.sign = false;
         x.esign = false;
         x.exp[0] = x.exp[1] = 0;
@@ -103,7 +103,7 @@ void round(BCD& S0, uint digits, BCD& R)
     }
 
     // Zero input yields zero output
-    if (isMantZero(S0)) {
+    if (isMantZero(S0.mant.data())) {
         regClear(R);
         return;
     }

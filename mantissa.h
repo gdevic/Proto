@@ -2,9 +2,9 @@
 
 #include "bcd.h"
 
-// Check if BCD mantissa is zero (checks all 16 positions)
+// Check if mantissa is zero (checks all 16 positions)
 // Returns true if all mantissa digits are zero
-bool isMantZero(const BCD& x);
+bool isMantZero(const uint8_t* mant);
 
 // Returns true if two mantissas are equal
 bool isMantEQ(const uint8_t *a, const uint8_t *b);

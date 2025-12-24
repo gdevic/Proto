@@ -148,7 +148,7 @@ void tan(BCD& S0, BCD& R)
 
     // ---------- Part 3: Handle overflow ----------
     // If x (S1) is zero, tan approaches infinity
-    if (isMantZero(S1)) {
+    if (isMantZero(S1.mant.data())) {
         // Return maximum value (overflow)
         for (uint i = 0; i < MAX_MANT; i++)
             R.mant[i] = 9;

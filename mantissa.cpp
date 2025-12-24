@@ -4,12 +4,12 @@
 // Public API
 // ---------------------------------------------------------------------------
 
-// Check if BCD mantissa is zero (checks all 16 positions)
+// Check if mantissa is zero (checks all 16 positions)
 // Returns true if all mantissa digits are zero
-bool isMantZero(const BCD& x)
+bool isMantZero(const uint8_t* mant)
 {
     for (uint i = 0; i < MAX_MANT; i++)
-        if (x.mant[i] != 0) return false;
+        if (mant[i] != 0) return false;
     return true;
 }
 

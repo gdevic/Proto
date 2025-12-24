@@ -71,7 +71,7 @@ void div(BCD& S0, BCD& S1, BCD& R)
     uint8_t q17 = divDigit(overflow);
 
     // Remainder is [overflow, S0], check if non-zero for sticky
-    bool hasRemainder = (overflow != 0) || !isMantZero(S0);
+    bool hasRemainder = (overflow != 0) || !isMantZero(S0.mant.data());
 
     // Normalize: if first quotient digit is 0, shift left and decrement exponent
     if (R.mant[0] == 0) {
