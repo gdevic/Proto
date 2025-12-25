@@ -161,7 +161,7 @@ Hybrid approach: Reduce argument to small range, apply Chebyshev/minimax polynom
 ### BCD Considerations
 - The BCD structure already separates mantissa and exponent, making range reduction trivial
 - Exponent field directly gives the power of 10
-- Sticky bit tracks precision loss during shifts
+- Operations use local guard digit and sticky flag to track precision loss during shifts
 
 ### Special Cases
 - ln(x) undefined for x <= 0: return zero

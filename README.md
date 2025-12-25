@@ -4,9 +4,9 @@ A software BCD (Binary-Coded Decimal) arithmetic implementation serving as a gol
 
 ## Overview
 
-This implementation provides 16-digit decimal precision arithmetic operations. The software and hardware implementations share identical precision limits and alignment behavior, enabling direct result comparison. In addition, this code includes computation of golden values for verification using IEEE long double operations.
+This implementation provides 16-digit decimal precision arithmetic operations (add/sub/mul/div). Other functions are also implemented and they provide somewhat less precision, which is also characterized in this or another supporting document. The software and hardware implementations share identical precision limits and alignment behavior, enabling direct result comparison. In addition, this code includes computation of golden values for verification using IEEE long double operations.
 
-## BCD Structure
+## BCD Register Structure
 
 ```cpp
 struct BCD {
@@ -14,7 +14,6 @@ struct BCD {
     array<uint8_t, 2> exp;     // Exponent digits (00-99)
     bool sign;                 // Number sign (true = negative)
     bool esign;                // Exponent sign (true = negative)
-    bool sticky;               // True if any non-zero digit shifted out
 };
 ```
 
@@ -24,7 +23,7 @@ Example: mantissa=1234..., exp=0 represents 1.234
 
 ## Rounding
 
-Uses banker's rounding (round half to even): when exactly 0.5, rounds to make last digit even. The sticky bit detects exact ties.
+Uses banker's rounding (round half to even): when exactly 0.5, rounds to make last digit even. Operations track a local guard digit (17th digit) and sticky flag internally for precise rounding.
 
 ## Constructor
 
@@ -69,19 +68,15 @@ But both values are essentially "zero" in 13-14 digit precision. For near-zero r
 
 ## Tolerance System
 
-BCD calculations target **13-14 correct digits** when compared to IEEE results.
+For complex functions, BCD calculations target **13-14 correct digits** when compared to IEEE results.
 
 | Level | Tolerance | Correct Digits | Meaning |
 |-------|-----------|----------------|---------|
 | **OK** | ≤ 1e-14 | 14+ | Full precision |
 | **~OK** (APPROX) | ≤ 1e-13 | 13-14 | Acceptable precision loss |
-| **FAIL** | > 1e-13 | <13 | Actual algorithm bug |
+| **FAIL** | > 1e-13 | <13 | Actual algorithm bug or deficiency |
 
 ### Tolerance Logic
-
-```cpp
-MatchLevel checkTolerance(Real expected, Real actual)
-```
 
 - **Near-zero results** (|value| < 1e-13): Uses **absolute** tolerance
   - Avoids meaningless relative error from catastrophic cancellation
@@ -96,7 +91,7 @@ MatchLevel checkTolerance(Real expected, Real actual)
 
 2. **Hardware correlation**: Both software and hardware will exhibit identical precision loss. The `~OK` category documents these cases without flagging them as failures.
 
-3. **Bug detection**: Future functions (log, tan, etc.) may have actual algorithmic bugs. The `FAIL` category catches errors beyond expected precision loss.
+3. **Bug detection**: Complex functions (log, tan, etc.) may have actual algorithmic bugs. The `FAIL` category catches errors beyond expected precision loss.
 
 ## Precision Loss Scenarios
 

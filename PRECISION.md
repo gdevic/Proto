@@ -4,17 +4,28 @@
 
 ### User Register
 ```
-┌──────┬─────────────────────────────┬──────┬────────┬─────────┐
-│ Msign│  Mantissa (16 BCD digits)   │ Esign│Exp(2d) │ Sticky  │
-│ 1bit │      16 × 4 = 64 bits       │ 1bit │ 8 bits │  1 bit  │
-└──────┴─────────────────────────────┴──────┴────────┴─────────┘
+┌──────┬─────────────────────────────┬──────┬────────┐
+│ Msign│  Mantissa (16 BCD digits)   │ Esign│Exp(2d) │
+│ 1bit │      16 × 4 = 64 bits       │ 1bit │ 8 bits │
+└──────┴─────────────────────────────┴──────┴────────┘
 ```
 
-- **Mantissa**: 16 BCD digits (digits 1-15 significant, digit 16 as guard)
+- **Mantissa**: 16 BCD digits (all 16 significant with guard digit rounding)
 - **Exponent**: 2 BCD digits, signed, range -99 to +99
 - **Zero**: Mantissa all zeros; exponent/sign don't matter
 - **Normalization**: Digit 1 ∈ {1..9} always (except zero)
-- **Rounding**: Banker's rounding (round half to even), applied when collapsing 16→15 for final result
+- **Rounding**: Banker's rounding (round half to even) using local guard digit + sticky during operations
+
+### BCD Structure
+
+```cpp
+struct BCD {
+    array<uint8_t, 16> mant;  // 16 significant digits
+    array<uint8_t, 2> exp;    // Exponent (00-99)
+    bool sign;                 // Number sign
+    bool esign;                // Exponent sign
+};
+```
 
 ## The Problem: Catastrophic Cancellation
 
@@ -37,85 +48,87 @@ After shift:  [0,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9]  (15 nines)
 
 Now we're subtracting the wrong value. This is **catastrophic cancellation**: when subtracting nearly-equal numbers, the significant digits of the result come from the least significant digits of the operands—precisely the ones we threw away.
 
-## Conceptual Solution: Guard Digit + Sticky Flag
+## Solution: Guard Digit + Sticky Flag
 
-The classic approach uses a **guard digit**—an extra digit position beyond the significant mantissa that captures the first digit shifted out. Combined with a **sticky flag** that tracks whether any non-zero digits were lost beyond the guard, this provides enough information for correct rounding.
+We achieve full 16-digit precision by tracking a **guard digit** (the first digit beyond the 16-digit mantissa) and a **sticky flag** (whether any non-zero digits exist beyond the guard) as local variables during operations.
 
 | Component | Storage | Role |
 |-----------|---------|------|
-| Guard | 4 bits | Extra digit; participates in arithmetic; used for rounding |
-| Sticky | 1 bit | Indicates non-zero digits were lost beyond guard |
+| Guard | Local variable (4 bits) | 17th digit; used for rounding decision |
+| Sticky | Local variable (1 bit) | Indicates non-zero digits were lost beyond guard |
 
-### What Makes the Guard Digit Special?
+The guard and sticky are not stored in the BCD structure. They are computed and used entirely within each arithmetic operation, then discarded after rounding.
 
-The "guard digit" is a *role*, not a distinct storage class. It's just digit 16, but its purpose is sacrificial:
-
-**Why not claim 16 digits of precision?** Because you can't guarantee them.
+### How 16 Digits Remain Fully Significant
 
 Consider multiplication of two 16-digit numbers:
 - True product: 32 digits
-- You keep: 16 digits + sticky
-- Digit 16 is affected by truncation of digits 17-32
+- We compute: 16 digits in R + 16 digits in S2 (32-digit accumulator)
+- Guard digit: S2[0] or S2[1] (depending on normalization)
+- Sticky: remaining S2 digits
 
-So digit 16 is correct to within ±1, depending on what was truncated. It's "good enough" to round correctly, but not to trust as significant.
+The 17th digit (guard) tells us exactly how to round digit 16. Combined with sticky for tie-breaking, we achieve correctly-rounded results where all 16 stored digits are significant.
 
-| Digit position | After 1 multiply | After 2 multiplies | After n multiplies |
-|----------------|------------------|--------------------|--------------------|
-| 1-14 | Exact | Exact | Likely exact |
-| 15 | Exact | Exact (usually) | Probably ±1 |
-| 16 | ±1 possible | ±2 possible | ±n possible |
+### Guard Digit and Sticky Bit
 
-By calling digit 16 "guard" rather than "significant," we're being honest: it protects digits 1-15, not to be trusted itself.
+During alignment, we track two pieces of information about shifted-out digits:
 
-## Current Implementation: 16 Digits + Sticky
+| Component | What it tracks | Used by |
+|-----------|----------------|---------|
+| **Guard** | First digit shifted out (0-9) | Addition (rounding) |
+| **Sticky** | Any subsequent non-zero digit shifted out | Subtraction (borrow), Addition (tie-breaking) |
 
-Our implementation uses all 16 mantissa positions, with the sticky flag tracking precision loss:
+### Addition: Guard Digit Rounding
 
-```cpp
-struct BCD {
-    array<uint8_t, 16> mant;  // 16 digits (15 significant + guard)
-    array<uint8_t, 2> exp;    // Exponent (00-99)
-    bool sign;                 // Number sign
-    bool esign;                // Exponent sign
-    bool sticky;               // True if non-zero digit shifted out
-};
-```
+After addition, banker's rounding is applied: if guard > 5, round up; if guard = 5, round up only if sticky is set or LSB is odd.
 
-### During Alignment
+**Precision improvement** (when guard > 5):
 
-`mantShr()` returns true if a non-zero digit was shifted out:
+| Guard Digit | Error Reduction |
+|-------------|-----------------|
+| 6 | **1.5x** better |
+| 7 | **2.3x** better |
+| 8 | **4x** better |
+| 9 | **9x** better |
 
-```cpp
-while (!isExpEQ(S0, S1)) {
-    sticky |= mantShr(S1.mant.data());
-    expInc(S1);
-}
-```
+**Concrete example**: `1.0 + 0.5000000000000009` (1 shift, guard=9)
 
-### During Subtraction
+| Result | Value | Relative Error |
+|--------|-------|----------------|
+| True value | `1.5000000000000009` | — |
+| Truncated | `1.500000000000000` | 9e-16 |
+| Rounded | `1.500000000000001` | 1e-16 |
 
-The sticky flag generates an initial borrow in `mantSub()`:
+The guard digit provides **~1 digit of precision** for addition by enabling proper rounding instead of truncation.
 
-```cpp
-void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
-{
-    int borrow = sticky ? 1 : 0;
-    // ... subtract with borrow propagation
-}
-```
+### Subtraction: Sticky Bit Borrow
 
-If sticky is set, the subtrahend had non-zero digits beyond what we stored. Any non-zero digit minus zero produces a borrow of exactly one.
+For subtraction, any shifted-out non-zero (guard or sticky) generates an initial borrow in the mantissa subtraction.
 
-### During Normalization
+**What it does**: Preserves the 16th digit's correctness that would otherwise be lost.
 
-Results often have leading zeros after subtraction:
+**Concrete example**: `1.000000000000001 - 0.9999999999999999`
 
-```cpp
-while (x.mant[0] == 0) {
-    mantShl(x.mant.data());
-    expDec(x);
-}
-```
+After shifting B right by 1, the trailing `9` is lost but sets `guard=9`:
+
+| Result | Value | Relative Error |
+|--------|-------|----------------|
+| True value | `1.1e-15` | — |
+| With borrow | `1.0e-15` | 9% |
+| Without borrow | `2.0e-15` | 82% |
+
+The initial borrow changes the LSB calculation from `1-9-0 = -8 → digit 2` to `1-9-1 = -9 → digit 1`, yielding **1 additional correct digit**.
+
+**False zero prevention**: Without the borrow, equal-looking mantissas after alignment produce incorrect zeros:
+- `1.0000000000000009 - 1.000000000000000` → 9 shifted out → mantissas appear equal → **wrong zero**
+- With guard/sticky: detects non-zero was shifted out, correctly produces non-zero result
+
+### Summary: Both Operations Now Have 16-Digit Precision
+
+| Operation | Mechanism | Precision |
+|-----------|-----------|-----------|
+| Addition | Guard digit rounding | ~16 digits |
+| Subtraction | Sticky/guard borrow | ~16 digits |
 
 ## Precision Analysis by Operation
 
@@ -137,10 +150,10 @@ When exp(A) - exp(B) = k:
 Started with 15 good digits in each operand; end with 1 significant digit. This is intrinsic.
 
 **Guaranteed precision** (no cancellation):
-- 15 digits for the represented result
+- 16 digits for the represented result (guard digit rounding for add, sticky borrow for sub)
 - Error ≤ 0.5 ULP, relative error < 5 × 10⁻¹⁶
 
-**With cancellation**: Precision degrades proportionally. Cancel k leading digits → retain at most 15 - k significant digits.
+**With cancellation**: Precision degrades proportionally. Cancel k leading digits → retain at most 16 - k significant digits.
 
 ### Multiplication
 
@@ -155,12 +168,13 @@ For j = 15 down to 0 (multiplier digit, LSB to MSB):
         Immediate carry propagation upward
 ```
 
-**Normalization**: Product of two normalized mantissas is in range [1, 100):
-- If R.mant[0] ≠ 0: product ≥ 10, increment exponent, all of S2 → sticky
-- If R.mant[0] = 0: product ∈ [1, 10), shift R left, S2[0] → R[15], S2[1..15] → sticky
+**Normalization and Rounding**: Product of two normalized mantissas is in range [1, 100):
+- If R.mant[0] ≠ 0: product ≥ 10, increment exponent, guard = S2[0], sticky = S2[1..15]
+- If R.mant[0] = 0: product ∈ [1, 10), shift R left, S2[0] → R[15], guard = S2[1], sticky = S2[2..15]
+- Apply banker's rounding using guard + sticky
 
 **Precision**:
-- 16 digits stored (15 significant + guard)
+- 16 significant digits (guard digit rounding)
 - Correctly rounded to 0.5 ULP
 - Relative error < 5 × 10⁻¹⁶
 
@@ -189,12 +203,13 @@ Main loop (16 iterations, fits in 4-bit counter):
     hasRemainder = (overflow ≠ 0) OR (S0 ≠ 0)
 ```
 
-**Normalization**: Quotient of two normalized mantissas is in range (0.1, 10):
-- If R.mant[0] ≠ 0: quotient ≥ 1, q17 and remainder → sticky
-- If R.mant[0] = 0: quotient ∈ [0.1, 1), shift R left, q17 → R[15], remainder → sticky, decrement exponent
+**Normalization and Rounding**: Quotient of two normalized mantissas is in range (0.1, 10):
+- If R.mant[0] ≠ 0: quotient ≥ 1, guard = q17, sticky = remainder
+- If R.mant[0] = 0: quotient ∈ [0.1, 1), shift R left, q17 → R[15], compute q18 as guard, sticky = new remainder, decrement exponent
+- Apply banker's rounding using guard + sticky
 
 **Precision**:
-- 16 digits stored (15 significant + guard)
+- 16 significant digits (guard digit rounding)
 - Correctly rounded to 0.5 ULP
 - Relative error < 5 × 10⁻¹⁶
 
@@ -224,24 +239,24 @@ Part 5 - Exponent adjustment:
     result += exponent × ln(10)
 ```
 
-**Precision ceiling**: ~14 digits, not 15-16.
+**Precision ceiling**: ~14 digits
 
-Unlike add/sub/mult/div which produce correctly-rounded results with 15 significant digits, ln() has inherent algorithmic error that limits precision to approximately 14 digits.
+Unlike add/sub/mult/div which produce correctly-rounded results with 16 significant digits, ln() has inherent algorithmic error that limits precision to approximately 14 digits.
 
 **Error sources**:
 1. **Truncated constants**: ln(2), ln(1.1), ln(10), etc. stored as 16 digits
 2. **Approximation**: ln(1 + 10^-j) ≈ 10^-j for j ≥ 8 (valid but adds ~10^-16 per use)
-3. **Accumulated arithmetic**: 16 iterations of 16-digit addition compounds small errors
+3. **Accumulated arithmetic**: 16 iterations of 16-digit additions compounds small errors
 
-**Why sticky tracking doesn't help**:
+**Why guard digit rounding doesn't help**:
 
-Sticky captures truncation error—digits 17+ that were discarded. It helps round correctly when the computed value is accurate but truncated.
+Guard digit rounding captures truncation error—the 17th digit that was discarded. It helps round correctly when the computed value is accurate but truncated.
 
-ln()'s error is different: digits 14-16 are sometimes *computed wrong* due to algorithm limitations, not truncated. Tracking what was lost beyond digit 16 cannot fix an error in digit 15.
+ln()'s error is different: digits 14-16 are sometimes *computed wrong* due to algorithm limitations, not truncated. The 17th digit cannot fix an error in digit 15.
 
-| Error type | Sticky helps? | Example |
-|------------|---------------|---------|
-| Truncation (digits 17+ lost) | Yes | mult: 32→16 digits |
+| Error type | Guard rounding helps? | Example |
+|------------|----------------------|---------|
+| Truncation (17th digit lost) | Yes | mult: 32→16 digits |
 | Algorithmic (digits 14-16 wrong) | No | ln: CORDIC accumulation |
 
 **What would improve precision**:
@@ -253,60 +268,52 @@ Guard digits—computing internally with 18-digit precision and outputting 16. T
 **Definition**: Sticky = 1 iff any digit beyond the guard is nonzero.
 
 **Banker's rounding (round half to even) rule**:
-```
-if guard > 5: round up
-if guard < 5: truncate
-if guard == 5:
-    if sticky is set OR LSB of digit 15 is 1:
-        round up
-    else:
-        truncate
-```
+- If guard > 5: round up
+- If guard < 5: truncate
+- If guard = 5: round up if sticky is set OR if digit 16 is odd; otherwise truncate
 
 The sticky bit is essential for tie-breaking. If the guard digit is exactly 5, the sticky bit tells us if the "true" value was X.500...0 or X.5... with some non-zero digits following.
 - If sticky is set, the value is > X.5, so we round up.
-- If sticky is clear, the value is exactly X.5. We round to make the last significant digit (digit 15) even.
+- If sticky is clear, the value is exactly X.5. We round to make the last significant digit (digit 16) even.
 
-**Why keep sticky?**
-1.  **Correct rounding**: Essential for unbiased "round half to even" tie-breaking.
-2.  **Chain detection**: Tells whether a result is exact or had discarded information.
-3.  **Division termination**: Distinguishes "quotient is exact" from "quotient was truncated."
+**Note**: The sticky bit is a local variable computed within each operation, not stored in the BCD structure / User Register. It is used only for rounding decisions and then discarded.
 
 ## Chained Operations: Round Intermediate or Not?
 
 Consider n operations. Two strategies:
 
-**(A) Round after each operation**: Every intermediate rounds 16→15, continues as 15 digits.
+**(A) Round internally per operation**: Each operation uses guard digit rounding to produce 16 correctly-rounded digits.
 
-**(B) Defer rounding**: Keep all 16 digits through chain, round only final result.
+**(B) Defer all rounding**: Keep raw results (no guard digit rounding), round only final result.
+
+We use **Strategy A** because it minimizes error accumulation in chains of operations.
 
 ### Error Analysis
 
-Let ε = 0.5 × 10⁻¹⁵ (half ULP in 15-digit precision).
+Let ε = 0.5 × 10⁻¹⁶ (half ULP in 16-digit precision).
 
-**Strategy A**: Each operation introduces up to ε error.
-- Worst-case: n × ε
-- Expected: √n × ε
+**Strategy A (used)**: Each operation introduces at most ε error (correctly rounded).
+- After n operations: worst-case n × ε, expected √n × ε
+- For n=10: ~5 × 10⁻¹⁶, still within 16-digit precision
 
-**Strategy B**:
-- Intermediate values: 16 digits (relative error < 0.5 × 10⁻¹⁶ per op)
-- Final rounding adds at most ε
-- Total error ≈ n × 10⁻¹⁶ + ε ≈ ε for moderate n
+**Strategy B**: Would require 17-digit intermediate storage to achieve correct rounding.
+- Without guard digit: truncation error up to 10⁻¹⁵ per operation
+- Accumulates faster than Strategy A
 
 ### Example: Iterative Algorithms (e.g., Sqrt, Log)
 
-A typical iterative algorithm might take 4-5 iterations to converge to 15 digits of precision.
+A typical iterative algorithm might take 4-5 iterations to converge to 16 digits of precision.
 
-| Strategy | Expected precision | Worst case |
+| Approach | Expected precision | Worst case |
 |----------|-------------------|------------|
-| Round each op | 13.5-14 digits | ~13 digits |
-| Defer rounding | 14.8-15 digits | ~14.5 digits |
+| With guard digit rounding | 15.5-16 digits | ~15 digits |
+| Without guard digit | 14-14.5 digits | ~13.5 digits |
 
-**Verdict**: Defer rounding. The gain is nearly a full digit of precision.
+**Verdict**: Guard digit rounding provides nearly a full extra digit of precision.
 
 ## The Guard Digit Boundary Problem
 
-If the true guard digit is 4 but you computed 5 (due to accumulated error), you round up when you shouldn't. The error spills into digit 15.
+If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated error), you round up when you shouldn't. The error spills into digit 16.
 
 **Quantifying the risk**: After n operations, guard digit uncertainty is roughly ±n/2.
 
@@ -319,35 +326,33 @@ If the true guard digit is 4 but you computed 5 (due to accumulated error), you 
 
 | Operations | Guaranteed precision | Notes |
 |------------|---------------------|-------|
-| 1 | 15.0 digits | Correctly rounded |
-| 2-3 | 14.9 digits | Rarely mis-round |
-| 4-10 | 14.5 digits | Occasional mis-round at digit 15 |
-| 10-20 | 14.0 digits | Assume digit 15 unreliable |
-| 20+ | 13.5 digits | Errors may reach digit 14 |
+| 1 | 16.0 digits | Correctly rounded (guard digit rounding) |
+| 2-3 | 15.5 digits | Rarely mis-round |
+| 4-10 | 15.0 digits | Occasional mis-round at digit 16 |
+| 10-20 | 14.5 digits | Assume digit 16 unreliable |
+| 20+ | 14.0 digits | Errors may reach digit 15 |
 
 ## Precision Summary
 
 | Operation | Guaranteed precision | Notes |
 |-----------|---------------------|-------|
-| Add/Sub (no cancellation) | 15.0 digits | Correctly rounded |
-| Add/Sub (with cancellation) | 15 - k digits | k = cancelled digits; intrinsic |
-| Multiply | 15.0 digits | Correctly rounded |
-| Divide | 15.0 digits | Correctly rounded |
+| Add/Sub (no cancellation) | 16.0 digits | Guard digit rounding (add), sticky borrow (sub) |
+| Add/Sub (with cancellation) | 16 - k digits | k = cancelled digits; intrinsic |
+| Multiply | 16.0 digits | Guard digit rounding (17th digit of 32-digit product) |
+| Divide | 16.0 digits | Guard digit rounding (17th/18th quotient digit) |
 | Sqrt | 14.9 digits | Iterative digit-by-digit |
 | Log/Exp | 14.5 digits | Argument reduction matters |
 | Atan | 14.8 digits | CORDIC, 16 iterations |
 | Sin/Cos/Tan | 14.3-14.5 digits | Via atan + identities |
 
-All figures assume deferred rounding. Subtract ~1 digit if rounding after each operation.
+All figures assume guard digit rounding is applied at each operation (Strategy A).
 
 ## Recommendations
 
-1. **Keep 16 digits through all intermediate computations**. Only round 16→15 when storing to user-visible register, displaying, or exporting.
+1. **Keep 16 digits through all intermediate computations**. Round only when storing to user-visible register, displaying, or exporting.
 
-2. **Propagate sticky faithfully**: `result.sticky = op_result.sticky OR (discarded_digits != 0)`
+2. **Always normalize after each operation**: Maintains invariant that digit 1 ∈ [1,9] (or zero).
 
-3. **Always normalize after each operation**: Maintains invariant that digit 1 ∈ [1,9] (or zero).
+3. **Accept 15 digits as guaranteed precision** for operations involving more than one primitive. All 16 digits are usually correct for basic operations.
 
-4. **Accept 14 digits as guaranteed precision** for operations involving more than one primitive. Document digit 15 as "usually correct."
-
-5. **For CORDIC tables**: Store arctan(10^-i) constants to 17 digits—one more than working precision ensures table lookup error doesn't dominate.
+4. **For CORDIC tables**: Store arctan(10^-i) constants to 17 digits—one more than working precision ensures table lookup error doesn't dominate.

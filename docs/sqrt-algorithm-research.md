@@ -58,13 +58,7 @@ The current `sqrt.cpp` implementation uses:
 
 **32-digit extended arithmetic**: Register pairs (S3+S1 for remainder, S4+S2 for subtrahend) provide 32 digits of working precision.
 
-**Nibble-safe doubling**: The `mantDouble()` function uses the 5-threshold trick:
-```cpp
-bool next_carry = (d >= 5);
-if (d >= 5) d -= 5;
-d = d + d + carry;  // max: 4+4+1 = 9
-```
-This ensures all intermediate values stay in 0-9 range, perfect for 4-bit nibble hardware.
+**Nibble-safe doubling**: Uses the 5-threshold trick—if digit ≥ 5, subtract 5 first, then double and add carry. Maximum result is 4+4+1=9, ensuring all intermediate values stay in 0-9 range for 4-bit nibble hardware.
 
 **Digit finding by repeated subtraction**: Rather than computing `(20*R + q) * q` directly for each candidate q, the implementation uses:
 ```
@@ -427,12 +421,7 @@ Requires:
 
 1. **32-digit extended arithmetic**: Using register pairs (S3+S1, S4+S2) naturally extends the 16-digit format.
 
-2. **Nibble-safe doubling**: The 5-threshold trick in `mantDouble()` keeps all values in 0-9:
-   ```cpp
-   bool next_carry = (d >= 5);
-   if (d >= 5) d -= 5;
-   d = d + d + carry;  // max: 4+4+1 = 9
-   ```
+2. **Nibble-safe doubling**: The 5-threshold trick keeps all values in 0-9 (subtract 5 if ≥5, then double and add carry; max result is 9).
 
 3. **Odd-number sequence for digit finding**: Instead of computing `(20*R + q) * q` for each candidate, using:
    ```
@@ -450,12 +439,7 @@ Requires:
 
 3. **Parallel comparison**: In hardware, the compare-subtract loop could potentially be parallelized using multiple comparators.
 
-4. **Subtrahend increment by 2**: The current code does:
-   ```cpp
-   ext32Inc(S4.mant.data(), S2.mant.data());
-   ext32Inc(S4.mant.data(), S2.mant.data());
-   ```
-   A dedicated "add 2" function could save one pass.
+4. **Subtrahend increment by 2**: Currently uses two separate increment calls; a dedicated "add 2" function could save one pass.
 
 ### Edge Cases Handled Correctly
 

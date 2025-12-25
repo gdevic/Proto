@@ -2,7 +2,7 @@
 
 ## The BCD Structure
 
-Binary-Coded Decimal (BCD) stores each decimal digit separately, avoiding the representation errors inherent in binary floating-point. Our implementation uses a scientific notation format:
+Binary-Coded Decimal (BCD) stores each decimal digit separately, avoiding the representation errors inherent in binary floating-point. Our reference implementation uses a scientific notation format:
 
 ```cpp
 struct BCD {
@@ -10,7 +10,6 @@ struct BCD {
     array<uint8_t, 2> exp;    // 2-digit exponent (0-99)
     bool sign;                 // Number sign
     bool esign;                // Exponent sign
-    bool sticky;               // True if any non-zero digit shifted out
     Real value;                // Original input value (for verification)
 };
 ```
@@ -31,16 +30,7 @@ BCD A.value + BCD B.value ─────────► Long Double Result (ref
              BCD operation (to verify)
 ```
 
-Since each BCD stores its original input as `Real`, the golden value computation uses long double precision automatically:
-
-```cpp
-S0 = BCD("123.456");
-S1 = BCD("789.012");
-Real expected = S0.value + S1.value;  // Computed at long double precision
-add(S0, S1, R);                       // BCD addition: S0 + S1 -> R
-Real actual = R.toReal();             // BCD result converted back
-withinTolerance(expected, actual);    // Compare
-```
+Since each BCD stores its original input as `Real`, the golden value computation uses long double precision automatically. The workflow is: compute expected result using IEEE arithmetic on stored values, perform BCD operation, convert BCD result back to Real, then compare.
 
 The critical insight: **we need a reference more precise than what we're testing**. If the reference has equal or less precision than our BCD, we can't distinguish BCD bugs from reference limitations.
 
@@ -59,31 +49,11 @@ Even with `long double` as our golden value, we can't expect exact equality. Con
 
 Values like 0.1, 0.789, or 999.999 cannot be exactly represented in binary floating-point. When converting BCD back to `long double`, we must perform decimal-to-binary conversion, which rounds.
 
-A naive implementation compounds this error:
-
-```cpp
-// Bad: 0.1 is inexact, error compounds over 16 iterations
-Real place = 0.1;
-for (int i = 0; i < 16; i++) {
-    m += mant[i] * place;
-    place *= 0.1;  // Each multiply accumulates error
-}
-```
+A naive implementation that multiplies by 0.1 repeatedly compounds error over 16 iterations since 0.1 is inexact in binary.
 
 ### Minimizing Conversion Error
 
-We use exact integer operations and defer rounding to a single final step:
-
-```cpp
-// Good: 10.0 is exact, only one rounding operation at the end
-Real m = 0.0;
-for (int i = 0; i < 16; i++) {
-    m = m * 10.0 + mant[i];  // Exact: 10 and digits 0-9 are exact
-}
-m *= pow10(exponent - 16);   // Single rounding operation
-```
-
-We also use a precomputed `pow10()` lookup table instead of `pow(10, n)` to avoid unnecessary floating-point computation.
+The correct approach uses exact integer operations: multiply the accumulated mantissa by 10.0 (exact in binary) rather than by 0.1 (inexact). This defers rounding to a single final step when applying the exponent. A precomputed `pow10()` lookup table avoids unnecessary floating-point computation.
 
 ### The Error Budget
 
@@ -96,17 +66,9 @@ Even with optimal algorithms, conversion noise remains at ~1e-16 relative error.
 | Wrong exponent | 10x or more | Obvious |
 | Sign error | 200% | Obvious |
 
-A tolerance of ~1e-15 cleanly separates conversion artifacts from actual bugs:
+A tolerance of ~1e-15 cleanly separates conversion artifacts from actual bugs. The tolerance check uses relative error: `|a - b| / max(|a|, |b|) <= 1e-15`.
 
-```cpp
-bool withinTolerance(Real a, Real b, Real relTol = 1e-15) {
-    if (a == b) return true;
-    Real maxAbs = std::max(std::fabs(a), std::fabs(b));
-    return std::fabs(a - b) <= relTol * maxAbs;
-}
-```
-
-## Windows vs Linux: A Tale of Two Precisions
+## Windows vs Linux: Two Precisions
 
 | Platform | `long double` | Mantissa | Decimal Digits |
 |----------|---------------|----------|----------------|
@@ -119,55 +81,18 @@ Microsoft chose to make `long double` identical to `double`. GCC on x86-64 uses 
 
 ## Portable Precision
 
-We use a compile-time type alias for the reference type:
+A compile-time type alias `Real` selects between `long double` and `double`. A `REAL_LITERAL` macro ensures numeric literals are parsed at full precision—a cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast.
 
-```cpp
-#ifdef USE_LONG_DOUBLE
-    using Real = long double;
-    #define REAL_LITERAL(x) x##L
-#else
-    using Real = double;
-    #define REAL_LITERAL(x) x
-#endif
-```
+## String-Based Construction
 
-The `REAL_LITERAL` macro is used internally (e.g., in `pow10()` lookup tables) where we need literals at full `Real` precision. A cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast.
-
-## Why Test Inputs Use Plain Doubles
-
-For test values, we deliberately use plain `double` literals:
-
-```cpp
-BCD a(123.456), b(789.012);  // double literals, not REAL_LITERAL
-```
-
-**Rationale:**
-
-1. **Test inputs never exceed 15 digits** -- We don't need to specify values with more precision than `double` can represent. Real-world calculator inputs are typed by humans, not generated with 19-digit precision.
-
-2. **Automatic promotion preserves precision** -- The BCD constructor takes `double` but immediately stores it as `Real`:
-   ```cpp
-   BCD::BCD(double v) : value(v) { ... }  // v promoted to Real
-   ```
-   The stored `value` has full long double precision for golden value computations.
-
-3. **Cleaner test code** -- Compare:
-   ```cpp
-   // Cluttered
-   { REAL_LITERAL(123.456), REAL_LITERAL(789.012) }
-
-   // Clean
-   { 123.456, 789.012 }
-   ```
-
-4. **Separation of concerns** -- `REAL_LITERAL` is an implementation detail for internal precision. Test code focuses on behavior, not floating-point mechanics.
+Test values use string literals (e.g., `BCD("123.456")`). The string constructor parses the decimal representation directly into BCD digits, avoiding any binary floating-point conversion. The original value is also parsed into the `Real` field using `sscanf` for golden value computation.
 
 ## Key Takeaways
 
 1. **BCD trades speed for exactness**--no more 0.1 + 0.2 != 0.3 surprises
 2. **The reference must exceed the implementation's precision**--use long double (~19 digits) to verify 16-digit BCD
 3. **Store original values for verification**--the `value` member enables golden value computations at full precision
-4. **Test inputs can be plain doubles**--automatic promotion to `Real` happens at construction; no need for literal suffixes in test code
+4. **String construction avoids binary artifacts**--parsing directly to BCD digits preserves exact decimal representation
 5. **Tolerance absorbs conversion noise, not algorithm errors**--1e-15 filters IEEE artifacts while catching real bugs
 6. **Platform differences matter**--Linux `long double` gives a trustworthy golden value; Windows needs external libraries
 

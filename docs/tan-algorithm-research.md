@@ -29,7 +29,6 @@ CORDIC computes tangent by rotating a unit vector through the input angle, then 
 - **Industry proven**: HP-35 used this exact approach for all trig functions
 - **BCD native**: Works directly with decimal digits using atan(10^-j) constants
 - **Simple operations**: Core loop is shift-and-add only (no mul in inner loop)
-- **Matches codebase**: Identical structure to existing ln() implementation
 - **Shared constants**: tan() and atan() use the same constant table
 - **Self-correcting**: Errors don't accumulate catastrophically
 
@@ -186,7 +185,7 @@ atan(x) = x / (1 + x²/(3 + 4x²/(5 + 9x²/(7 + ...))))
 ### BCD Considerations
 - The BCD structure separates mantissa and exponent
 - Digit shifts implement multiplication/division by powers of 10
-- Sticky bit tracks precision loss during shifts
+- Operations use local guard digit and sticky flag to track precision loss
 - atan constants have same "leading zeros then 9s" pattern as ln constants
 
 ### Range Reduction (Future Work)
