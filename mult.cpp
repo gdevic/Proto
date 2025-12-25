@@ -74,22 +74,41 @@ void mul(BCD& S0, BCD& S1, BCD& R)
         }
     }
 
-    // Normalize: if R.mant[0] != 0, product >= 10, else product in [1, 10)
+    // Normalize and extract guard digit for rounding
+    // Product is in [R.mant, S2.mant] (32 digits)
+    uint8_t guard;
+
     if (R.mant[0] != 0) {
-        expInc(R);  // Can overflow but we don't care
-        // Check S2 for sticky
-        sticky |= !isMantZero(S2.mant.data());
+        // Product >= 10: R.mant[0..15] is result, S2 has extra precision
+        expInc(R);
+        guard = S2.mant[0];
+        for (uint i = 1; i < MAX_MANT; i++)
+            sticky |= (S2.mant[i] != 0);
     }
     else {
-        // Shift left: bring S2.mant[0] into R.mant[15]
+        // Product in [1, 10): shift left, bring S2.mant[0] into R.mant[15]
         mantShl(R.mant.data());
         R.mant[MAX_MANT - 1] = S2.mant[0];
-        // Check S2[1..15] for sticky
-        for (uint i = 1; i < MAX_MANT; i++)
-            sticky |= (S2.mant[i] != 0);  // We can do early exit here
+        guard = S2.mant[1];
+        for (uint i = 2; i < MAX_MANT; i++)
+            sticky |= (S2.mant[i] != 0);
     }
 
-    R.sticky = sticky;
+    // Banker's rounding using guard digit and sticky
+    bool roundUp = false;
+    if (guard > 5)
+        roundUp = true;
+    else if (guard == 5)
+        roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
+
+    if (roundUp) {
+        if (mantInc(R.mant.data())) {
+            // Rounding overflow: 9.999...9 + 1 ULP → 10.000...0
+            mantShr(R.mant.data());
+            R.mant[0] = 1;
+            expInc(R);
+        }
+    }
 }
 
 // IEEE multiplication for test runner

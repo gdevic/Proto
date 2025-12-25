@@ -41,15 +41,19 @@ void add(BCD& S0, BCD& S1, BCD& R)
     if (isExpGT(S1, S0))
         swapReg(S0, S1);
 
-    // Shift S1 until exponents match, sticky tracks digits shifted out
+    // Shift S1 until exponents match
+    // Guard digit: first digit shifted out (for rounding)
+    // Sticky: true if any subsequent non-zero digit shifted out
+    uint8_t guard = 0;
     bool sticky = false;
     while (!isExpEQ(S0, S1)) {
-        sticky |= mantShr(S1.mant.data());
+        sticky |= (guard != 0);              // Previous guard cascades to sticky
+        guard = S1.mant[MAX_MANT - 1];       // LSB becomes new guard
+        mantShr(S1.mant.data());
         expInc(S1);  // Should never overflow!
     }
 
     expCopy(R, S0);
-    R.sticky = sticky;
 
     // Same signs: add magnitudes
     if (S0.sign == S1.sign) {
@@ -58,16 +62,36 @@ void add(BCD& S0, BCD& S1, BCD& R)
 
         // Handle carry overflow: shift result right, bringing in carry
         if (carry) {
-            if (mantShr(R.mant.data()))
-                R.sticky = true;
+            sticky |= (guard != 0);          // Old guard cascades to sticky
+            guard = R.mant[MAX_MANT - 1];    // R's LSB becomes new guard
+            mantShr(R.mant.data());
             R.mant[0] = 1;
             expInc(R);
+        }
+
+        // Round using guard digit and sticky (banker's rounding)
+        bool roundUp = false;
+        if (guard > 5)
+            roundUp = true;
+        else if (guard == 5)
+            roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
+
+        if (roundUp) {
+            if (mantInc(R.mant.data())) {
+                // Rounding caused overflow (e.g., 9.999...9 + 1 ULP)
+                mantShr(R.mant.data());
+                R.mant[0] = 1;
+                expInc(R);
+            }
         }
     }
     // Different signs: subtract smaller from larger magnitude
     else {
-        // Check for exact zero (magnitudes equal and no sticky)
-        if (isMantEQ(S0.mant.data(), S1.mant.data()) && !sticky) {
+        // For subtraction, any shifted-out non-zero (guard or sticky) means borrow
+        bool anyShifted = sticky || (guard != 0);
+
+        // Check for exact zero (magnitudes equal and nothing shifted out)
+        if (isMantEQ(S0.mant.data(), S1.mant.data()) && !anyShifted) {
             regClear(R);
             return;
         }
@@ -77,9 +101,9 @@ void add(BCD& S0, BCD& S1, BCD& R)
         if (isMantGT(S1.mant.data(), S0.mant.data())) {
             swapMant(S0.mant.data(), S1.mant.data());
             swapped = true;
-            sticky = false;  // S0 was not shifted, has no extra precision
+            anyShifted = false;  // S0 was not shifted, has no extra precision
         }
-        mantSub(S0.mant.data(), S1.mant.data(), R.mant.data(), sticky);
+        mantSub(S0.mant.data(), S1.mant.data(), R.mant.data(), anyShifted);
         R.sign = swapped ? S1.sign : S0.sign;
     }
 

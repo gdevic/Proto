@@ -72,20 +72,43 @@ void div(BCD& S0, BCD& S1, BCD& R)
     // 17th iteration: compute q17 only (no store to R.mant, no shift)
     uint8_t q17 = divDigit(overflow);
 
-    // Remainder is [overflow, S0], check if non-zero for sticky
-    bool hasRemainder = (overflow != 0) || !isMantZero(S0.mant.data());
+    // Extract guard digit and sticky for rounding
+    uint8_t guard;
+    bool sticky;
 
-    // Normalize: if first quotient digit is 0, shift left and decrement exponent
     if (R.mant[0] == 0) {
+        // Need normalization: shift R left, q17 becomes R[15], compute q18 as guard
         if (expDec(R))
             return;  // Underflow
         mantShl(R.mant.data());
         R.mant[MAX_MANT - 1] = q17;
-        R.sticky = hasRemainder;
+
+        // Compute 18th quotient digit as guard
+        overflow = S0.mant[0];
+        mantShl(S0.mant.data());
+        guard = divDigit(overflow);
+        sticky = (overflow != 0) || !isMantZero(S0.mant.data());
     }
     else {
-        // 17th digit and remainder contribute to sticky
-        R.sticky = (q17 != 0) || hasRemainder;
+        // No normalization: q17 is guard, remainder is sticky
+        guard = q17;
+        sticky = (overflow != 0) || !isMantZero(S0.mant.data());
+    }
+
+    // Banker's rounding using guard digit and sticky
+    bool roundUp = false;
+    if (guard > 5)
+        roundUp = true;
+    else if (guard == 5)
+        roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
+
+    if (roundUp) {
+        if (mantInc(R.mant.data())) {
+            // Rounding overflow: 9.999...9 + 1 ULP → 10.000...0
+            mantShr(R.mant.data());
+            R.mant[0] = 1;
+            expInc(R);
+        }
     }
 }
 
