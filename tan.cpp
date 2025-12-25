@@ -290,17 +290,23 @@ void cordicAtan(BCD& S0, BCD& R)
     R.sign = inputSign;
 }
 
-// Compute tangent: R = tan(S0)
-// Uses CORDIC (Meggitt's digit-by-digit method) - same algorithm as HP-35
-// Reads from S0, stores result in R
-// Uses registers: S0 (input/y), S1 (x), S2 (temp), S3 (counter), S4 (temp), R (result)
-void tan(BCD& S0, BCD& R)
+// 180/PI for radian to degree conversion (16 digits)
+// 57.29577951308232087679815481410517...
+static const uint8_t deg_180_over_pi[MAX_MANT] = {
+    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
+};
+
+// Compute tangent in radians: R = tanRad(S0)
+// Input in radians, output is the tangent value
+// Converts to degrees, calls tanDeg (which does range reduction), returns result
+// Uses registers: S0, S1, S2, S3, S4, R
+void tanRad(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
     preCalc1(S0, R);
 
-    // Special case: tan(0) = 0 exactly
+    // Special case: tanRad(0) = 0 exactly
     if (FLAG_S0_ZERO)
         return;
 
@@ -308,72 +314,103 @@ void tan(BCD& S0, BCD& R)
     bool inputSign = S0.sign;
     S0.sign = false;
 
-    // Call shared CORDIC implementation
-    cordicTan(S0, R);
+    // ---------- Convert radians to degrees ----------
+    // S0 = S0 * (180/PI)
+    regCopy(S1, S0);
 
-    // If overflow occurred, don't modify result
-    if (FLAG_OF_ERR)
-        return;
+    // S1 = 180/PI = 57.29577951308232... = 5.729...e1
+    mantCopy(S1.mant.data(), deg_180_over_pi);
+    S1.exp[0] = 0;
+    S1.exp[1] = 1;
+    S1.esign = false;
+    S1.sign = false;
 
-    // Restore sign (tan is odd function)
-    R.sign = inputSign;
+    mul(S0, S1, R);
+
+    // R now contains the angle in degrees
+    regCopy(S0, R);
+    S0.sign = inputSign;  // Restore sign for tanDeg
+
+    // ---------- Call tanDeg which does range reduction ----------
+    tanDeg(S0, R);
 }
 
-// Compute arctangent: R = atan(S0)
-// Wrapper that calls cordicAtan
-// Reads from S0, stores result in R (radians)
-void atan(BCD& S0, BCD& R)
+// Compute arctangent in radians: R = atanRad(S0)
+// Input is a value, output in radians
+// Wrapper that calls cordicAtan (which returns radians)
+// Returns: arctangent of S0 in radians
+void atanRad(BCD& S0, BCD& R)
 {
     cordicAtan(S0, R);
 }
 
-// IEEE operations for test runner
-static Real ieeeTan(Real x) { return std::tan(x); }
-static Real ieeeAtan(Real x) { return std::atan(x); }
+// IEEE operations for test runner (radians)
+static Real ieeeTanRad(Real x) { return std::tan(x); }
+static Real ieeeAtanRad(Real x) { return std::atan(x); }
 
-// Run tangent tests
-void testTan()
+// Run tangent (radians) tests
+void testTanRad()
 {
     static const std::string val[] = {
+        // Basic values
         "0",                      // tan(0) = 0 exactly
-        "0.1",                    // Small angle
-        "0.5",                    // Moderate angle
         "0.7853981633974483",     // PI/4: tan = 1.0 exactly
-        "1.0",                    // ~1.557
+        "0.5235987755982988",     // PI/6: tan = 1/sqrt(3) = 0.5774
+        "1.047197551196598",      // PI/3: tan = sqrt(3) = 1.7321
+        // Small angles (CORDIC precision test)
+        "0.1",                    // Small angle
+        "0.01",                   // Smaller
         "0.001",                  // Very small
         "0.0001",                 // Very very small
+        // Near asymptote
         "1.5",                    // Near PI/2, large result
-        "0.25",                   // Quarter radian
-        "0.125",                  // Eighth radian
+        "1.57",                   // Very near PI/2
+        // Range reduction tests (angles > PI/2)
+        "2.0",                    // > PI/2, quadrant 2
+        "3.14159265358979",       // PI, tan ~ 0
+        "4.0",                    // quadrant 3
+        "5.0",                    // quadrant 4
+        "6.28318530717959",       // 2*PI, tan ~ 0
+        "10.0",                   // Multiple periods
     };
 
-    if (!runTests<Arity::Unary>("TAN", BcdUnaryOp(tan), ieeeTan, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("TANRAD", tanRad, ieeeTanRad, val, sizeof(val) / sizeof(val[0])))
         return;
-    // Round-trip tests: tan(atan(x)) = x
-    if (!runRoundTripTests<false>("RTRIP_TAN", BcdUnaryOp(tan), BcdUnaryOp(atan), ieeeTan, ieeeAtan, val, sizeof(val) / sizeof(val[0])))
+    // Round-trip tests: tanRad(atanRad(x)) = x
+    if (!runRoundTripTests<false>("RTRIP_TANRAD", tanRad, atanRad, ieeeTanRad, ieeeAtanRad, val, sizeof(val) / sizeof(val[0])))
         return;
-    if (!runRoundTripTests<true>("RTRIP_TAN", BcdUnaryOp(tan), BcdUnaryOp(atan), ieeeTan, ieeeAtan, nullptr, 0, OPTS_ATAN))
+    if (!runRoundTripTests<true>("RTRIP_TANRAD", tanRad, atanRad, ieeeTanRad, ieeeAtanRad, nullptr, 0, OPTS_ATANRAD))
         return;
-    runRandomTests<Arity::Unary>("TAN", BcdUnaryOp(tan), ieeeTan, OPTS_TAN);
+    runRandomTests<Arity::Unary>("TANRAD", tanRad, ieeeTanRad, OPTS_TANRAD);
 }
 
-// Run arctangent tests
-void testAtan()
+// Run arctangent (radians) tests
+void testAtanRad()
 {
     static const std::string val[] = {
+        // Basic values
         "0",                      // atan(0) = 0 exactly
         "1",                      // atan(1) = PI/4 exactly
+        "0.5773502691896257",     // 1/sqrt(3): atan = PI/6
+        "1.732050807568877",      // sqrt(3): atan = PI/3
+        // Small values (CORDIC precision test)
         "0.1",                    // Small value
-        "0.5",                    // Moderate
-        "2",                      // atan(2) ~= 1.107
-        "10",                     // Large, approaching PI/2
-        "100",                    // Very large
+        "0.01",                   // Smaller
         "0.001",                  // Very small
         "0.0001",                 // Very very small
-        "1.732050807568877",      // sqrt(3): atan = PI/3
+        // Moderate values
+        "0.5",                    // atan ~ 0.4636
+        "2",                      // atan ~ 1.107
+        // Large values (approaching PI/2)
+        "10",                     // atan ~ 1.471
+        "100",                    // atan ~ 1.561
+        "1000",                   // Very close to PI/2
+        // Negative values
+        "-1",                     // atan = -PI/4
+        "-0.5773502691896257",    // -1/sqrt(3): atan = -PI/6
     };
 
-    if (!runTests<Arity::Unary>("ATAN", BcdUnaryOp(atan), ieeeAtan, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("ATANRAD", atanRad, ieeeAtanRad, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ATAN", BcdUnaryOp(atan), ieeeAtan, OPTS_ATAN);
+    runRandomTests<Arity::Unary>("ATANRAD", atanRad, ieeeAtanRad, OPTS_ATANRAD);
 }

@@ -13,7 +13,7 @@ static void printHelp(const char* prog)
               << "Options:\n"
               << "  -h       Show this help message\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
-              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt)\n"
+              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt)\n"
               << "  -i       Show test index (1-based) at start of each line\n"
               << "  -r NUM   Number of random tests to run (default: 2)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
@@ -110,9 +110,9 @@ int main(int argc, char* argv[])
     if (shouldRun("div")) testDivision();
     if (shouldRun("ln"))   testLn();
     if (shouldRun("exp"))  testExp();
-    if (shouldRun("tan"))  testTan();
-    if (shouldRun("atan")) testAtan();
-    if (shouldRun("tan10"))  testTan10();
-    if (shouldRun("atan10")) testAtan10();
+    if (shouldRun("tanrad"))  testTanRad();
+    if (shouldRun("atanrad")) testAtanRad();
+    if (shouldRun("tandeg"))  testTanDeg();
+    if (shouldRun("atandeg")) testAtanDeg();
     if (shouldRun("sqrt"))   testSqrt();
 }

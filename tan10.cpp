@@ -77,17 +77,17 @@ static int bcdCompare(const BCD& a, const BCD& b)
     return 0;
 }
 
-// Compute tangent in degrees: R = tan10(S0)
+// Compute tangent in degrees: R = tanDeg(S0)
 // Input in degrees, output is the tangent value
 // Reads from S0, stores result in R
 // Uses registers: S0, S1, S2, S3, S4, R
-void tan10(BCD& S0, BCD& R)
+void tanDeg(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
     preCalc1(S0, R);
 
-    // Special case: tan10(0) = 0 exactly
+    // Special case: tanDeg(0) = 0 exactly
     if (FLAG_S0_ZERO)
         return;
 
@@ -215,11 +215,11 @@ void tan10(BCD& S0, BCD& R)
         R.sign = inputSign;
 }
 
-// Compute arctangent in degrees: R = atan10(S0)
+// Compute arctangent in degrees: R = atanDeg(S0)
 // Input is a value, output in degrees
 // Calls cordicAtan for radians, then converts to degrees
 // Returns: arctangent of S0 in degrees
-void atan10(BCD& S0, BCD& R)
+void atanDeg(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
@@ -248,57 +248,95 @@ void atan10(BCD& S0, BCD& R)
 }
 
 // IEEE operations for test runner (degrees)
-static Real ieeeTan10(Real x) { return std::tan(x * REAL_LITERAL(3.14159265358979323846) / REAL_LITERAL(180.0)); }
-static Real ieeeAtan10(Real x) { return std::atan(x) * REAL_LITERAL(180.0) / REAL_LITERAL(3.14159265358979323846); }
+static Real ieeeTanDeg(Real x) { return std::tan(x * REAL_LITERAL(3.14159265358979323846) / REAL_LITERAL(180.0)); }
+static Real ieeeAtanDeg(Real x) { return std::atan(x) * REAL_LITERAL(180.0) / REAL_LITERAL(3.14159265358979323846); }
 
 // Run tangent (degrees) tests
-void testTan10()
+void testTanDeg()
 {
     static const std::string val[] = {
-        "0",      // tan=0
-        "45",     // tan=1 exactly
-        "30",     // tan=1/sqrt(3) = 0.5774
-        "60",     // tan=sqrt(3) = 1.7321
-        "89",     // large result, near asymptote
-        "120",    // quadrant 2, tan=-sqrt(3)
-        "135",    // quadrant 2, tan=-1
-        "180",    // tan=0
-        "225",    // quadrant 3, tan=1
-        "270",    // near asymptote
-        "315",    // quadrant 4, tan=-1
-        "359",    // near 360, small negative
-        "1",      // small angle
-        "15",     // tan(15) = 2 - sqrt(3)
+        // Basic values
+        "0",                      // tan=0 exactly
+        "45",                     // tan=1 exactly
+        "30",                     // tan=1/sqrt(3) = 0.5774
+        "60",                     // tan=sqrt(3) = 1.7321
+        "15",                     // tan(15) = 2 - sqrt(3) = 0.2679
+        // Small angles (CORDIC precision test)
+        "1",                      // small angle
+        "0.1",                    // smaller
+        "0.01",                   // very small
+        "0.001",                  // very very small
+        // Near asymptotes
+        "89",                     // near 90, large positive
+        "89.9",                   // very near 90
+        "91",                     // past 90, large negative
+        // Quadrant 2 (90-180): tan is negative
+        "120",                    // tan = -sqrt(3)
+        "135",                    // tan = -1
+        "150",                    // tan = -1/sqrt(3)
+        // tan=0 at 180
+        "180",                    // tan=0 exactly
+        // Quadrant 3 (180-270): tan is positive
+        "210",                    // tan = 1/sqrt(3)
+        "225",                    // tan = 1
+        "240",                    // tan = sqrt(3)
+        // Near asymptote at 270
+        "269",                    // near 270, large positive
+        "271",                    // past 270, large negative
+        // Quadrant 4 (270-360): tan is negative
+        "300",                    // tan = -sqrt(3)
+        "315",                    // tan = -1
+        "330",                    // tan = -1/sqrt(3)
+        // Near 360 (wraps to 0)
+        "359",                    // small negative
+        "360",                    // tan=0 (same as 0)
+        // Range reduction: angles > 360
+        "405",                    // 360+45, tan=1
+        "720",                    // 2*360, tan=0
+        "450",                    // 360+90, asymptote
     };
 
-    if (!runTests<Arity::Unary>("TAN10", tan10, ieeeTan10, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, val, sizeof(val) / sizeof(val[0])))
         return;
-    // Round-trip tests: tan10(atan10(x)) = x
-    if (!runRoundTripTests<false>("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
+    // Round-trip tests: tanDeg(atanDeg(x)) = x
+    if (!runRoundTripTests<false>("RTRIP_TANDEG", tanDeg, atanDeg, ieeeTanDeg, ieeeAtanDeg, val, sizeof(val) / sizeof(val[0])))
         return;
-    if (!runRoundTripTests<true>("RTRIP_TAN10", tan10, atan10, ieeeTan10, ieeeAtan10, nullptr, 0, OPTS_ATAN10))
+    if (!runRoundTripTests<true>("RTRIP_TANDEG", tanDeg, atanDeg, ieeeTanDeg, ieeeAtanDeg, nullptr, 0, OPTS_ATANDEG))
         return;
-    runRandomTests<Arity::Unary>("TAN10", tan10, ieeeTan10, OPTS_TAN10);
+    runRandomTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, OPTS_TANDEG);
 }
 
 // Run arctangent (degrees) tests
-void testAtan10()
+void testAtanDeg()
 {
     static const std::string val[] = {
-        "0",                      // atan=0
+        // Basic values
+        "0",                      // atan=0 exactly
         "1",                      // atan=45 exactly
         "0.5773502691896257",     // 1/sqrt(3): atan=30
         "1.732050807568877",      // sqrt(3): atan=60
-        "0.1",                    // small value
-        "0.5",                    // moderate
-        "2",                      // atan ~= 63.43
-        "10",                     // large, approaching 90
-        "100",                    // very large
-        "0.001",                  // very small
         "0.2679491924311227",     // tan(15): atan=15
+        "0.4142135623730950",     // tan(22.5): atan=22.5
+        // Small values (CORDIC precision test)
+        "0.1",                    // atan ~ 5.71
+        "0.01",                   // atan ~ 0.573
+        "0.001",                  // atan ~ 0.0573
+        "0.0001",                 // atan ~ 0.00573
+        // Moderate values
+        "0.5",                    // atan ~ 26.57
+        "2",                      // atan ~ 63.43
+        "3",                      // atan ~ 71.57
+        // Large values (approaching 90)
+        "10",                     // atan ~ 84.29
+        "100",                    // atan ~ 89.43
+        "1000",                   // atan ~ 89.94
+        // Negative values
+        "-1",                     // atan = -45
+        "-0.5773502691896257",    // -1/sqrt(3): atan = -30
+        "-1.732050807568877",     // -sqrt(3): atan = -60
     };
 
-    if (!runTests<Arity::Unary>("ATAN10", atan10, ieeeAtan10, val, sizeof(val) / sizeof(val[0])))
+    if (!runTests<Arity::Unary>("ATANDEG", atanDeg, ieeeAtanDeg, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ATAN10", atan10, ieeeAtan10, OPTS_ATAN10);
+    runRandomTests<Arity::Unary>("ATANDEG", atanDeg, ieeeAtanDeg, OPTS_ATANDEG);
 }
