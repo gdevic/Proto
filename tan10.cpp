@@ -131,11 +131,14 @@ void cordicTan(BCD& S0, BCD& R)
     // Initialize S3 as counter array (all zeros)
     regClear(S3);
 
-    // Part 1: Digit extraction (pseudo-division)
+    // ---------- Part 1: Digit extraction (pseudo-division) ----------
+    // For each position j, count how many times atan(10^-j) can be subtracted
     for (uint j = 0; j < MAX_MANT; j++) {
+        // Get the atan constant for this position into S4.mant
         getAtanConst(j, S4.mant.data());
 
         while (true) {
+            // Try subtracting: S2 = S1 - S4
             int borrow = 0;
             for (int i = int(MAX_MANT) - 1; i >= 0; i--) {
                 int diff = int(S1.mant[i]) - int(S4.mant[i]) - borrow;
@@ -148,60 +151,79 @@ void cordicTan(BCD& S0, BCD& R)
                 S2.mant[i] = uint8_t(diff);
             }
 
+            // If borrow (underflow), we can't subtract anymore
             if (borrow)
                 break;
 
+            // Accept the result: S1 = S2
             mantCopy(S1.mant.data(), S2.mant.data());
             S3.mant[j]++;
 
+            // Safety: counter[j] should not exceed 9
             if (S3.mant[j] >= 10)
                 break;
         }
     }
 
-    // Part 2: CORDIC rotation (pseudo-multiplication)
+    // ---------- Part 2: CORDIC rotation (pseudo-multiplication) ----------
+    // Build x,y vector using the extracted counts
+    // Start with x = 1.0, y = remainder (in S1)
+
+    // S0 = y (remainder from Part 1 is in S1, copy to S0)
     mantCopy(S0.mant.data(), S1.mant.data());
 
+    // S1 = x = 1.0 (1 followed by zeros)
     mantClear(S1.mant.data());
     S1.mant[0] = 1;
 
+    // Rotate from j = K-1 down to 0
     for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
         for (uint8_t k = 0; k < S3.mant[j]; k++) {
+            // x_shifted = x >> j (S1 >> j)
             mantClear(S4.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S4.mant[i + j] = S1.mant[i];
 
+            // y_shifted = y >> j (S0 >> j)
             mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - uint(j); i++)
                 S2.mant[i + j] = S0.mant[i];
 
+            // y_new = y + x_shifted (S0 + S4 -> R.mant as temp)
             mantAdd(S0.mant.data(), S4.mant.data(), R.mant.data());
+
+            // x_new = x - y_shifted (S1 - S2 -> S4.mant as temp)
             mantSub(S1.mant.data(), S2.mant.data(), S4.mant.data(), false);
 
+            // Update: y = y_new, x = x_new
             mantCopy(S0.mant.data(), R.mant.data());
             mantCopy(S1.mant.data(), S4.mant.data());
         }
     }
 
-    // Part 3: Handle overflow
+    // ---------- Part 3: Handle overflow ----------
+    // If x (S1) is zero, tan approaches infinity
     if (isMantZero(S1.mant.data())) {
         FLAG_OF_ERR = true;
         return;
     }
 
-    // Part 4: Normalize and divide
+    // ---------- Part 4: Normalize Y (in S0) ----------
+    // Set up S0 as a proper BCD number for division
     S0.exp[0] = 0;
     S0.exp[1] = 0;
     S0.esign = false;
     S0.sign = false;
     normalize(S0);
 
+    // Set up S1 as a proper BCD number for division
     S1.exp[0] = 0;
     S1.exp[1] = 0;
     S1.esign = false;
     S1.sign = false;
     normalize(S1);
 
+    // ---------- Part 5: Compute result = y / x ----------
     div(S0, S1, R);
 }
 
@@ -343,10 +365,10 @@ void tan10(BCD& S0, BCD& R)
         R.sign = inputSign;
 }
 
-// Core CORDIC arctangent algorithm
+// Core CORDIC arctangent algorithm (Meggitt's digit-by-digit method)
 // Input: S0 = value to compute arctangent of
 // Output: R = atan(S0) in radians
-// Uses registers: S0, S1, S2, S3, S4, R
+// Uses registers: S0 (input/y), S1 (x), S2 (temp), S3 (counter), S4 (temp), R (result)
 void cordicAtan(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
@@ -362,33 +384,44 @@ void cordicAtan(BCD& S0, BCD& R)
     S0.sign = false;
 
     // Initialize: y = input (S0), x = 1.0 (S1)
+    // Align mantissas so their ratio reflects the true input value
+
+    // S1 = x = 1.0 (mantissa only, exp will be aligned)
     regClear(S1);
     S1.mant[0] = 1;
 
     // Align mantissas based on input's exponent
+    // For negative exponent (|input| < 1): shift y right
+    // For positive exponent (|input| > 1): shift x right
     if (S0.esign) {
+        // Negative exponent: shift y (S0) right
         while (S0.exp[0] || S0.exp[1]) {
             mantShr(S0.mant.data());
             expInc(S0);
         }
     }
     else {
+        // Positive exponent: shift x (S1) right
         while (S0.exp[0] || S0.exp[1]) {
             mantShr(S1.mant.data());
             expDec(S0);
         }
     }
 
-    // Initialize S3 as counter array
+    // Initialize S3 as counter array (all zeros)
     regClear(S3);
 
-    // CORDIC vectoring
+    // ---------- Part 1: CORDIC vectoring (pseudo-division) ----------
+    // Rotate vector (x,y) toward x-axis, counting rotations
+    // At each step j, if y - (x >> j) >= 0, then rotate and increment counter
     for (uint j = 0; j < K; j++) {
         while (true) {
+            // Compute x_shifted = x >> j (into S2)
             mantClear(S2.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 S2.mant[i + j] = S1.mant[i];
 
+            // Try: y_next = y - x_shifted (result in S4)
             bool borrow = false;
             for (int i = int(MAX_MANT) - 1; i >= 0; i--) {
                 int diff = int(S0.mant[i]) - int(S2.mant[i]) - (borrow ? 1 : 0);
@@ -401,15 +434,19 @@ void cordicAtan(BCD& S0, BCD& R)
                 S4.mant[i] = uint8_t(diff);
             }
 
+            // If y - x_shifted < 0, can't rotate anymore at this j
             if (borrow)
                 break;
 
+            // Compute y_shifted = y >> j BEFORE updating y (into R.mant as temp)
             mantClear(R.mant.data());
             for (uint i = 0; i < MAX_MANT - j; i++)
                 R.mant[i + j] = S0.mant[i];
 
+            // Update y = y_next
             mantCopy(S0.mant.data(), S4.mant.data());
 
+            // Update x = x + y_shifted (y_shifted is in R.mant)
             mantAdd(S1.mant.data(), R.mant.data(), S4.mant.data());
             mantCopy(S1.mant.data(), S4.mant.data());
 
@@ -420,7 +457,8 @@ void cordicAtan(BCD& S0, BCD& R)
         }
     }
 
-    // Compute residual
+    // ---------- Part 2: Compute residual = y / x ----------
+    // Set up S0 and S1 as proper BCD numbers for division
     S0.exp[0] = 0;
     S0.exp[1] = 0;
     S0.esign = false;
@@ -433,24 +471,31 @@ void cordicAtan(BCD& S0, BCD& R)
     S1.sign = false;
     normalize(S1);
 
+    // R = residual angle = y / x
     div(S0, S1, R);
 
-    // Accumulate atan constants
+    // ---------- Part 3: Accumulate atan constants ----------
+    // Result = residual + sum of counter[j] * atan_const[j] for j = K-1 down to 0
+    // R already contains the residual from div()
+
     for (int j = int(K) - 1; j >= 0; j--) {
+        // Get the atan constant for this position into S4
         getAtanConst(uint(j), S4.mant.data());
         S4.exp[0] = 0;
         S4.exp[1] = 0;
         S4.esign = false;
         S4.sign = false;
 
+        // Add atan_const[j] to result, counter[j] times
         for (uint8_t k = 0; k < S3.mant[j]; k++) {
+            // Use S0, S1 for the add operation
             regCopy(S0, R);
             regCopy(S1, S4);
             add(S0, S1, R);
         }
     }
 
-    // Restore sign
+    // Restore sign (atan is odd function)
     R.sign = inputSign;
 }
 
