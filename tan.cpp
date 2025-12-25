@@ -372,6 +372,12 @@ void testTanRad()
         "5.0",                    // quadrant 4
         "6.28318530717959",       // 2*PI, tan ~ 0
         "10.0",                   // Multiple periods
+        // Large angles (test O(1) reduction via degrees)
+        "100.0",                  // ~16 rotations
+        "1000.0",                 // ~159 rotations
+        "10000.0",                // ~1592 rotations
+        "1e6",                    // ~159155 rotations
+        "1e8",                    // ~16 million rotations
     };
 
     if (!runTests<Arity::Unary>("TANRAD", tanRad, ieeeTanRad, val, sizeof(val) / sizeof(val[0])))

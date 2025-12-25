@@ -1,8 +1,8 @@
-# Range Reduction for tan()
+# Range Reduction for tan/atan
 
 ## The Problem
 
-For tan(x) where x is large (e.g., 25 radians or 1000°), the CORDIC algorithm fails because it only works for small angles (~0 to π/4). We need to reduce x to an equivalent angle in this range before applying CORDIC.
+The CORDIC algorithm for tan(x) only works for small angles (~0 to π/4 radians, or 0° to 45°). For larger inputs, we must reduce x to an equivalent angle in this range before applying CORDIC.
 
 The challenge: naive reduction `x - n*π` causes **catastrophic cancellation** when x is large, because x and n*π have similar magnitude but differ in low-order digits.
 
@@ -11,9 +11,9 @@ The challenge: naive reduction `x - n*π` causes **catastrophic cancellation** w
 ## Range Reduction Techniques
 
 ### 1. Naive Modular Reduction
-```
-reduced = x mod (π/2)    // for tan
-```
+
+Compute reduced = x mod (π/2) for tan.
+
 **Problem**: For large x, computing n = floor(x / (π/2)) and then x - n*(π/2) loses precision because:
 - x might have 16 digits
 - n*(π/2) has similar magnitude
@@ -24,27 +24,27 @@ Example: x = 1000 radians, π/2 ≈ 1.5708
 - x - n*π/2 ≈ 0.98 (but with only ~2 correct digits!)
 
 ### 2. Cody-Waite Method
-Split the constant into high + low parts:
-```
-π/2 = C1 + C2
-where C1 has exact decimal representation (e.g., 1.5707963)
-and C2 is the small correction (e.g., 2.6794896e-8)
-```
-Compute:
-```
-reduced = (x - n*C1) - n*C2
-```
+
+Split the constant into high + low parts: π/2 = C1 + C2, where C1 has exact decimal representation (e.g., 1.5707963) and C2 is the small correction (e.g., 2.6794896e-8).
+
+Compute: reduced = (x - n*C1) - n*C2
+
 **Key insight**: The first subtraction `x - n*C1` is often EXACT (no rounding) because C1 is chosen carefully. The second subtraction adds the small correction.
 
 **Range**: Works well for |x| < ~10^7 radians with 16-digit precision.
 
 ### 3. Payne-Hanek Method
+
 For very large arguments (up to 2^16000 radians):
 - Pre-compute and store many bits of 4/π
 - Only the "middle bits" matter for the fractional part
 - Complex but handles arbitrary arguments
 
 **Overkill for our use case** - we don't expect 10^1000 radian inputs.
+
+### 4. Degrees-First Reduction (Our Approach)
+
+Convert to degrees, reduce using exact integer arithmetic, convert back to radians only for CORDIC.
 
 ---
 
@@ -57,59 +57,132 @@ For very large arguments (up to 2^16000 radians):
 
 ### Degrees (advantageous for BCD)
 - 360° and 90° are **exact decimal integers**
-- Range reduction is **EXACT** with no precision loss:
-  ```
-  reduced = x mod 90    // exact in BCD arithmetic
-  quadrant = floor(x / 90) mod 4
-  ```
+- Range reduction is **EXACT** with no precision loss
 - No irrational constants involved
 - **This is why calculators often work in degrees internally**
 
 ---
 
-## Recommended Approach for Our Architecture
+## Current Implementation
 
-### For Degrees (preferred):
-```
-1. Reduce: angle = x mod 360° (exact)
-2. Determine quadrant: q = floor(angle / 90°)
-3. Reduce to [0°, 45°]:
-   - q=0: use angle
-   - q=1: use 90° - angle, compute cot (= 1/tan)
-   - q=2: use angle - 90°, negate result
-   - q=3: use 180° - angle, compute -cot
-4. Convert to radians: reduced_rad = reduced° × (π/180)
-5. Apply CORDIC
-```
-**Precision loss**: Only in step 4, which is a single multiplication.
+### Architecture Overview
 
-### For Radians:
 ```
-1. Compute n = round(x / (π/2)) using extended precision
-2. Store π/2 as two parts: P1 = 1.5707963267948966 (16 digits)
-                           P2 = ... (remaining digits)
-3. reduced = (x - n*P1) - n*P2
-4. Determine quadrant from n mod 4
-5. Apply CORDIC with appropriate identity
+tanRad(x)  ──→ [×180/π] ──→ tanDeg(x°) ──→ result
+                              │
+                              ├─ [O(1) range reduction in degrees]
+                              ├─ [×π/180 to radians]
+                              └─ cordicTan() ──→ tan value
+
+atanRad(x) ──→ cordicAtan(x) ──→ result (radians)
+
+atanDeg(x) ──→ cordicAtan(x) ──→ [×180/π] ──→ result (degrees)
 ```
-**Implementation**: Need to store π/2 with more than 16 digits (perhaps 24-32 BCD digits) and use extended arithmetic for the reduction step.
+
+**Key insight**: All range reduction happens in degrees, where 360, 180, 90, 45 are exact decimal integers. This avoids precision loss from irrational π.
+
+### tanDeg() Range Reduction (tan10.cpp)
+
+1. **Reduce to [0, 360)** using O(1) division: compute n = floor(S0 / 360), then S0 = S0 - n × 360
+2. **Reduce to [0, 180)** using tan period identity: if S0 ≥ 180, subtract 180
+3. **Reduce to [0, 90)** using reflection identity: if S0 ≥ 90, compute S0 = 180 - S0 and negate result
+4. **Reduce to [0, 45]** using reciprocal identity: if S0 > 45, compute S0 = 90 - S0 and use reciprocal
+5. **Convert to radians**: multiply by π/180
+6. **Apply CORDIC**: call cordicTan()
+7. **Apply reciprocal** if flag was set
+8. **Apply sign** if negation flag was set
+
+**Precision loss**: Only in step 5, which is a single multiplication on a small value (0° to 45°).
+
+### tanRad() Implementation (tan.cpp)
+
+Converts radians to degrees by multiplying by 180/π, then delegates to tanDeg() which handles all range reduction.
+
+### atanRad() and atanDeg()
+
+**No range reduction needed** for arctangent:
+- Domain: (-∞, +∞)
+- Range: (-π/2, +π/2) radians or (-90°, +90°)
+- CORDIC handles all inputs directly
+
+atanDeg() calls cordicAtan() then multiplies result by 180/π to convert to degrees.
+
+**Optional optimization** for large |x|: atan(x) = sign(x) * π/2 - atan(1/x). This uses division to reduce to |x| ≤ 1, which may converge faster. But it's not required for correctness.
 
 ---
 
-## Does atan() Need Range Reduction?
+## O(1) Modular Reduction Algorithm
 
-**NO.**
+The mod 360 operation uses division rather than repeated subtraction:
 
-- atan(x) has domain (-∞, +∞) and range (-π/2, +π/2)
-- Any input naturally produces a bounded output
-- The CORDIC algorithm handles all inputs directly
+1. Compute n = floor(S0 / 360) via BCD division
+2. Truncate n to integer using bcdTruncateToInt()
+3. Compute S0 = S0 - n × 360
 
-**Optional optimization** for large |x|:
-```
-if |x| > 1:
-    atan(x) = sign(x) * π/2 - atan(1/x)
-```
-This uses division to reduce to |x| ≤ 1, which may converge faster. But it's not required for correctness.
+**Complexity**: 3 BCD operations (div, mul, sub) regardless of input magnitude.
+
+**Comparison with naive approach** for input of 1,000,000 degrees:
+- Naive: 2,778 subtractions (O(n))
+- O(1): 3 operations
+
+The bcdTruncateToInt() helper zeros all fractional digits by examining the exponent and clearing mantissa positions beyond the decimal point.
+
+---
+
+## Centesimal/Gradian Systems: Why They Don't Help
+
+### The Idea
+
+Could we use a system where period boundaries align with powers of 10?
+
+| System | Full Circle | Right Angle | tan Period |
+|--------|-------------|-------------|------------|
+| Degrees | 360 | 90 | 180 |
+| Radians | 2π | π/2 | π |
+| Gradians | 400 | 100 | 200 |
+
+If tan period = 100, wouldn't mod 100 be trivial decimal truncation?
+
+### Why It Doesn't Simplify BCD Operations
+
+BCD uses scientific notation: d.ddddddddddddddd × 10^exp
+
+For value 725.3 in BCD: 7.253000000000000 × 10²
+
+To compute mod 100:
+- Want: 25.3 (i.e., 2.530000000000000 × 10¹)
+- Need to: extract digits 1-2 of mantissa, adjust exponent
+- This is **NOT** trivial shifting—requires digit extraction and renormalization
+
+The current mod 360 algorithm (division, truncate, multiply, subtract) would be identical for mod 100 or mod 200. No fundamental simplification.
+
+### What WOULD Make It Trivial?
+
+For truly trivial range reduction, the period would need to equal a power of 10:
+
+| Period | Mod Operation |
+|--------|---------------|
+| 10 | Trivial exponent check |
+| 1 | Already reduced if exp < 0 |
+
+But tan's period is 180° = π radians. No scaling makes this equal a power of 10 while preserving the 90°/45° identity boundaries at clean values.
+
+### Verdict
+
+**Not worth implementing** for range reduction optimization. The fundamental issue is that BCD scientific notation doesn't make modular arithmetic trivial regardless of the modulus.
+
+HP calculators support GRAD mode for compatibility, not performance.
+
+---
+
+## Trigonometric Identities Used
+
+| Identity | Purpose | Applied When |
+|----------|---------|--------------|
+| tan(x) = tan(x - 180°) | Period reduction | x ≥ 180° |
+| tan(x) = -tan(180° - x) | Quadrant 2 reflection | 90° ≤ x < 180° |
+| tan(x) = 1/tan(90° - x) | Reciprocal for large angles | 45° < x < 90° |
+| tan(-x) = -tan(x) | Odd function | x < 0 |
 
 ---
 
@@ -124,21 +197,20 @@ This uses division to reduce to |x| ≤ 1, which may converge faster. But it's n
 
 ---
 
-## Recommendation for Proto
+## Precision Limits
 
-1. **Primary**: Implement degrees-based range reduction
-   - Exact modular arithmetic (no π approximation)
-   - Convert to radians only for final CORDIC step
-   - Matches HP calculator approach
+| Input Range | Expected Precision |
+|-------------|-------------------|
+| 0° to 10,000° | ~14 digits (APPROX) |
+| 10,000° to 1,000,000° | ~12-14 digits |
+| > 1,000,000° | Degraded (accumulated error in mod calculation) |
 
-2. **For radians**: Use Cody-Waite with extended π/2
-   - Store π/2 as two 16-digit BCD values
-   - Sufficient for |x| < 10^7 radians
-   - Reasonable complexity
+For very large inputs, precision degrades because:
+1. Division by 360 loses low-order bits
+2. Multiplication n×360 accumulates rounding error
+3. Subtraction may lose significance
 
-3. **atan()**: No range reduction needed
-   - Current implementation handles all inputs
-   - Optional: add |x| > 1 optimization later
+This is inherent to 16-digit BCD arithmetic, not a flaw in the algorithm.
 
 ---
 
@@ -149,4 +221,5 @@ This uses division to reduce to |x| ≤ 1, which may converge faster. But it's n
 - Modular Range Reduction: academia.edu/5021712
 - HP-35 CORDIC Implementation: archived.hpcalc.org/laporte/Inverse_Trigonometric_functions.htm
 - HP-35 Algorithms and Accuracy: hpl.hp.com/hpjournal/72jun/jun72a2.pdf
+- Meggitt's Method: Pseudo Division and Pseudo Multiplication Processes (1962)
 - CORDIC Wikipedia: en.wikipedia.org/wiki/CORDIC

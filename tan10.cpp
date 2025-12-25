@@ -56,6 +56,28 @@ static void setBCD45(BCD& x)
     x.esign = false;
 }
 
+// Truncate BCD to integer part (floor for positive numbers)
+// Modifies x in place, zeroing fractional digits
+static void bcdTruncateToInt(BCD& x)
+{
+    // Get exponent value
+    int exp = int(x.exp[0]) * 10 + int(x.exp[1]);
+    if (x.esign)
+        exp = -exp;
+
+    // If exp < 0, number is < 1, so integer part is 0
+    if (exp < 0) {
+        regClear(x);
+        return;
+    }
+
+    // Zero fractional digits (those beyond position exp)
+    // Position 0 has weight 10^exp, position 1 has weight 10^(exp-1), etc.
+    // Integer part uses positions 0 through exp (inclusive)
+    for (uint i = uint(exp) + 1; i < MAX_MANT; i++)
+        x.mant[i] = 0;
+}
+
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -96,15 +118,31 @@ void tanDeg(BCD& S0, BCD& R)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    // Reduce angle to [0, 360) using modulo 360
+    // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
+    // This is O(1) instead of O(n) for large angles
 
-    // Check if angle >= 360, if so reduce
     BCD temp360;
     setBCD360(temp360);
 
-    while (bcdCompare(S0, temp360) >= 0) {
-        // S0 = S0 - 360
+    if (bcdCompare(S0, temp360) >= 0) {
+        // Save original angle in S3 (S2 is used by mul as accumulator)
+        regCopy(S3, S0);
+
+        // Compute quotient: R = S0 / 360
         regCopy(S1, temp360);
+        div(S0, S1, R);
+
+        // Truncate to integer: n = floor(S0 / 360)
+        bcdTruncateToInt(R);
+
+        // Compute product: R = n * 360
+        regCopy(S0, R);
+        regCopy(S1, temp360);
+        mul(S0, S1, R);
+
+        // Compute remainder: S0 = original - n * 360
+        regCopy(S0, S3);
+        regCopy(S1, R);
         sub(S0, S1, R);
         regCopy(S0, R);
     }
@@ -294,6 +332,13 @@ void testTanDeg()
         "405",                    // 360+45, tan=1
         "720",                    // 2*360, tan=0
         "450",                    // 360+90, asymptote
+        // Large angles (test O(1) reduction)
+        "3645",                   // 10*360+45, tan=1
+        "36045",                  // 100*360+45, tan=1
+        "360045",                 // 1000*360+45, tan=1
+        "3600045",                // 10000*360+45, tan=1
+        "1000000",                // ~2778 rotations
+        "1e10",                   // 10 billion degrees
     };
 
     if (!runTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, val, sizeof(val) / sizeof(val[0])))
