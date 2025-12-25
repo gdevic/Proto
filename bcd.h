@@ -29,7 +29,6 @@ struct BCD
     array<uint8_t, MAX_EXP> exp {};   // Exponent nibbles
     bool sign {};                     // The number sign, true for negative numbers
     bool esign {};                    // The exponent sign, true for negative exponents
-    bool sticky {};                   // True if any non-zero digit shifted out
 
     // Original value for verification (stored as Real for precision)
     Real value {};

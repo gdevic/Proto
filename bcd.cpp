@@ -125,10 +125,7 @@ BCD::BCD(std::string_view str)
     exp[0] = uint8_t(effective_exp / 10);
     exp[1] = uint8_t(effective_exp % 10);
 
-    // 7. Initialize sticky to false (no precision loss from parsing)
-    sticky = false;
-
-    // 8. Compute value field via sscanf (needs null-terminated string)
+    // 7. Compute value field via sscanf (needs null-terminated string)
     std::string tmp(str);
 #ifdef USE_LONG_DOUBLE
     sscanf(tmp.c_str(), "%Lf", &value);

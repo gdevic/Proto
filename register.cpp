@@ -99,7 +99,6 @@ void round(BCD& S0, uint digits, BCD& R)
     // No rounding needed
     if (digits == 0) {
         regCopy(R, S0);
-        R.sticky = false;
         return;
     }
 
@@ -113,8 +112,7 @@ void round(BCD& S0, uint digits, BCD& R)
     regCopy(R, S0);
 
     // Check if there are any non-zero digits after the rounding position
-    // Start from position 15 (tainted by sticky) and walk backwards
-    bool hasTrailing = S0.sticky;
+    bool hasTrailing = false;
     for (uint i = MAX_MANT - 1; (i > digits) && !hasTrailing; i--)
         if (R.mant[i] != 0)
             hasTrailing = true;
@@ -156,6 +154,4 @@ void round(BCD& S0, uint digits, BCD& R)
             expInc(R);
         }
     }
-
-    R.sticky = false;
 }
