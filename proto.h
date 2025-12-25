@@ -30,6 +30,8 @@ void ln(BCD &S0, BCD &R);
 void exp(BCD &S0, BCD &R);
 void tan(BCD &S0, BCD &R);
 void atan(BCD &S0, BCD &R);
+void cordicTan(BCD &S0, BCD &R);   // Core CORDIC for tan (shared by tan and tan10)
+void cordicAtan(BCD &S0, BCD &R);  // Core CORDIC for atan (shared by atan and atan10)
 void tan10(BCD &S0, BCD &R);
 void atan10(BCD &S0, BCD &R);
 void sqrt(BCD &S0, BCD &R);

@@ -111,10 +111,11 @@ static int bcdCompare(const BCD& a, const BCD& b)
 }
 
 // Core CORDIC for tan: computes tan(angle_rad) where angle_rad is in radians
+// Uses CORDIC (Meggitt's digit-by-digit method)
 // Input: S0 = angle in radians (already reduced to small range)
 // Output: R = tan(angle)
 // Uses registers: S0, S1, S2, S3, S4, R
-static void cordicTan(BCD& S0, BCD& R)
+void cordicTan(BCD& S0, BCD& R)
 {
     // For numbers with negative exponent, right shift mantissa until exponent is zero
     if (S0.esign) {
@@ -342,26 +343,23 @@ void tan10(BCD& S0, BCD& R)
         R.sign = inputSign;
 }
 
-// Compute arctangent in degrees: R = atan10(S0)
-// Input is a value, output in degrees
-// Reads from S0, stores result in R
+// Core CORDIC arctangent algorithm
+// Input: S0 = value to compute arctangent of
+// Output: R = atan(S0) in radians
 // Uses registers: S0, S1, S2, S3, S4, R
-void atan10(BCD& S0, BCD& R)
+void cordicAtan(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
     preCalc1(S0, R);
 
-    // Special case: atan10(0) = 0 exactly
+    // Special case: atan(0) = 0 exactly
     if (FLAG_S0_ZERO)
         return;
 
     // Store sign and work with positive value (atan is odd function)
     bool inputSign = S0.sign;
     S0.sign = false;
-
-    // Call existing atan which returns radians
-    // (We duplicate the algorithm here to avoid register conflicts)
 
     // Initialize: y = input (S0), x = 1.0 (S1)
     regClear(S1);
@@ -452,22 +450,40 @@ void atan10(BCD& S0, BCD& R)
         }
     }
 
-    // R now contains result in radians
-    // Convert to degrees: R = R * (180/PI)
+    // Restore sign
+    R.sign = inputSign;
+}
 
+// Compute arctangent in degrees: R = atan10(S0)
+// Input is a value, output in degrees
+// Calls cordicAtan for radians, then converts to degrees
+// Returns: arctangent of S0 in degrees
+void atan10(BCD& S0, BCD& R)
+{
+    assert((&S0 == &::S0) && (&R == &::R));
+
+    // Get arctangent in radians
+    cordicAtan(S0, R);
+
+    // If zero result, no conversion needed (0 rad = 0 deg)
+    if (isMantZero(R.mant.data()))
+        return;
+
+    // Convert to degrees: R = R * (180/PI)
+    bool resultSign = R.sign;
     regCopy(S0, R);
 
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     mantCopy(S1.mant.data(), deg_180_over_pi);
-    S1.exp[0] = 0;  // exponent = 1, exp[0]=tens, exp[1]=ones
+    S1.exp[0] = 0;
     S1.exp[1] = 1;
     S1.esign = false;
     S1.sign = false;
 
     mul(S0, S1, R);
 
-    // Restore sign
-    R.sign = inputSign;
+    // Preserve sign through multiplication
+    R.sign = resultSign;
 }
 
 // IEEE operations for test runner (degrees)
