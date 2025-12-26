@@ -28,6 +28,12 @@ static const uint8_t atan_const[K][MAX_MANT] = {
     {0,0,0,0,0,0,0,0,9,9,9,9,9,9,9,9},  // atan(1e-7)    = 0.0000000999999999
 };
 
+// PI/2 for atan of very large values (16 digits)
+// π/2 = 1.5707963267948966192313216916398...
+static const uint8_t pi_over_2[MAX_MANT] = {
+    1,5,7,0,7,9,6,3,2,6,7,9,4,8,9,7
+};
+
 // Get atan constant for position j
 // For j < K: return table entry
 // For j >= K: generate dynamically ((j+1) leading zeros, then 9s)
@@ -179,6 +185,18 @@ void cordicAtan(BCD& S0, BCD& R)
     // Store sign and work with positive value (atan is odd function)
     bool inputSign = S0.sign;
     S0.sign = false;
+
+    // Special case: very large |input| (exponent >= 15)
+    // atan(x) approaches π/2 so closely that difference < 10^-15
+    // Return π/2 directly to avoid mantissa underflow during alignment
+    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && S0.exp[1] >= 5))) {
+        mantCopy(R.mant.data(), pi_over_2);
+        R.exp[0] = 0;
+        R.exp[1] = 0;
+        R.esign = false;
+        R.sign = inputSign;
+        return;
+    }
 
     // Initialize: y = input (S0), x = 1.0 (S1)
     // Align mantissas so their ratio reflects the true input value

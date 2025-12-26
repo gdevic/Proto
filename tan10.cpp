@@ -239,6 +239,26 @@ void atanDeg(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
+    preCalc1(S0, R);
+
+    // Special case: atan(0) = 0 exactly
+    if (FLAG_S0_ZERO)
+        return;
+
+    // For very large |input| (exponent >= 15), atan approaches ±90°
+    // Return exactly 90° to avoid precision loss from π/2 × (180/π) conversion
+    // Mathematically: atan(x) = π/2 - 1/x + O(1/x³) for large x
+    // At 10^15, the 1/x term is 10^-15, below our 16-digit precision floor
+    bool inputSign = S0.sign;
+    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && S0.exp[1] >= 5))) {
+        // Return exactly ±90 degrees: 9.0e1
+        R.mant[0] = 9;
+        R.exp[0] = 0;
+        R.exp[1] = 1;
+        R.sign = inputSign;
+        return;
+    }
+
     // Get arctangent in radians
     cordicAtan(S0, R);
 
