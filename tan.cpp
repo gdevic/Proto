@@ -6,6 +6,12 @@
 #include <cassert>
 #include <cmath>
 
+// 180/PI for radian to degree conversion (16 digits)
+// 57.29577951308232087679815481410517...
+static const uint8_t deg_180_over_pi[MAX_MANT] = {
+    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
+};
+
 // CORDIC constants for tangent/arctangent (Meggitt's digit-by-digit method)
 // atan_const[j] = atan(10^-j) for j = 0..7, stored as 16-digit BCD mantissa
 // Format: d1.d2d3...d16, so 0.785... is stored as {0,7,8,5,...}
@@ -290,12 +296,6 @@ void cordicAtan(BCD& S0, BCD& R)
     R.sign = inputSign;
 }
 
-// 180/PI for radian to degree conversion (16 digits)
-// 57.29577951308232087679815481410517...
-static const uint8_t deg_180_over_pi[MAX_MANT] = {
-    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
-};
-
 // Compute tangent in radians: R = tanRad(S0)
 // Input in radians, output is the tangent value
 // Converts to degrees, calls tanDeg (which does range reduction), returns result
@@ -315,9 +315,6 @@ void tanRad(BCD& S0, BCD& R)
     S0.sign = false;
 
     // ---------- Convert radians to degrees ----------
-    // S0 = S0 * (180/PI)
-    regCopy(S1, S0);
-
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     mantCopy(S1.mant.data(), deg_180_over_pi);
     S1.exp[0] = 0;
@@ -325,6 +322,7 @@ void tanRad(BCD& S0, BCD& R)
     S1.esign = false;
     S1.sign = false;
 
+    // S0 = S0 * (180/PI)
     mul(S0, S1, R);
 
     // R now contains the angle in degrees
