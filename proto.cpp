@@ -15,7 +15,7 @@ static void printHelp(const char* prog)
               << "  -c       Use ANSI colors\n"
               << "  -d NUM   FIX mode: round to NUM decimal places (0-15) before comparison\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
-              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt)\n"
+              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
               << "  -i       Show test index (1-based) at start of each line\n"
               << "  -r NUM   Number of random tests to run (default: 2)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
@@ -133,4 +133,12 @@ int main(int argc, char* argv[])
     if (shouldRun("tandeg"))  testTanDeg();
     if (shouldRun("atandeg")) testAtanDeg();
     if (shouldRun("sqrt"))   testSqrt();
+    if (shouldRun("sindeg"))  testSinDeg();
+    if (shouldRun("sinrad"))  testSinRad();
+    if (shouldRun("cosdeg"))  testCosDeg();
+    if (shouldRun("cosrad"))  testCosRad();
+    if (shouldRun("asindeg")) testAsinDeg();
+    if (shouldRun("asinrad")) testAsinRad();
+    if (shouldRun("acosdeg")) testAcosDeg();
+    if (shouldRun("acosrad")) testAcosRad();
 }

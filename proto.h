@@ -35,6 +35,14 @@ void atanDeg(BCD &S0, BCD &R);  // Arctangent, output in degrees
 void cordicTan(BCD &S0, BCD &R);   // Core CORDIC for tan (internal)
 void cordicAtan(BCD &S0, BCD &R);  // Core CORDIC for atan (internal)
 void sqrt(BCD &S0, BCD &R);
+void sinDeg(BCD &S0, BCD &R);      // Sine, input in degrees
+void sinRad(BCD &S0, BCD &R);      // Sine, input in radians
+void cosDeg(BCD &S0, BCD &R);      // Cosine, input in degrees
+void cosRad(BCD &S0, BCD &R);      // Cosine, input in radians
+void asinDeg(BCD &S0, BCD &R);     // Arcsine, output in degrees
+void asinRad(BCD &S0, BCD &R);     // Arcsine, output in radians
+void acosDeg(BCD &S0, BCD &R);     // Arccosine, output in degrees
+void acosRad(BCD &S0, BCD &R);     // Arccosine, output in radians
 
 // Test functions
 void testAddition();
@@ -48,3 +56,11 @@ void testAtanRad();
 void testTanDeg();
 void testAtanDeg();
 void testSqrt();
+void testSinDeg();
+void testSinRad();
+void testCosDeg();
+void testCosRad();
+void testAsinDeg();
+void testAsinRad();
+void testAcosDeg();
+void testAcosRad();
