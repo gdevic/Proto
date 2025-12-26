@@ -99,15 +99,15 @@ void tanDeg(BCD& S0, BCD& R)
     // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
     // This is O(1) instead of O(n) for large angles
 
-    BCD temp360;
-    setBCD360(temp360);
+    // Use S4 for 360 constant
+    setBCD360(S4);
 
-    if (bcdCompare(S0, temp360) >= 0) {
+    if (bcdCompare(S0, S4) >= 0) {
         // Save original angle in S3 (S2 is used by mul as accumulator)
         regCopy(S3, S0);
 
         // Compute quotient: R = S0 / 360
-        regCopy(S1, temp360);
+        regCopy(S1, S4);
         div(S0, S1, R);
 
         // Truncate to integer: n = floor(S0 / 360)
@@ -115,7 +115,7 @@ void tanDeg(BCD& S0, BCD& R)
 
         // Compute product: R = n * 360
         regCopy(S0, R);
-        regCopy(S1, temp360);
+        regCopy(S1, S4);
         mul(S0, S1, R);
 
         // Compute remainder: S0 = original - n * 360
@@ -127,29 +127,29 @@ void tanDeg(BCD& S0, BCD& R)
 
     // Now S0 is in [0, 360)
     // First reduce to [0, 180) using tan(x) = tan(x - 180)
-    BCD temp180;
-    regClear(temp180);
-    temp180.mant[0] = 1;
-    temp180.mant[1] = 8;
-    temp180.exp[0] = 0;
-    temp180.exp[1] = 2;  // exp = 2
+    // Use S2 for 180 constant (needed until line ~152)
+    regClear(S2);
+    S2.mant[0] = 1;
+    S2.mant[1] = 8;
+    S2.exp[0] = 0;
+    S2.exp[1] = 2;  // exp = 2
 
-    if (bcdCompare(S0, temp180) >= 0) {
-        regCopy(S1, temp180);
+    if (bcdCompare(S0, S2) >= 0) {
+        regCopy(S1, S2);
         sub(S0, S1, R);
         regCopy(S0, R);
     }
 
     // Now S0 is in [0, 180)
     // Check if angle >= 90: use tan(x) = -tan(180 - x) for x in [90, 180)
-    BCD temp90;
-    setBCD90(temp90);
+    // Use S4 for 90 constant
+    setBCD90(S4);
     bool negateResult = false;
 
-    if (bcdCompare(S0, temp90) >= 0) {
-        // S0 = 180 - S0
+    if (bcdCompare(S0, S4) >= 0) {
+        // S0 = 180 - S0 (S2 still holds 180)
         regCopy(S1, S0);
-        regCopy(S0, temp180);
+        regCopy(S0, S2);
         sub(S0, S1, R);
         regCopy(S0, R);
         negateResult = true;
@@ -157,9 +157,9 @@ void tanDeg(BCD& S0, BCD& R)
 
     // Now S0 is in [0, 90)
     // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
-    BCD temp45;
-    setBCD45(temp45);
-    bool useReciprocal = (bcdCompare(S0, temp45) > 0);
+    // Reuse S4 for 45 constant
+    setBCD45(S4);
+    bool useReciprocal = (bcdCompare(S0, S4) > 0);
 
     if (useReciprocal) {
         // S0 = 90 - S0
