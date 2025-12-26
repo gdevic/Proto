@@ -161,6 +161,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 | Flag | Description |
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
+| `-c` | Use ANSI colors (red background for mismatched digits, yellow for summary) |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
 | `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
 | `-i` | Show test index (1-based) at start of each line |
@@ -170,6 +171,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 
 ```bash
 ./proto               # Debug: show only problems
+./proto -c            # Debug with colored output
 ./proto -e            # Stop at first failure
 ./proto -f ln         # Run only ln tests
 ./proto -f add -f sub # Run add and sub tests

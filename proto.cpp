@@ -12,6 +12,7 @@ static void printHelp(const char* prog)
               << "\n"
               << "Options:\n"
               << "  -h       Show this help message\n"
+              << "  -c       Use ANSI colors\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
               << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt)\n"
               << "  -i       Show test index (1-based) at start of each line\n"
@@ -42,6 +43,8 @@ int main(int argc, char* argv[])
             printHelp(argv[0]);
             return 0;
         }
+        else if (strcmp(argv[i], "-c") == 0)
+            g_useColor = true;
         else if (strcmp(argv[i], "-e") == 0)
             g_stopOnError = true;
         else if (strcmp(argv[i], "-f") == 0) {
@@ -82,8 +85,9 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10)) {
+    if (g_useColor || g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10)) {
         std::cerr << "Flags:";
+        if (g_useColor) std::cerr << " -c";
         if (g_stopOnError) std::cerr << " -e";
         if (g_showIndex) std::cerr << " -i";
         if (g_traceAll) std::cerr << " -t";

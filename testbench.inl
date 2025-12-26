@@ -5,12 +5,44 @@
 #include "register.h"
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
 namespace detail {
+
+// ANSI escape codes for colored output
+constexpr const char* RED_BG = "\033[48;5;160m"; // Medium-bright red background
+constexpr const char* YELLOW = "\033[93m";       // Bright yellow text
+constexpr const char* RESET = "\033[0m";
+
+// Print BCD result with colored background on digits that mismatch IEEE expected value
+inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
+{
+    if (!g_useColor) {
+        std::cout << bcd;
+        return;
+    }
+
+    // Format IEEE in same format as BCD: ±D.DDDDDDDDDDDDDDDe±EE
+    std::ostringstream oss;
+    oss << std::scientific << std::setprecision(15) << ieee;
+    std::string ieeeStr = oss.str();
+
+    // Normalize IEEE format to match BCD (22 chars: +D.DDDDDDDDDDDDDDDe+EE)
+    // std::scientific may produce different formats, so pad/adjust as needed
+    if (ieeeStr[0] != '+' && ieeeStr[0] != '-')
+        ieeeStr = "+" + ieeeStr;
+
+    for (size_t i = 0; i < bcd.size(); i++) {
+        if (i < ieeeStr.size() && bcd[i] != ieeeStr[i])
+            std::cout << RED_BG << bcd[i] << RESET;
+        else
+            std::cout << bcd[i];
+    }
+}
 
 // Seed RNG from operation name for reproducible random tests
 // Returns seed value derived from string
@@ -37,7 +69,12 @@ inline bool recordResult(MatchLevel level, int& ok, int& approx, int& fail)
 // Print summary line to stderr
 inline void printSummary(const char* opName, const char* suffix, int ok, int approx, int fail)
 {
-    std::cerr << "= " << opName << " " << suffix << ": " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL\n";
+    if (g_useColor)
+        std::cerr << YELLOW;
+    std::cerr << "= " << opName << " " << suffix << ": " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL";
+    if (g_useColor)
+        std::cerr << RESET;
+    std::cerr << "\n";
 }
 
 // Unified result printer - works for both unary and binary via if constexpr
@@ -67,20 +104,20 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         return false;  // Never stop on expected errors
     }
 
-    std::cout << formatBCD(result) << " ";
-
     switch (level) {
         case MatchLevel::OK:
-            std::cout << "OK";
+            std::cout << formatBCD(result) << " OK";
             if (g_verbose)
                 std::cout << " " << std::scientific << std::setprecision(15) << ieee;
             break;
         case MatchLevel::APPROX:
-            std::cout << "APPROX " << std::scientific << std::setprecision(15) << ieee
+            printWithMismatchHighlight(formatBCD(result), ieee);
+            std::cout << " APPROX " << std::scientific << std::setprecision(15) << ieee
                       << " err=" << std::fabs(result.toReal() - ieee);
             break;
         case MatchLevel::FAIL:
-            std::cout << "FAIL " << std::scientific << std::setprecision(15) << ieee
+            printWithMismatchHighlight(formatBCD(result), ieee);
+            std::cout << " FAIL " << std::scientific << std::setprecision(15) << ieee
                       << " err=" << std::fabs(result.toReal() - ieee);
             break;
     }
