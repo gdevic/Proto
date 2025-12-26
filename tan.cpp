@@ -332,6 +332,33 @@ void tanRad(BCD& S0, BCD& R)
     bool inputSign = S0.sign;
     S0.sign = false;
 
+    // ---------- Check for proximity to π/2 (asymptote) ----------
+    // If |input - π/2| < 10^-13, the conversion to degrees will produce a value
+    // very close to but not exactly 90°, causing precision issues.
+    // Mathematically: tan(π/2 - ε) = cot(ε) ≈ 1/ε, but for ε < 10^-13,
+    // the result exceeds 10^13 which is the threshold for "essentially infinity"
+    // in our 16-digit precision model.
+    //
+    // Compute |input - π/2| by subtracting and checking if result is tiny
+    mantCopy(S1.mant.data(), pi_over_2);
+    S1.exp[0] = 0;
+    S1.exp[1] = 0;
+    S1.esign = false;
+    S1.sign = false;
+
+    regCopy(S2, S0);  // Save input
+    sub(S0, S1, R);   // R = input - π/2
+
+    // If |input - π/2| is effectively zero (exponent <= -13), return overflow
+    // This means tan would exceed 10^13, essentially infinity for our precision
+    if (isMantZero(R.mant.data()) ||
+        (R.esign && ((R.exp[0] >= 2) || (R.exp[0] == 1 && R.exp[1] >= 3)))) {
+        FLAG_OF_ERR = true;
+        return;
+    }
+
+    regCopy(S0, S2);  // Restore input
+
     // ---------- Convert radians to degrees ----------
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     mantCopy(S1.mant.data(), deg_180_over_pi);
