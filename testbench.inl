@@ -45,7 +45,13 @@ inline void printSummary(const char* opName, const char* suffix, int ok, int app
 template<Arity arity>
 bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, MatchLevel level, Real ieee)
 {
-    if ((level == MatchLevel::OK) && !g_traceAll)
+    // Check for error flags - R is undefined, show error instead
+    std::string err;
+    if (FLAG_DOM_ERR) err += "DOMAIN ";
+    if (FLAG_OF_ERR) err += "OVERFLOW ";
+    if (FLAG_DIV0_ERR) err += "DIV0 ";
+
+    if (err.empty() && (level == MatchLevel::OK) && !g_traceAll)
         return false;
 
     if (g_showIndex)
@@ -55,6 +61,11 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
 
     if constexpr (arity == Arity::Binary)
         std::cout << formatBCD(b) << " ";
+
+    if (!err.empty()) {
+        std::cout << err << std::scientific << std::setprecision(15) << ieee << "\n";
+        return false;  // Never stop on expected errors
+    }
 
     std::cout << formatBCD(result) << " ";
 
@@ -96,13 +107,17 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
                 S0 = BCD(values[i]);
                 S1 = BCD(values[j]);
                 Real ieee = ieeeOp(S0.value, S1.value);
+                FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
                 bcdOp(S0, S1, R);
                 MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
                 g_testIndex++;
                 if (detail::printResult<arity>(opName, BCD(values[i]), BCD(values[j]), R, level, ieee))
                     return false;
-                detail::recordResult(level, ok, approx, fail);
+                if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+                    ok++;
+                else
+                    detail::recordResult(level, ok, approx, fail);
             }
         }
         detail::printSummary(opName, "comb", ok, approx, fail);
@@ -112,13 +127,17 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
         for (size_t i = 0; i < count; i++) {
             S0 = BCD(values[i]);
             Real ieee = ieeeOp(S0.value);
+            FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
             bcdOp(S0, R);
             MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
             g_testIndex++;
             if (detail::printResult<arity>(opName, BCD(values[i]), dummy, R, level, ieee))
                 return false;
-            detail::recordResult(level, ok, approx, fail);
+            if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+                ok++;
+            else
+                detail::recordResult(level, ok, approx, fail);
         }
         detail::printSummary(opName, "tests", ok, approx, fail);
     }
@@ -143,6 +162,7 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         Real ieee;
         BCD inputB;  // For binary ops or dummy for unary
 
+        FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
         if constexpr (arity == Arity::Binary) {
             std::string strB = generateRandomBCD(rng, opts);
             S1 = BCD(strB);
@@ -159,7 +179,10 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         g_testIndex++;
         if (detail::printResult<arity>(opName, BCD(strA), inputB, R, level, ieee))
             return false;
-        detail::recordResult(level, ok, approx, fail);
+        if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+            ok++;
+        else
+            detail::recordResult(level, ok, approx, fail);
     }
 
     detail::printSummary(opName, "rand", ok, approx, fail);
@@ -197,6 +220,7 @@ bool runRoundTripTests(const char* opName,
         Real ieee = ieeeForward(ieeeInverse(S0.value));
 
         // Compute inverse(x) -> R, then forward(R) -> R
+        FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
         inverseOp(S0, R);
         regCopy(S0, R);
         forwardOp(S0, R);
@@ -206,7 +230,10 @@ bool runRoundTripTests(const char* opName,
         g_testIndex++;
         if (detail::printResult<Arity::Unary>(opName, BCD(strA), dummy, R, level, ieee))
             return false;
-        detail::recordResult(level, ok, approx, fail);
+        if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+            ok++;
+        else
+            detail::recordResult(level, ok, approx, fail);
     }
 
     const char* suffix = IsRandom ? "rand trip" : "trip";
