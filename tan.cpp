@@ -198,6 +198,21 @@ void cordicAtan(BCD& S0, BCD& R)
         return;
     }
 
+    // Reciprocal reduction for |input| > 1: atan(x) = π/2 - atan(1/x)
+    // This ensures CORDIC works with input ratio y/x <= 1 for faster convergence
+    // Check if |input| > 1: positive exponent, or exp=0 and mant[0] > 1
+    bool useReciprocal = false;
+    if (!S0.esign && (S0.exp[0] || S0.exp[1] || S0.mant[0] > 1)) {
+        useReciprocal = true;
+        // Compute 1/input: R = 1/S0
+        regCopy(S1, S0);
+        regClear(S0);
+        S0.mant[0] = 1;  // S0 = 1.0
+        div(S0, S1, R);
+        regCopy(S0, R);
+        S0.sign = false;  // Work with positive value
+    }
+
     // Initialize: y = input (S0), x = 1.0 (S1)
     // Align mantissas so their ratio reflects the true input value
 
@@ -308,6 +323,20 @@ void cordicAtan(BCD& S0, BCD& R)
             regCopy(S1, S4);
             add(S0, S1, R);
         }
+    }
+
+    // Apply reciprocal reduction: atan(x) = π/2 - atan(1/x) for |x| > 1
+    if (useReciprocal) {
+        // S0 = π/2
+        mantCopy(S0.mant.data(), pi_over_2);
+        S0.exp[0] = 0;
+        S0.exp[1] = 0;
+        S0.esign = false;
+        S0.sign = false;
+
+        // R = π/2 - R
+        regCopy(S1, R);
+        sub(S0, S1, R);
     }
 
     // Restore sign (atan is odd function)

@@ -33,6 +33,12 @@ void normalize(BCD& x);
 // Uses sticky bit for precise tie-breaking (banker's rounding)
 void round(BCD& S0, uint digits, BCD& R);
 
+// Round BCD to fixed decimal places (FIX mode, like HP calculators)
+// d = number of digits after the decimal point (0-15)
+// Example: roundFix(1.23456e+02, 2) → 1.2346e+02 (keeps 123.46)
+// Returns zero if value is smaller than 10^(-d)
+void roundFix(BCD& S0, int d, BCD& R);
+
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
 void truncate(BCD& x);

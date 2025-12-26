@@ -146,6 +146,14 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
                 Real ieee = ieeeOp(S0.value, S1.value);
                 FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
                 bcdOp(S0, S1, R);
+
+                // Apply FIX mode rounding if enabled
+                if (g_roundDigits >= 0) {
+                    regCopy(S0, R);
+                    roundFix(S0, g_roundDigits, R);
+                    ieee = roundFixIEEE(ieee, g_roundDigits);
+                }
+
                 MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
                 g_testIndex++;
@@ -166,6 +174,14 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
             Real ieee = ieeeOp(S0.value);
             FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
             bcdOp(S0, R);
+
+            // Apply FIX mode rounding if enabled
+            if (g_roundDigits >= 0) {
+                regCopy(S0, R);
+                roundFix(S0, g_roundDigits, R);
+                ieee = roundFixIEEE(ieee, g_roundDigits);
+            }
+
             MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
             g_testIndex++;
@@ -209,6 +225,13 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         } else {
             ieee = ieeeOp(S0.value);
             bcdOp(S0, R);
+        }
+
+        // Apply FIX mode rounding if enabled
+        if (g_roundDigits >= 0) {
+            regCopy(S0, R);
+            roundFix(S0, g_roundDigits, R);
+            ieee = roundFixIEEE(ieee, g_roundDigits);
         }
 
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
@@ -261,6 +284,13 @@ bool runRoundTripTests(const char* opName,
         inverseOp(S0, R);
         regCopy(S0, R);
         forwardOp(S0, R);
+
+        // Apply FIX mode rounding if enabled (only at the very end)
+        if (g_roundDigits >= 0) {
+            regCopy(S0, R);
+            roundFix(S0, g_roundDigits, R);
+            ieee = roundFixIEEE(ieee, g_roundDigits);
+        }
 
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 

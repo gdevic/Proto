@@ -29,7 +29,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Natural Log** (`log.cpp`): CORDIC digit-by-digit method (HP-35 style). 16 iterations with ln(1+10^-j) constants. See `docs/log-algorithm-research.md` for algorithm comparison.
 - **Exponential** (`log.cpp`): CORDIC digit-by-digit method (inverse of ln). Range reduction via division by ln(10), pseudo-division to decompose remainder, pseudo-multiplication to build result. Shares ln constant table with ln().
 - **Tangent** (`tan.cpp`): CORDIC digit-by-digit method using atan constants. Works for small angles (~0 to PI/4); requires range reduction for larger angles. See `docs/tan-algorithm-research.md`.
-- **Arctangent** (`tan.cpp`): CORDIC digit-by-digit method. Works across full range. See `docs/tan-algorithm-research.md`.
+- **Arctangent** (`tan.cpp`): CORDIC digit-by-digit method with reciprocal reduction for |x|>1: atan(x) = π/2 - atan(1/x). Works across full range. See `docs/tan-algorithm-research.md`.
 - **Tangent (degrees)** (`tan10.cpp`): Exact range reduction using 360°/180°/90°/45°, then converts to radians and applies CORDIC. Works for all angles. See `docs/tan10-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
 
@@ -43,6 +43,11 @@ ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 - OK: ≤1e-14 (14+ correct digits)
 - APPROX: ≤1e-13 (13-14 digits)
 - FAIL: >1e-13
+
+### FIX Mode Rounding
+- `roundFix(S0, d, R)` in `register.cpp`: Rounds BCD to d decimal places (HP calculator FIX mode)
+- `-d <0-15>` command line option: Rounds both BCD and IEEE before comparison
+- Useful for testing at reduced precision or characterizing precision limits
 
 ### RandomBCDOptions Presets
 Domain constraints for different operations:

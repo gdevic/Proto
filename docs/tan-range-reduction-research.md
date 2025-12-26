@@ -100,14 +100,26 @@ Converts radians to degrees by multiplying by 180/π, then delegates to tanDeg()
 
 ### atanRad() and atanDeg()
 
-**No range reduction needed** for arctangent:
+**Reciprocal reduction is REQUIRED** for arctangent when |x| > 1:
 - Domain: (-∞, +∞)
 - Range: (-π/2, +π/2) radians or (-90°, +90°)
-- CORDIC handles all inputs directly
+- Identity used: atan(x) = π/2 - atan(1/x) for |x| > 1
 
 atanDeg() calls cordicAtan() then multiplies result by 180/π to convert to degrees.
 
-**Optional optimization** for large |x|: atan(x) = sign(x) * π/2 - atan(1/x). This uses division to reduce to |x| ≤ 1, which may converge faster. But it's not required for correctness.
+**Why reciprocal reduction is required** (not just an optimization):
+
+Without it, large inputs cause CORDIC counters to max out at the BCD digit limit (9), producing grossly wrong results. For example, atan(8.36) would return 143° instead of the correct 83°.
+
+| Input | Without reduction | With reduction |
+|-------|-------------------|----------------|
+| 0.5 | 26.57° ✓ | 26.57° ✓ |
+| 1.0 | 45.00° ✓ | 45.00° ✓ |
+| 8.36 | 143.37° ✗ | 83.18° ✓ |
+
+The reciprocal identity transforms large inputs to small ones:
+- atan(8.36) = π/2 - atan(1/8.36) = π/2 - atan(0.1196)
+- atan(0.1196) converges quickly with counter[0]=0, counter[1]=1
 
 ---
 

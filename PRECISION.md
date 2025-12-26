@@ -347,6 +347,40 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 
 All figures assume guard digit rounding is applied at each operation (Strategy A).
 
+## FIX Mode Rounding for Testing
+
+The test framework supports HP calculator-style FIX mode rounding via the `-d` command line option. This rounds both BCD and IEEE results to a fixed number of decimal places before comparison.
+
+### Use Cases
+
+1. **Characterizing precision limits**: Find minimum FIX setting where operations pass
+2. **Testing reduced precision**: Verify algorithms work at hardware's actual precision
+3. **Isolating algorithmic errors**: Distinguish precision loss from actual bugs
+
+### FIX Mode Semantics
+
+Unlike significant digit rounding, FIX mode rounds to an **absolute** decimal position:
+
+| Value | FIX 2 | FIX 5 | FIX 10 |
+|-------|-------|-------|--------|
+| 123.456789 | 123.46 | 123.45679 | 123.4567890000 |
+| 0.00123456 | 0.00 | 0.00123 | 0.0012345600 |
+| 1.234e+10 | 1.234e+10 | 1.234e+10 | 1.234e+10 |
+
+For BCD with exponent `e`, FIX `d` rounds at mantissa position `d + e + 1`:
+- Position < 1: value too small, rounds to zero
+- Position ≥ 16: all digits are integer part, no rounding
+
+### Example: CORDIC Precision
+
+```bash
+./proto -f tanrad -d 14    # Full precision: some failures
+./proto -f tanrad -d 10    # Reduced: most pass
+./proto -f tanrad -d 8     # More reduced: nearly all pass
+```
+
+This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
+
 ## Recommendations
 
 1. **Keep 16 digits through all intermediate computations**. Round only when storing to user-visible register, displaying, or exporting.
@@ -356,3 +390,5 @@ All figures assume guard digit rounding is applied at each operation (Strategy A
 3. **Accept 15 digits as guaranteed precision** for operations involving more than one primitive. All 16 digits are usually correct for basic operations.
 
 4. **For CORDIC tables**: Store arctan(10^-i) constants to 17 digits—one more than working precision ensures table lookup error doesn't dominate.
+
+5. **Use FIX mode testing** to characterize precision limits and verify behavior at reduced precision levels.

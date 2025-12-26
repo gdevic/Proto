@@ -13,6 +13,7 @@ inline bool g_stopOnError = false;  // -e: Stop on first error (FAIL)
 inline bool g_useColor = false;     // -c: Use ANSI colors for output
 inline int g_testIndex = 0;         // Global test counter
 inline int g_randomCount = 10;      // -r: Number of random tests to run
+inline int g_roundDigits = -1;      // -d: FIX mode decimal places (-1 = disabled)
 inline std::vector<std::string> g_testFilters; // -f: Filters to run only specific tests
 
 // Tolerance levels for verification (13-14 correct digits required)
@@ -27,6 +28,10 @@ enum class Arity { Unary, Binary };
 // Check tolerance with IEEE noise detection
 // Returns MatchLevel indicating accuracy classification
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
+
+// Round IEEE value to d fixed decimal places (FIX mode, like HP calculators)
+// Returns rounded value
+Real roundFixIEEE(Real value, int d);
 
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, 16 significant digits)
 // Returns formatted string representation

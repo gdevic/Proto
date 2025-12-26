@@ -74,7 +74,12 @@ Output: atan(x) in radians
 1. Handle sign:
    - Store sign of x, work with |x|
 
-2. CORDIC vectoring (pseudo-division):
+2. Reciprocal reduction (REQUIRED for |x| > 1):
+   - If |x| > 1: compute 1/x, set reciprocal flag
+   - Use identity: atan(x) = π/2 - atan(1/x)
+   - This ensures CORDIC works with ratio y/x ≤ 1
+
+3. CORDIC vectoring (pseudo-division):
    x_reg = 1.0, y_reg = x, result = 0
    For j = 0 to 15:
      counter[j] = 0
@@ -84,17 +89,36 @@ Output: atan(x) in radians
        x_reg = x_new, y_reg = y_new
        counter[j]++
 
-3. Accumulate constants (pseudo-multiplication):
+4. Accumulate constants (pseudo-multiplication):
    For j = 15 down to 0:
      result += counter[j] * atan_const[j]
 
-4. Add remainder:
+5. Add remainder:
    result += y_reg / x_reg  (small angle approximation)
 
-5. Normalize result
+6. Apply reciprocal reduction:
+   If reciprocal flag: result = π/2 - result
 
-6. Restore sign
+7. Normalize result
+
+8. Restore sign
 ```
+
+### Why Reciprocal Reduction is Required
+
+Without reciprocal reduction, inputs |x| > 1 cause the CORDIC counters to max out:
+
+| Input | y/x ratio | Counter[0] needed | Problem |
+|-------|-----------|-------------------|---------|
+| 0.5 | 0.5 | 0 | OK |
+| 1.0 | 1.0 | 1 | OK |
+| 8.36 | 8.36 | ~8-10 | Counters max at 9 (BCD digit) |
+
+When counters hit the BCD digit limit (9), the algorithm over-accumulates the angle, producing grossly wrong results (e.g., 143° instead of 83° for atan(8.36)).
+
+The reciprocal identity transforms large inputs to small ones:
+- atan(8.36) = π/2 - atan(1/8.36) = π/2 - atan(0.1196)
+- atan(0.1196) converges quickly with counter[0]=0, counter[1]=1
 
 ### Constants Required
 ```
@@ -188,13 +212,15 @@ atan(x) = x / (1 + x²/(3 + 4x²/(5 + 9x²/(7 + ...))))
 - Operations use local guard digit and sticky flag to track precision loss
 - atan constants have same "leading zeros then 9s" pattern as ln constants
 
-### Range Reduction (Future Work)
+### Range Reduction
 For tan() with large angles:
-- Subtract multiples of PI to reduce to [-PI/2, PI/2]
-- Track quadrant for sign determination
-- Requires PI constant and careful subtraction
+- Implemented via degree conversion: tan(rad) → tanDeg(deg) → cordicTan()
+- See `docs/tan-range-reduction-research.md` for details
 
-For atan(), no range reduction needed (converges for all x).
+For atan(), reciprocal reduction is REQUIRED for |x| > 1:
+- Uses identity: atan(x) = π/2 - atan(1/x)
+- Without this, CORDIC counters max out and produce wrong results
+- See "Why Reciprocal Reduction is Required" section above
 
 ### Special Cases
 - tan(0) = 0 exactly

@@ -162,6 +162,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 |------|-------------|
 | (none) | Debug mode: only print APPROX and FAIL lines |
 | `-c` | Use ANSI colors (red background for mismatched digits, yellow for summary) |
+| `-d NUM` | FIX mode: round both BCD and IEEE to NUM decimal places (0-15) before comparison |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
 | `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
 | `-i` | Show test index (1-based) at start of each line |
@@ -176,6 +177,8 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 ./proto -f ln         # Run only ln tests
 ./proto -f add -f sub # Run add and sub tests
 ./proto -f ln -r 100  # Run ln tests with 100 random cases
+./proto -d 10         # Test with FIX 10 precision (10 decimal places)
+./proto -f tan -d 8   # Test tan with reduced precision
 ./proto -v            # Debug: problems + IEEE on OK
 ./proto -t > hw.txt   # Generate HW test file (all lines)
 ./proto -t -v         # All lines with IEEE everywhere
@@ -233,8 +236,43 @@ Tests are split into combinatorial (fixed test values) and random (generated val
 
 **TAN**: The CORDIC algorithm works correctly for small angles (~0 to PI/4 radians) but requires range reduction for larger angles. Random tests fail because they use large angles outside this range. The fixed tests show 1e-14 to 1e-12 errors which are at or near machine precision.
 
-**ATAN**: Works well across the full range. The 2 FAIL cases have errors around 1e-15 which are at machine precision limits and effectively correct.
+**ATAN**: Uses reciprocal reduction for |x| > 1: atan(x) = π/2 - atan(1/x). This ensures CORDIC converges quickly for all inputs. Works well across the full range with errors at machine precision limits.
 
 **TAN10/ATAN10**: Degree-based versions with range reduction. Range reduction is exact since 90° and 360° are exact decimals (unlike π for radians). Works well for angles away from asymptotes (90°, 270°). Round-trip tests show accumulated precision loss.
 
 **EXP**: CORDIC digit-by-digit method (inverse of ln). Uses range reduction via division by ln(10): exp(x) = exp(r) × 10^k where k = floor(x/ln(10)) and r = x - k×ln(10). Overflow (exp(x) > 10^99) returns max value; underflow (exp(-x) < 10^-99) returns zero. Achieves 13-14 digits of precision.
+
+## FIX Mode Rounding (-d option)
+
+The `-d NUM` option enables HP calculator-style FIX mode rounding, which rounds both BCD and IEEE results to a fixed number of decimal places before comparison. This is useful for:
+
+1. **Testing at reduced precision**: Verify algorithms work correctly when fewer digits are needed
+2. **Characterizing precision limits**: Find the minimum precision where operations pass
+3. **Matching hardware behavior**: Some hardware may round to fewer digits
+
+### FIX Mode Semantics
+
+FIX mode rounds to a fixed number of digits after the **absolute** decimal point, not relative to the number's magnitude:
+
+| Input | FIX 2 Result | Explanation |
+|-------|--------------|-------------|
+| 123.456 | 123.46 | 2 digits after decimal point |
+| 1.23456 | 1.23 | 2 digits after decimal point |
+| 0.00123 | 0.00 | Value smaller than 0.01, rounds to zero |
+
+This differs from significant digit rounding, where the rounding position is relative to the first significant digit.
+
+### Algorithm
+
+For a BCD value with exponent `e`, FIX `d` rounds at mantissa position `d + e + 1`:
+- If position < 1: result is zero (value too small for this FIX setting)
+- If position ≥ 16: no rounding needed (all digits are integer part)
+- Otherwise: round to that many significant digits
+
+### Example Usage
+
+```bash
+./proto -d 10              # FIX 10: keep 10 decimal places
+./proto -f tanrad -d 8     # Test tan with FIX 8 (often reduces failures)
+./proto -d 5 -r 100        # Random tests with FIX 5
+```

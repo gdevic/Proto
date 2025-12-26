@@ -156,6 +156,47 @@ void round(BCD& S0, uint digits, BCD& R)
     }
 }
 
+// Round BCD to fixed decimal places (FIX mode, like HP calculators)
+// d = number of digits after the decimal point (0-15)
+// Example: roundFix(1.23456e+02, 2) → 1.2346e+02 (keeps 123.46)
+// Returns zero if value is smaller than 10^(-d)
+void roundFix(BCD& S0, int d, BCD& R)
+{
+    assert((&S0 == &::S0) && (&R == &::R));
+
+    // Zero input yields zero output
+    if (isMantZero(S0.mant.data())) {
+        regClear(R);
+        return;
+    }
+
+    // Calculate exponent as signed integer
+    int e = S0.exp[0] * 10 + S0.exp[1];
+    if (S0.esign)
+        e = -e;
+
+    // Calculate mantissa position to round at
+    // For value D.DDDDDDDDDDDDDDDe+E, we want d digits after decimal point
+    // The decimal point is at position e in the "absolute" representation
+    // So position in mantissa = d + e + 1 (since mantissa[0] is before the decimal)
+    int pos = d + e + 1;
+
+    // If pos < 1, the value is smaller than 10^(-d), result is zero
+    if (pos < 1) {
+        regClear(R);
+        return;
+    }
+
+    // If pos >= MAX_MANT (16), no rounding needed
+    if (pos >= int(MAX_MANT)) {
+        regCopy(R, S0);
+        return;
+    }
+
+    // Round to pos significant digits
+    round(S0, uint(pos), R);
+}
+
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
 void truncate(BCD& x)

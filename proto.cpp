@@ -13,6 +13,7 @@ static void printHelp(const char* prog)
               << "Options:\n"
               << "  -h       Show this help message\n"
               << "  -c       Use ANSI colors\n"
+              << "  -d NUM   FIX mode: round to NUM decimal places (0-15) before comparison\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
               << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt)\n"
               << "  -i       Show test index (1-based) at start of each line\n"
@@ -29,6 +30,7 @@ static void printHelp(const char* prog)
               << "Examples:\n"
               << "  " << prog << "               # Debug: show only problems\n"
               << "  " << prog << " -e            # Stop at first failure\n"
+              << "  " << prog << " -d 10         # Compare at 10 decimal places\n"
               << "  " << prog << " -f ln         # Run only ln tests\n"
               << "  " << prog << " -f add -f sub # Run add and sub tests\n"
               << "  " << prog << " -f ln -r 100  # Run ln tests with 100 random cases\n"
@@ -45,6 +47,17 @@ int main(int argc, char* argv[])
         }
         else if (strcmp(argv[i], "-c") == 0)
             g_useColor = true;
+        else if (strcmp(argv[i], "-d") == 0) {
+            if (i + 1 >= argc) {
+                std::cerr << "-d requires a number (0-15)\n";
+                return 1;
+            }
+            g_roundDigits = std::atoi(argv[++i]);
+            if (g_roundDigits < 0 || g_roundDigits > 15) {
+                std::cerr << "-d value must be 0-15\n";
+                return 1;
+            }
+        }
         else if (strcmp(argv[i], "-e") == 0)
             g_stopOnError = true;
         else if (strcmp(argv[i], "-f") == 0) {
@@ -85,9 +98,10 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_useColor || g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10)) {
+    if (g_useColor || g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
         std::cerr << "Flags:";
         if (g_useColor) std::cerr << " -c";
+        if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
         if (g_stopOnError) std::cerr << " -e";
         if (g_showIndex) std::cerr << " -i";
         if (g_traceAll) std::cerr << " -t";

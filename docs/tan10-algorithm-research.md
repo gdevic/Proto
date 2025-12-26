@@ -100,18 +100,26 @@ Output: atan(x) in degrees
 1. Handle sign:
    - Store sign of x, work with |x| (atan is odd function)
 
-2. CORDIC vectoring (same as atan()):
+2. Reciprocal reduction (REQUIRED for |x| > 1):
+   - If |x| > 1: compute 1/x, set reciprocal flag
+   - Use identity: atan(x) = π/2 - atan(1/x)
+   - Ensures CORDIC works with input ratio ≤ 1
+
+3. CORDIC vectoring:
    - Rotate vector (1, x) toward x-axis
    - Count rotations at each digit position
    - Result is in radians
 
-3. Convert to degrees:
+4. Apply reciprocal reduction:
+   If reciprocal flag: result = π/2 - result
+
+5. Convert to degrees:
    result = result_rad * (180/π)
 
-4. Restore sign
+6. Restore sign
 ```
 
-**Note**: atan() needs no range reduction because its output is always bounded to (-90°, +90°) regardless of input magnitude.
+**Critical**: Reciprocal reduction is REQUIRED, not optional. Without it, inputs |x| > 1 cause CORDIC counters to max out at the BCD digit limit (9), producing grossly wrong results (e.g., 143° instead of 83° for atan(8.36)).
 
 ---
 
@@ -144,11 +152,15 @@ These constants are stored as 16-digit BCD mantissas. The conversion step introd
 
 | Source | Error contribution |
 |--------|-------------------|
+| Reciprocal division (if |x|>1) | ~0.5 ULP |
 | CORDIC algorithm | ~1-2 digits |
 | Final division | ~0.5 ULP |
+| Reciprocal subtraction (if used) | ~0.5 ULP |
 | Radian→degree conversion | ~0.5 ULP |
 
 **Total**: ~14 correct digits across full range.
+
+**Note**: The reciprocal reduction adds one division for |x| > 1, but this is essential for correctness—without it, the algorithm produces wrong results.
 
 ---
 

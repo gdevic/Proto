@@ -1,6 +1,16 @@
 #include "testbench.h"
 #include <cmath>
 
+// Round IEEE value to d fixed decimal places (FIX mode, like HP calculators)
+// Example: roundFixIEEE(123.456, 2) → 123.46
+// Example: roundFixIEEE(0.00123, 2) → 0.00
+// Returns rounded value
+Real roundFixIEEE(Real value, int d)
+{
+    Real scale = std::pow(REAL_LITERAL(10.0), Real(d));
+    return std::round(value * scale) / scale;
+}
+
 // Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, fixed width for HW parsing)
 // Internal format: d₁.d₂d₃...d₁₆ × 10^exp (16 significant digits)
 // Returns formatted string representation
