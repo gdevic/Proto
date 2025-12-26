@@ -56,28 +56,6 @@ static void setBCD45(BCD& x)
     x.esign = false;
 }
 
-// Truncate BCD to integer part (floor for positive numbers)
-// Modifies x in place, zeroing fractional digits
-static void bcdTruncateToInt(BCD& x)
-{
-    // Get exponent value
-    int exp = int(x.exp[0]) * 10 + int(x.exp[1]);
-    if (x.esign)
-        exp = -exp;
-
-    // If exp < 0, number is < 1, so integer part is 0
-    if (exp < 0) {
-        regClear(x);
-        return;
-    }
-
-    // Zero fractional digits (those beyond position exp)
-    // Position 0 has weight 10^exp, position 1 has weight 10^(exp-1), etc.
-    // Integer part uses positions 0 through exp (inclusive)
-    for (uint i = uint(exp) + 1; i < MAX_MANT; i++)
-        x.mant[i] = 0;
-}
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -133,7 +111,7 @@ void tanDeg(BCD& S0, BCD& R)
         div(S0, S1, R);
 
         // Truncate to integer: n = floor(S0 / 360)
-        bcdTruncateToInt(R);
+        truncate(R);
 
         // Compute product: R = n * 360
         regCopy(S0, R);

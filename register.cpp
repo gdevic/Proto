@@ -155,3 +155,37 @@ void round(BCD& S0, uint digits, BCD& R)
         }
     }
 }
+
+// Truncate BCD to integer part (toward zero, not floor toward negative infinity)
+// Modifies x in place, zeroing fractional digits
+void truncate(BCD& x)
+{
+    // If negative exponent, |x| < 1, so integer part is 0
+    if (x.esign) {
+        regClear(x);
+        return;
+    }
+
+    // If exp >= 15, all mantissa digits are integer part, nothing to truncate
+    // exp[0] >= 2 → exp >= 20; exp[0] == 1 && exp[1] >= 5 → exp >= 15
+    if ((x.exp[0] >= 2) || ((x.exp[0] == 1) && (x.exp[1] >= 5)))
+        return;
+
+    // exp is 0-14 (fits in nibble): compute as exp[0]*10 + exp[1]
+    uint8_t exp = x.exp[1];
+    if (x.exp[0])
+        exp += 10;
+
+    // Zero fractional digits (positions exp+1 through 15)
+    exp++;
+    while (exp < MAX_MANT)
+        x.mant[exp++] = 0;
+
+    // If this was a FLOOR function (toward negative infinity):
+    // - For positive numbers: floor = truncate (no change needed)
+    // - For negative numbers with fractional part: floor = truncate - 1
+    // Implementation would require:
+    // 1. Before zeroing, check if any fractional digits are non-zero (hadFraction flag)
+    // 2. After zeroing, if (x.sign && hadFraction) then subtract 1 from mantissa
+    // 3. Handle borrow propagation and potential underflow to -1.000...e(exp+1)
+}

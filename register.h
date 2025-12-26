@@ -32,3 +32,7 @@ void normalize(BCD& x);
 // digits=1-15: round to that many significant digits
 // Uses sticky bit for precise tie-breaking (banker's rounding)
 void round(BCD& S0, uint digits, BCD& R);
+
+// Truncate BCD to integer part (toward zero, not floor toward negative infinity)
+// Modifies x in place, zeroing fractional digits
+void truncate(BCD& x);
