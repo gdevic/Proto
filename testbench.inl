@@ -62,13 +62,15 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         case MatchLevel::OK:
             std::cout << "OK";
             if (g_verbose)
-                std::cout << " " << ieee;
+                std::cout << " " << std::scientific << std::setprecision(15) << ieee;
             break;
         case MatchLevel::APPROX:
-            std::cout << "APPROX " << ieee << " err=" << std::fabs(result.toReal() - ieee);
+            std::cout << "APPROX " << std::scientific << std::setprecision(15) << ieee
+                      << " err=" << std::fabs(result.toReal() - ieee);
             break;
         case MatchLevel::FAIL:
-            std::cout << "FAIL " << ieee << " err=" << std::fabs(result.toReal() - ieee);
+            std::cout << "FAIL " << std::scientific << std::setprecision(15) << ieee
+                      << " err=" << std::fabs(result.toReal() - ieee);
             break;
     }
     std::cout << "\n";
