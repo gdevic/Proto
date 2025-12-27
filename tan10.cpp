@@ -11,7 +11,6 @@
 
 #include "proto.h"
 #include "testbench.h"
-#include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
 #include <cassert>
@@ -199,11 +198,9 @@ void atanDeg(BCD& S0, BCD& R)
     // Mathematically: atan(x) = π/2 - 1/x + O(1/x³) for large x
     // At 10^15, the 1/x term is 10^-15, below our 16-digit precision floor
     bool inputSign = S0.sign;
-    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && S0.exp[1] >= 5))) {
-        // Return exactly ±90 degrees: 9.0e1
-        R.mant[0] = 9;
-        R.exp[0] = 0;
-        R.exp[1] = 1;
+    if (!S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 5)))) {
+        // Return exactly ±90 degrees
+        constLoad(R, CONST_90);
         R.sign = inputSign;
         return;
     }

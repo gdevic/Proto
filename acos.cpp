@@ -13,7 +13,6 @@
 
 #include "proto.h"
 #include "testbench.h"
-#include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
 #include <cassert>
@@ -68,14 +67,14 @@ void acosDeg(BCD& S0, BCD& R)
     }
 
     // Special case: x = 1 exactly
-    if (cmp == 0 && !inputSign) {
+    if ((cmp == 0) && !inputSign) {
         // acos(1) = 0
         regClear(R);
         return;
     }
 
     // Special case: x = -1 exactly
-    if (cmp == 0 && inputSign) {
+    if ((cmp == 0) && inputSign) {
         // acos(-1) = 180
         constLoad(R, CONST_180);
         return;

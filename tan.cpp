@@ -190,7 +190,7 @@ void cordicAtan(BCD& S0, BCD& R)
     // Special case: very large |input| (exponent >= 15)
     // atan(x) approaches π/2 so closely that difference < 10^-15
     // Return π/2 directly to avoid mantissa underflow during alignment
-    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && S0.exp[1] >= 5))) {
+    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && (S0.exp[1] >= 5)))) {
         constLoad(R, CONST_PI_OVER_2);
         R.sign = inputSign;
         return;
@@ -200,7 +200,7 @@ void cordicAtan(BCD& S0, BCD& R)
     // This ensures CORDIC works with input ratio y/x <= 1 for faster convergence
     // Check if |input| > 1: positive exponent, or exp=0 and mant[0] > 1
     bool useReciprocal = false;
-    if (!S0.esign && (S0.exp[0] || S0.exp[1] || S0.mant[0] > 1)) {
+    if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
         useReciprocal = true;
         // Compute 1/input: R = 1/S0
         regCopy(S1, S0);
@@ -371,7 +371,7 @@ void tanRad(BCD& S0, BCD& R)
     // If |input - π/2| is effectively zero (exponent <= -13), return overflow
     // This means tan would exceed 10^13, essentially infinity for our precision
     if (isMantZero(R.mant.data()) ||
-        (R.esign && ((R.exp[0] >= 2) || (R.exp[0] == 1 && R.exp[1] >= 3)))) {
+        (R.esign && ((R.exp[0] >= 2) || ((R.exp[0] == 1) && (R.exp[1] >= 3))))) {
         FLAG_OF_ERR = true;
         return;
     }

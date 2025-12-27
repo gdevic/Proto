@@ -12,8 +12,6 @@
 
 #include "proto.h"
 #include "testbench.h"
-#include "exponent.h"
-#include "mantissa.h"
 #include "register.h"
 #include <cassert>
 #include <cmath>
