@@ -239,7 +239,7 @@ Part 5 - Exponent adjustment:
     result += exponent × ln(10)
 ```
 
-**Precision ceiling**: ~14 digits
+**Precision ceiling**: ~14 digits (may degrade to ~10 for larger inputs)
 
 Unlike add/sub/mult/div which produce correctly-rounded results with 16 significant digits, ln() has inherent algorithmic error that limits precision to approximately 14 digits.
 
@@ -262,6 +262,50 @@ ln()'s error is different: digits 14-16 are sometimes *computed wrong* due to al
 **What would improve precision**:
 
 Guard digits—computing internally with 18-digit precision and outputting 16. This architectural change would push the algorithmic error beyond the output precision. The current 16-digit implementation accepts ~14 digits as the practical limit.
+
+### Exponential (exp)
+
+**Algorithm**: CORDIC digit-by-digit method (inverse of ln).
+
+```
+Part 1 - Range reduction:
+    k = floor(x / ln(10))
+    r = x - k × ln(10)          (remainder in [0, ln(10)))
+
+Part 2 - Normalize remainder:
+    Shift r's mantissa right until exponent = 0
+
+Part 3 - Pseudo-division:
+    Decompose r = Σ counter[j] × ln(1 + 10^-j) + residual
+
+Part 4 - Pseudo-multiplication:
+    result = Π (1 + 10^-j)^counter[j]
+
+Part 5 - Apply exponent:
+    final = result × 10^k
+```
+
+**Precision ceiling**: ~14 digits for small inputs, ~10 digits for larger inputs (e.g., exp(10))
+
+**Error sources**:
+1. **Range reduction**: Division by ln(10), multiplication k×ln(10), and subtraction each introduce ~1 ULP error
+2. **Normalization loss**: When r < 1, the mantissa shifts right, introducing a leading zero and losing 1 digit of effective precision
+3. **Pseudo-division residual**: The remainder r cannot be exactly decomposed into ln constants; the residual represents lost precision
+4. **Pseudo-multiplication accumulation**: Each multiplication by (1 + 10^-j) loses precision in the shifted term
+
+**Example: exp(10)**
+- Range reduction: k=4, r ≈ 0.789... (stored as 7.89×10^-1)
+- After normalization: mantissa = [0,7,8,9,...] (leading zero wastes 1 digit)
+- Cumulative error: ~6×10^-10 relative error (~10 correct digits)
+
+**Why exp() degrades more than ln()**:
+
+For ln(), the CORDIC decomposition works with the input directly. For exp(), the range reduction introduces errors that get amplified through the inverse process. The normalization step (Part 2) specifically loses precision when the remainder has exp < 0.
+
+**Potential improvements** (would require algorithm changes):
+1. Extended precision (32-digit) arithmetic throughout range reduction
+2. Avoid normalization by adjusting ln constants to match input's exponent
+3. Track guard/sticky bits through all phases
 
 ## Sticky Bit Semantics
 
@@ -341,7 +385,8 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 | Multiply | 16.0 digits | Guard digit rounding (17th digit of 32-digit product) |
 | Divide | 16.0 digits | Guard digit rounding (17th/18th quotient digit) |
 | Sqrt | 14.9 digits | Iterative digit-by-digit |
-| Log/Exp | 14.5 digits | Argument reduction matters |
+| Log | 14.5 digits | CORDIC, 16 iterations |
+| Exp | 10-14 digits | Degrades with larger inputs |
 | Atan | 14.8 digits | CORDIC, 16 iterations |
 | Sin/Cos/Tan | 14.3-14.5 digits | Via atan + identities |
 
