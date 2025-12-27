@@ -12,19 +12,6 @@ static const uint8_t deg_180_over_pi[MAX_MANT] = {
     5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
 };
 
-// Convert degrees to BCD value for 360 (used in range reduction)
-// Returns BCD with value 360.0
-static void setBCD360(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 3;
-    x.mant[1] = 6;
-    // exp = 2 (so 3.6 * 10^2 = 360), exp[0]=tens, exp[1]=ones
-    x.exp[0] = 0;
-    x.exp[1] = 2;
-    x.esign = false;
-}
-
 // Convert degrees to BCD value for 180 (used in range reduction)
 // Returns BCD with value 180.0
 static void setBCD180(BCD& x)
@@ -47,19 +34,6 @@ static void setBCD90(BCD& x)
     // exp = 1 (so 9.0 * 10^1 = 90)
     x.exp[0] = 0;
     x.exp[1] = 1;
-    x.esign = false;
-}
-
-// Convert degrees to BCD value for 270 (used in range reduction)
-// Returns BCD with value 270.0
-static void setBCD270(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 2;
-    x.mant[1] = 7;
-    // exp = 2 (so 2.7 * 10^2 = 270)
-    x.exp[0] = 0;
-    x.exp[1] = 2;
     x.esign = false;
 }
 
@@ -113,11 +87,36 @@ static bool bcdEqual(const BCD& a, const BCD& b)
     return bcdCompare(a, b) == 0;
 }
 
-// Internal helper: compute sin from angle in [0, 360) with known sign
-// Input: angle in S0 (will be modified), negateResult flag
+// Check if a BCD integer is odd by examining the ones digit
+// The ones digit position depends on the exponent
+// For exp=0: ones digit is mant[0]
+// For exp=1: ones digit is mant[1]
+// For exp=2: ones digit is mant[2], etc.
+// Returns true if the number is odd
+static bool bcdIsOdd(const BCD& x)
+{
+    // For negative exponent or zero, the number has no integer part
+    if (x.esign || isMantZero(x.mant.data()))
+        return false;
+
+    // Get exponent value
+    int exp = int(x.exp[0]) * 10 + int(x.exp[1]);
+
+    // If exponent >= MAX_MANT, ones digit is beyond mantissa (effectively 0)
+    if (exp >= int(MAX_MANT))
+        return false;
+
+    // The ones digit is at position 'exp' in the mantissa
+    uint8_t onesDigit = x.mant[exp];
+    return (onesDigit % 2) == 1;
+}
+
+// Internal helper: compute sin from angle in (0, 90) degrees
+// Input: angle in S0 (will be modified), negateResult and inputSign for final sign
 // Output: result in R
 // Uses: all registers
 // Note: mul uses S2 as accumulator, so only S3, S4 are safe across mul calls
+// Since angle is in (0, 90), tan(angle/2) is in (0, 1) - optimal CORDIC range
 static void sinDegCore(bool negateResult, bool inputSign)
 {
     // ---------- Compute tan(x/2) ----------
@@ -171,6 +170,8 @@ static void sinDegCore(bool negateResult, bool inputSign)
 // Compute sine in degrees: R = sinDeg(S0)
 // Input in degrees, output is the sine value
 // Uses half-angle formula: sin(x) = 2*tan(x/2) / (1 + tan²(x/2))
+// Range reduction: mod 180 with parity, then reflect to [0, 90]
+// This keeps tan(x/2) in [0, 1] range for optimal precision
 // Reads from S0, stores result in R
 void sinDeg(BCD& _S0, BCD& _R)
 {
@@ -186,74 +187,70 @@ void sinDeg(BCD& _S0, BCD& _R)
     bool inputSign = S0.sign;
     S0.sign = false;
 
-    // ---------- Range Reduction to [0, 360) ----------
-    setBCD360(S4);
+    // ---------- Range Reduction using mod 180 with parity ----------
+    // sin(x + 180) = -sin(x), so we reduce mod 180 and track parity
+    // This combines the old mod 360 + quadrant sign into one step
+
+    bool negateResult = false;
+    setBCD180(S4);
 
     if (bcdCompare(S0, S4) >= 0) {
         // Save original angle in S3
         regCopy(S3, S0);
 
-        // Compute quotient: R = S0 / 360
+        // Compute quotient: q = floor(S0 / 180)
         regCopy(S1, S4);
         div(S0, S1, R);
-
-        // Truncate to integer: n = floor(S0 / 360)
         truncate(R);
 
-        // Compute product: R = n * 360
+        // Check if q is odd (determines sign)
+        negateResult = bcdIsOdd(R);
+
+        // Compute product: R = q * 180
         regCopy(S0, R);
         regCopy(S1, S4);
         mul(S0, S1, R);
 
-        // Compute remainder: S0 = original - n * 360
+        // Compute remainder: S0 = original - q * 180
         regCopy(S0, S3);
         regCopy(S1, R);
         sub(S0, S1, R);
         regCopy(S0, R);
     }
 
-    // Now S0 is in [0, 360)
-    // Check for special angles where sin has exact values
+    // Now S0 is in [0, 180)
 
-    // sin(0) already handled above
-
-    setBCD180(S4);
-    if (bcdEqual(S0, S4)) {
-        // sin(180) = 0 exactly
+    // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
+    if (isMantZero(S0.mant.data())) {
         regClear(R);
         return;
     }
 
+    // ---------- Reflect to [0, 90] using sin(180-x) = sin(x) ----------
     setBCD90(S4);
-    if (bcdEqual(S0, S4)) {
-        // sin(90) = 1 exactly
-        regClear(R);
-        R.mant[0] = 1;
-        R.sign = inputSign;
-        return;
-    }
-
-    setBCD270(S4);
-    if (bcdEqual(S0, S4)) {
-        // sin(270) = -1 exactly
-        regClear(R);
-        R.mant[0] = 1;
-        R.sign = !inputSign;
-        return;
-    }
-
-    // ---------- Determine quadrant for sign ----------
-    // Q1 (0-90): sin positive
-    // Q2 (90-180): sin positive
-    // Q3 (180-270): sin negative
-    // Q4 (270-360): sin negative
-    bool negateResult = false;
-    setBCD180(S4);
     if (bcdCompare(S0, S4) > 0) {
-        negateResult = true;
+        // S0 = 180 - S0
+        regCopy(S1, S0);
+        setBCD180(S0);
+        sub(S0, S1, R);
+        regCopy(S0, R);
     }
 
-    // Compute sin using half-angle formula
+    // Now S0 is in (0, 90]
+
+    // Special case: sin(90) = 1 exactly
+    if (bcdEqual(S0, S4)) {
+        regClear(R);
+        R.mant[0] = 1;
+        if (negateResult)
+            R.sign = !inputSign;
+        else
+            R.sign = inputSign;
+        return;
+    }
+
+    // Now S0 is in (0, 90) - compute sin using half-angle formula
+    // tan(S0/2) will be in (0, 1) - optimal range for CORDIC
     sinDegCore(negateResult, inputSign);
 }
 
@@ -321,18 +318,38 @@ void testSinDeg()
         "315",                    // sin=-sqrt(2)/2
         "330",                    // sin=-0.5
         "360",                    // sin=0 exactly
+        // Near 90 boundary (tests reflection)
+        "89",                     // just below 90
+        "89.9",                   // very close to 90
+        "89.99",                  // extremely close to 90
+        "90.01",                  // just above 90 (reflects to 89.99)
+        "90.1",                   // reflects to 89.9
+        "91",                     // reflects to 89
+        // Near 180 boundary (tests parity)
+        "179",                    // sin(179) = sin(1), positive
+        "179.9",                  // sin(179.9) = sin(0.1), positive
+        "180.1",                  // sin(180.1) = -sin(0.1), negative (odd parity)
+        "181",                    // sin(181) = -sin(1), negative
+        // Near 270 boundary (odd parity + reflection)
+        "269",                    // sin(269) = -sin(89), negative
+        "270.1",                  // sin(270.1) = -sin(89.9), negative
+        "271",                    // sin(271) = -sin(89), negative
         // Small angles
         "1",
         "0.1",
         "0.01",
-        // Large angles (test range reduction)
-        "405",                    // 360+45
-        "720",                    // 2*360
-        "3645",                   // 10*360+45
+        // Large angles (test mod 180 reduction)
+        "405",                    // 2*180+45, even parity, sin=sqrt(2)/2
+        "540",                    // 3*180, odd parity, sin=0
+        "585",                    // 3*180+45, odd parity, sin=-sqrt(2)/2
+        "720",                    // 4*180, even parity, sin=0
+        "900",                    // 5*180, odd parity, sin=0
+        "3645",                   // 20*180+45, even parity
         // Negative angles
         "-30",
         "-90",
         "-180",
+        "-270",                   // sin(-270) = -sin(270) = 1
     };
 
     if (!runTests<Arity::Unary>("SINDEG", sinDeg, ieeeSinDeg, val, sizeof(val) / sizeof(val[0])))

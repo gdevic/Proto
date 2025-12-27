@@ -31,23 +31,49 @@ sin(x) = 2t / (1 + t²)
 3. **No sqrt needed**: Pythagorean formulas require `sqrt(1 + tan²)`
 4. **Natural sign handling**: Formula produces correct sign for all quadrants
 
-### Asymptote Handling
+### Range Reduction Strategy
 
-The half-angle `x/2` has a tangent asymptote at 90°, meaning `x = 180°`:
-- `sin(180°) = 0` - detected as special case, returns exact 0
+Since `sin(x + 180°) = -sin(x)`, we reduce to [0, 180) using **mod 180 with parity tracking**, then further reduce to [0, 90] using the reflection `sin(180° - x) = sin(x)`.
+
+This keeps `tan(x/2)` in the range [0, 45°], where tan values are in [0, 1] — the optimal range for CORDIC precision.
+
+| Input | Reduced to | tan(x/2) |
+|-------|------------|----------|
+| sin(179°) | sin(1°) | tan(0.5°) ≈ 0.009 |
+| sin(170°) | sin(10°) | tan(5°) ≈ 0.087 |
+| sin(135°) | sin(45°) | tan(22.5°) ≈ 0.414 |
 
 ### Algorithm (sinDeg)
 
 ```
-1. Handle special cases: 0°, 90°, 180°, 270°
-2. Range reduction to [0, 360) using mod 360
-3. Determine sign based on quadrant (sin negative in Q3, Q4)
-4. Compute t = tanDeg(x/2)
-5. Compute 2t (save to S3, safe across mul)
-6. Compute t²
-7. Compute 1 + t² (denominator)
-8. Compute (2t) / (1 + t²)
-9. Apply sign
+1. Handle special case: sin(0) = 0
+2. Store input sign (sin is odd function)
+3. Range reduction using mod 180 with parity:
+   a. q = floor(|x| / 180)
+   b. r = |x| - q * 180  → r in [0, 180)
+   c. negateResult = (q is odd)  // check ones digit: 1,3,5,7,9
+4. Handle special case: r = 0 means sin = 0 (e.g., sin(540°))
+5. Reflect to [0, 90] using sin(180-x) = sin(x):
+   a. if r > 90: r = 180 - r
+6. Handle special case: r = 90 means sin = ±1
+7. Compute t = tanDeg(r/2)  // t is in (0, 1) - optimal range!
+8. Compute 2t (save to S3, safe across mul)
+9. Compute t²
+10. Compute 1 + t² (denominator)
+11. Compute (2t) / (1 + t²)
+12. Apply negateResult and inputSign
+```
+
+### Parity Check in BCD
+
+To check if a BCD integer is odd, examine the ones digit. For a normalized BCD number with exponent `e`, the ones digit is at mantissa position `e`:
+
+```cpp
+static bool bcdIsOdd(const BCD& x) {
+    int exp = x.exp[0] * 10 + x.exp[1];
+    if (x.esign || exp >= MAX_MANT) return false;
+    return (x.mant[exp] % 2) == 1;
+}
 ```
 
 ### Register Usage
@@ -177,10 +203,12 @@ Special cases for exact values:
 
 ### Test Results Summary
 
-**sinDeg**: 8 OK, 10 APPROX, 8 FAIL (errors ~5-8 × 10⁻¹⁴)
-**cosDeg**: 11 OK, 11 APPROX, 4 FAIL (errors ~4-5 × 10⁻¹⁴)
+**sinDeg**: 20 OK, 11 APPROX, 12 FAIL (errors ~6-9 × 10⁻¹⁴)
+**cosDeg**: 11 OK, 11 APPROX, 4 FAIL (errors ~3-8 × 10⁻¹⁴)
 **asinDeg**: 12 OK, 0 APPROX, 3 FAIL (errors ~5-7 × 10⁻¹³ for small inputs)
 **acosDeg**: 14 OK, 2 APPROX, 0 FAIL
+
+Note: sinDeg test suite expanded with corner cases for 90°, 180°, 270° boundaries.
 
 ### Round-Trip Precision
 
