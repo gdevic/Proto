@@ -16,27 +16,6 @@
 #include <cassert>
 #include <cmath>
 
-// Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
-// Assumes both are non-negative
-static int bcdCompare(const BCD& a, const BCD& b)
-{
-    // Compare exponents first (accounting for esign)
-    int aExp = int(a.exp[0]) * 10 + int(a.exp[1]);
-    int bExp = int(b.exp[0]) * 10 + int(b.exp[1]);
-    if (a.esign) aExp = -aExp;
-    if (b.esign) bExp = -bExp;
-
-    if (aExp > bExp) return 1;
-    if (aExp < bExp) return -1;
-
-    // Same exponent, compare mantissas
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (a.mant[i] > b.mant[i]) return 1;
-        if (a.mant[i] < b.mant[i]) return -1;
-    }
-    return 0;
-}
-
 // Compute tangent in degrees: R = tanDeg(S0)
 // Input in degrees, output is the tangent value
 // Reads from S0, stores result in R
@@ -62,7 +41,7 @@ void tanDeg(BCD& S0, BCD& R)
     // Use S4 for 360 constant
     constLoad(S4, CONST_360);
 
-    if (bcdCompare(S0, S4) >= 0) {
+    if (isRegGE(S0, S4)) {
         // Save original angle in S3 (S2 is used by mul as accumulator)
         regCopy(S3, S0);
 
@@ -94,7 +73,7 @@ void tanDeg(BCD& S0, BCD& R)
     S2.exp[0] = 0;
     S2.exp[1] = 2;  // exp = 2
 
-    if (bcdCompare(S0, S2) >= 0) {
+    if (isRegGE(S0, S2)) {
         regCopy(S1, S2);
         sub(S0, S1, R);
         regCopy(S0, R);
@@ -106,7 +85,7 @@ void tanDeg(BCD& S0, BCD& R)
     constLoad(S4, CONST_90);
     bool negateResult = false;
 
-    if (bcdCompare(S0, S4) >= 0) {
+    if (isRegGE(S0, S4)) {
         // S0 = 180 - S0 (S2 still holds 180)
         regCopy(S1, S0);
         regCopy(S0, S2);
@@ -119,7 +98,7 @@ void tanDeg(BCD& S0, BCD& R)
     // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
     // Reuse S4 for 45 constant
     constLoad(S4, CONST_45);
-    bool useReciprocal = (bcdCompare(S0, S4) > 0);
+    bool useReciprocal = isRegGT(S0, S4);
 
     if (useReciprocal) {
         // S0 = 90 - S0

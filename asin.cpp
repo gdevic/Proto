@@ -18,25 +18,6 @@
 #include <cassert>
 #include <cmath>
 
-// Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
-// Assumes both are non-negative
-static int bcdCompare(const BCD& a, const BCD& b)
-{
-    int aExp = int(a.exp[0]) * 10 + int(a.exp[1]);
-    int bExp = int(b.exp[0]) * 10 + int(b.exp[1]);
-    if (a.esign) aExp = -aExp;
-    if (b.esign) bExp = -bExp;
-
-    if (aExp > bExp) return 1;
-    if (aExp < bExp) return -1;
-
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (a.mant[i] > b.mant[i]) return 1;
-        if (a.mant[i] < b.mant[i]) return -1;
-    }
-    return 0;
-}
-
 // Compute arcsine in degrees: R = asinDeg(S0)
 // Input is a value in [-1, 1], output in degrees [-90, 90]
 // Uses formula: asin(x) = atan(x / sqrt(1 - x²))
@@ -57,15 +38,14 @@ void asinDeg(BCD& S0, BCD& R)
 
     // Check domain: |x| <= 1
     constLoad(S4, CONST_1);
-    int cmp = bcdCompare(S0, S4);
-    if (cmp > 0) {
+    if (isRegGT(S0, S4)) {
         // |x| > 1: domain error
         FLAG_DOM_ERR = true;
         return;
     }
 
     // Special case: |x| = 1 exactly
-    if (cmp == 0) {
+    if (isRegEQ(S0, S4)) {
         // asin(1) = 90, asin(-1) = -90
         constLoad(R, CONST_90);
         R.sign = inputSign;

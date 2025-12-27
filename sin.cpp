@@ -18,34 +18,6 @@
 #include <cassert>
 #include <cmath>
 
-// Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
-// Assumes both are non-negative
-static int bcdCompare(const BCD& a, const BCD& b)
-{
-    // Compare exponents first (accounting for esign)
-    int aExp = int(a.exp[0]) * 10 + int(a.exp[1]);
-    int bExp = int(b.exp[0]) * 10 + int(b.exp[1]);
-    if (a.esign) aExp = -aExp;
-    if (b.esign) bExp = -bExp;
-
-    if (aExp > bExp) return 1;
-    if (aExp < bExp) return -1;
-
-    // Same exponent, compare mantissas
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (a.mant[i] > b.mant[i]) return 1;
-        if (a.mant[i] < b.mant[i]) return -1;
-    }
-    return 0;
-}
-
-// Check if two BCDs are exactly equal (for special angle detection)
-// Returns true if a == b exactly
-static bool bcdEqual(const BCD& a, const BCD& b)
-{
-    return bcdCompare(a, b) == 0;
-}
-
 // Check if a BCD integer is odd by examining the ones digit
 // The ones digit position depends on the exponent
 // For exp=0: ones digit is mant[0]
@@ -153,7 +125,7 @@ void sinDeg(BCD& _S0, BCD& _R)
     bool negateResult = false;
     constLoad(S4, CONST_180);
 
-    if (bcdCompare(S0, S4) >= 0) {
+    if (isRegGE(S0, S4)) {
         // Save original angle in S3
         regCopy(S3, S0);
 
@@ -187,7 +159,7 @@ void sinDeg(BCD& _S0, BCD& _R)
 
     // ---------- Reflect to [0, 90] using sin(180-x) = sin(x) ----------
     constLoad(S4, CONST_90);
-    if (bcdCompare(S0, S4) > 0) {
+    if (isRegGT(S0, S4)) {
         // S0 = 180 - S0
         regCopy(S1, S0);
         constLoad(S0, CONST_180);
@@ -198,7 +170,7 @@ void sinDeg(BCD& _S0, BCD& _R)
     // Now S0 is in (0, 90]
 
     // Special case: sin(90) = 1 exactly
-    if (bcdEqual(S0, S4)) {
+    if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
         if (negateResult)

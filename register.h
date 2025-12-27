@@ -23,6 +23,12 @@ void regCopy(BCD& dst, const BCD& src);
 // Returns true if register value is one
 bool isRegOne(const BCD& x);
 
+// Full signed register comparisons
+bool isRegEQ(const BCD& a, const BCD& b);  // a == b
+bool isRegGT(const BCD& a, const BCD& b);  // a > b
+bool isRegLT(const BCD& a, const BCD& b);  // a < b
+bool isRegGE(const BCD& a, const BCD& b);  // a >= b
+
 // Pre-calculation setup for unary operations: set zero flag and clear R
 void preCalc1(BCD& S0, BCD& R);
 
