@@ -18,12 +18,6 @@
 #include <cassert>
 #include <cmath>
 
-// PI/2 for radian phase shift (16 digits)
-// 1.5707963267948966192313216916398...
-static const uint8_t pi_over_2[MAX_MANT] = {
-    1,5,7,0,7,9,6,3,2,6,7,9,4,8,9,7
-};
-
 // Compute cosine in degrees: R = cosDeg(S0)
 // Input in degrees, output is the cosine value
 // Uses identity: cos(x) = sin(x + 90)
@@ -50,11 +44,7 @@ void cosRad(BCD& S0, BCD& R)
 
     // cos(x) = sin(x + PI/2)
     // Add PI/2 to input, then call sinRad
-    mantCopy(S1.mant.data(), pi_over_2);
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+    constLoad(S1, CONST_PI_OVER_2);
 
     add(S0, S1, R);
     regCopy(S0, R);

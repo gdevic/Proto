@@ -51,9 +51,6 @@ static void getLnConst(uint j, uint8_t* dst)
     }
 }
 
-// ln(10) = 2.302585092994045684... stored as mantissa with implicit decimal after first digit
-// Format: 2.302585092994045 (16 significant digits)
-static const uint8_t ln10_mant[MAX_MANT] = {2,3,0,2,5,8,5,0,9,2,9,9,4,0,4,6};
 
 // Compute natural logarithm: R = ln(S0)
 // Uses CORDIC (Meggitt's digit-by-digit method) - same algorithm as HP-35
@@ -154,8 +151,8 @@ void ln(BCD& S0, BCD& R)
 
     // ---------- Part 4: Subtract from ln(10) ----------
     // For inputs in [1, 10), we computed ln(10/x), so result = ln(10) - result
-    // Load ln10 into S1.mant
-    mantCopy(S1.mant.data(), ln10_mant);
+    // Load ln10 into S1
+    constLoad(S1, CONST_LN10);
 
     // Subtract: S1 - R -> R
     mantSub(S1.mant.data(), R.mant.data(), R.mant.data(), false);
@@ -178,10 +175,7 @@ void ln(BCD& S0, BCD& R)
         regCopy(S4, S0);
 
         // Set up S3 as ln(10) template (sign depends on whether we add or subtract)
-        mantCopy(S3.mant.data(), ln10_mant);
-        S3.exp[0] = 0;
-        S3.exp[1] = 0;
-        S3.esign = false;
+        constLoad(S3, CONST_LN10);
         S3.sign = S4.esign;
 
         // Use S4's exponent magnitude as loop counter (force positive for expDec)
@@ -231,11 +225,7 @@ void exp(BCD& S0, BCD& R)
         // Uses div/mul/add but constant number of operations regardless of k
 
         // Set up S1 = ln(10)
-        mantCopy(S1.mant.data(), ln10_mant);
-        S1.exp[0] = 0;
-        S1.exp[1] = 0;
-        S1.esign = false;
-        S1.sign = false;
+        constLoad(S1, CONST_LN10);
 
         // Save input x to S4 for later
         regCopy(S4, S0);
@@ -291,11 +281,7 @@ void exp(BCD& S0, BCD& R)
         // Compute r = x - k*ln(10)
         // S1 = ln(10), R = k, S4 = x
         regCopy(S0, R);
-        mantCopy(S1.mant.data(), ln10_mant);
-        S1.exp[0] = 0;
-        S1.exp[1] = 0;
-        S1.esign = false;
-        S1.sign = false;
+        constLoad(S1, CONST_LN10);
 
         mul(S0, S1, R);  // R = k * ln(10)
 
@@ -340,10 +326,7 @@ void exp(BCD& S0, BCD& R)
             regCopy(S4, S0);
 
             // Set up S1 = -ln(10) for subtraction (add() modifies S1)
-            mantCopy(S1.mant.data(), ln10_mant);
-            S1.exp[0] = 0;
-            S1.exp[1] = 0;
-            S1.esign = false;
+            constLoad(S1, CONST_LN10);
             S1.sign = true;  // Negative for subtraction
 
             add(S0, S1, R);  // R = S0 - ln(10)

@@ -19,12 +19,6 @@
 #include <cassert>
 #include <cmath>
 
-// 180/PI for radian to degree conversion (16 digits)
-// 57.29577951308232087679815481410517...
-static const uint8_t deg_180_over_pi[MAX_MANT] = {
-    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
-};
-
 // CORDIC constants for tangent/arctangent (Meggitt's digit-by-digit method)
 // atan_const[j] = atan(10^-j) for j = 0..7, stored as 16-digit BCD mantissa
 // Format: d1.d2d3...d16, so 0.785... is stored as {0,7,8,5,...}
@@ -39,12 +33,6 @@ static const uint8_t atan_const[K][MAX_MANT] = {
     {0,0,0,0,0,0,9,9,9,9,9,9,9,9,9,9},  // atan(0.00001) = 0.0000099999999966
     {0,0,0,0,0,0,0,9,9,9,9,9,9,9,9,9},  // atan(1e-6)    = 0.0000009999999999
     {0,0,0,0,0,0,0,0,9,9,9,9,9,9,9,9},  // atan(1e-7)    = 0.0000000999999999
-};
-
-// PI/2 for atan of very large values (16 digits)
-// π/2 = 1.5707963267948966192313216916398...
-static const uint8_t pi_over_2[MAX_MANT] = {
-    1,5,7,0,7,9,6,3,2,6,7,9,4,8,9,7
 };
 
 // Get atan constant for position j
@@ -203,10 +191,7 @@ void cordicAtan(BCD& S0, BCD& R)
     // atan(x) approaches π/2 so closely that difference < 10^-15
     // Return π/2 directly to avoid mantissa underflow during alignment
     if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && S0.exp[1] >= 5))) {
-        mantCopy(R.mant.data(), pi_over_2);
-        R.exp[0] = 0;
-        R.exp[1] = 0;
-        R.esign = false;
+        constLoad(R, CONST_PI_OVER_2);
         R.sign = inputSign;
         return;
     }
@@ -341,11 +326,7 @@ void cordicAtan(BCD& S0, BCD& R)
     // Apply reciprocal reduction: atan(x) = π/2 - atan(1/x) for |x| > 1
     if (useReciprocal) {
         // S0 = π/2
-        mantCopy(S0.mant.data(), pi_over_2);
-        S0.exp[0] = 0;
-        S0.exp[1] = 0;
-        S0.esign = false;
-        S0.sign = false;
+        constLoad(S0, CONST_PI_OVER_2);
 
         // R = π/2 - R
         regCopy(S1, R);
@@ -382,11 +363,7 @@ void tanRad(BCD& S0, BCD& R)
     // in our 16-digit precision model.
     //
     // Compute |input - π/2| by subtracting and checking if result is tiny
-    mantCopy(S1.mant.data(), pi_over_2);
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+    constLoad(S1, CONST_PI_OVER_2);
 
     regCopy(S2, S0);  // Save input
     sub(S0, S1, R);   // R = input - π/2
@@ -403,11 +380,7 @@ void tanRad(BCD& S0, BCD& R)
 
     // ---------- Convert radians to degrees ----------
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
-    mantCopy(S1.mant.data(), deg_180_over_pi);
-    S1.exp[0] = 0;
-    S1.exp[1] = 1;
-    S1.esign = false;
-    S1.sign = false;
+    constLoad(S1, CONST_180_OVER_PI);
 
     // S0 = S0 * (180/PI)
     mul(S0, S1, R);

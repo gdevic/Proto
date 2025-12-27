@@ -19,12 +19,6 @@
 #include <cassert>
 #include <cmath>
 
-// 180/PI for radian to degree conversion (16 digits)
-// 57.29577951308232087679815481410517...
-static const uint8_t deg_180_over_pi[MAX_MANT] = {
-    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
-};
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -239,11 +233,7 @@ void sinRad(BCD& S0, BCD& R)
     S0.sign = false;
 
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
-    mantCopy(S1.mant.data(), deg_180_over_pi);
-    S1.exp[0] = 0;
-    S1.exp[1] = 1;
-    S1.esign = false;
-    S1.sign = false;
+    constLoad(S1, CONST_180_OVER_PI);
 
     mul(S0, S1, R);
 

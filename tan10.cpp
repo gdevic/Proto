@@ -17,18 +17,6 @@
 #include <cassert>
 #include <cmath>
 
-// PI/180 for degree to radian conversion (16 digits)
-// 0.01745329251994329... = 1.745329251994329...e-2 (normalized)
-static const uint8_t pi_over_180[MAX_MANT] = {
-    1,7,4,5,3,2,9,2,5,1,9,9,4,3,3,0
-};
-
-// 180/PI for radian to degree conversion (16 digits)
-// 57.29577951308232087679815481410517...
-static const uint8_t deg_180_over_pi[MAX_MANT] = {
-    5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
-};
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -164,20 +152,8 @@ void tanDeg(BCD& S0, BCD& R)
     // S0 = S0 * (PI/180)
     // PI/180 = 0.01745329251994329... with exponent -2
 
-    regCopy(S1, S0);  // Save angle in degrees
-
-    // Set up multiplication: S0 * pi_over_180
-    mantCopy(S0.mant.data(), S1.mant.data());
-    S0.exp[0] = S1.exp[0];
-    S0.exp[1] = S1.exp[1];
-    S0.esign = S1.esign;
-
     // S1 = PI/180 = 0.01745... = 1.745...e-2
-    mantCopy(S1.mant.data(), pi_over_180);
-    S1.exp[0] = 0;  // exponent = -2, exp[0]=tens, exp[1]=ones
-    S1.exp[1] = 2;
-    S1.esign = true;
-    S1.sign = false;
+    constLoad(S1, CONST_PI_OVER_180);
 
     mul(S0, S1, R);
 
@@ -244,11 +220,7 @@ void atanDeg(BCD& S0, BCD& R)
     regCopy(S0, R);
 
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
-    mantCopy(S1.mant.data(), deg_180_over_pi);
-    S1.exp[0] = 0;
-    S1.exp[1] = 1;
-    S1.esign = false;
-    S1.sign = false;
+    constLoad(S1, CONST_180_OVER_PI);
 
     mul(S0, S1, R);
 

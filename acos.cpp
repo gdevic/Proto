@@ -19,12 +19,6 @@
 #include <cassert>
 #include <cmath>
 
-// PI/180 for degree to radian conversion (16 digits)
-// 0.01745329251994329... = 1.745329251994329...e-2 (normalized)
-static const uint8_t pi_over_180[MAX_MANT] = {
-    1,7,4,5,3,2,9,2,5,1,9,9,4,3,3,0
-};
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -123,11 +117,7 @@ void acosRad(BCD& S0, BCD& R)
     regCopy(S0, R);
 
     // S1 = PI/180 = 0.01745... = 1.745...e-2
-    mantCopy(S1.mant.data(), pi_over_180);
-    S1.exp[0] = 0;
-    S1.exp[1] = 2;
-    S1.esign = true;
-    S1.sign = false;
+    constLoad(S1, CONST_PI_OVER_180);
 
     mul(S0, S1, R);
 }
