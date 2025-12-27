@@ -7,7 +7,7 @@
  * Includes template-based test runners for unary/binary operations.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #pragma once

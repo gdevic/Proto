@@ -6,7 +6,7 @@
  * (ln, exp, tan, atan, sin, cos, asin, acos, sqrt), and test functions.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #pragma once

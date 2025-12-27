@@ -6,7 +6,7 @@
  * Converts to radians only for final CORDIC computation.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "proto.h"

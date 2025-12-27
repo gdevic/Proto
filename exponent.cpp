@@ -6,7 +6,7 @@
  * Exponent range is 10^-99 to 10^99.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "exponent.h"

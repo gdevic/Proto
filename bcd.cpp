@@ -6,7 +6,7 @@
  * signs, and stores original value for verification.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "bcd.h"

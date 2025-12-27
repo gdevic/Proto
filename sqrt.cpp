@@ -7,7 +7,7 @@
  * with nibble-safe intermediates (0-9 range).
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "proto.h"

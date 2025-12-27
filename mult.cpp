@@ -6,7 +6,7 @@
  * (18th-32nd) for banker's rounding. Full 16-digit precision.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "proto.h"

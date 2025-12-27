@@ -6,7 +6,7 @@
  * setup. Manages global registers S0-S4 and R.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "register.h"

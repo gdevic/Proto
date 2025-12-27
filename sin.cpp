@@ -8,7 +8,7 @@
  * reflection to [0, 90] to keep tan(x/2) in optimal range [0, 1].
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "proto.h"

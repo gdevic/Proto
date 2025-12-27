@@ -6,7 +6,7 @@
  * Includes string parsing constructor and Real conversion for verification.
  *
  * Copyright (c) 2025 Goran Devic
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #pragma once
