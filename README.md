@@ -1,6 +1,6 @@
 # Proto - BCD Arithmetic Reference Implementation
 
-A software BCD (Binary-Coded Decimal) arithmetic implementation serving as a golden reference for hardware verification (Verilog + microcode).
+A software BCD (Binary-Coded Decimal) arithmetic implementation serving as a golden reference for hardware verification and prototyping (Verilog + microcode).
 
 ## Overview
 
@@ -173,7 +173,7 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 | `-d NUM` | FIX mode: round both BCD and IEEE to NUM decimal places (0-15) before comparison |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
 | `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
-| `-r NUM` | Number of random tests to run (default: 2) |
+| `-r NUM` | Number of random tests to run (default: 10) |
 | `-v` | Verbose: also print IEEE value on OK lines |
 | `-t` | Trace all: print all lines including OK (for HW file) |
 

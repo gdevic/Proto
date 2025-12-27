@@ -19,15 +19,15 @@ static void printHelp(const char* prog)
 {
     std::cerr << "Usage: " << prog << " [options]\n"
               << "\n"
-              << "BCD arithmetic reference implementation for hardware verification.\n"
+              << "BCD arithmetic reference implementation for hardware verification and prototyping.\n"
               << "\n"
               << "Options:\n"
               << "  -h       Show this help message\n"
               << "  -c       Use ANSI colors\n"
               << "  -d NUM   FIX mode: round to NUM decimal places (0-15) before comparison\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
-              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
-              << "  -r NUM   Number of random tests to run (default: 2)\n"
+              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
+              << "  -r NUM   Number of random tests to run (default: 10)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
               << "  -v       Verbose: print IEEE value even on OK lines\n"
               << "\n"
@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
         if (g_traceAll) std::cerr << " -t";
         if (g_verbose) std::cerr << " -v";
         for (const auto& f : g_testFilters) std::cerr << " -f " << f;
-        if (g_randomCount != 2) std::cerr << " -r " << g_randomCount;
+        if (g_randomCount != 10) std::cerr << " -r " << g_randomCount;
         std::cerr << "\n";
     }
     std::cerr << "\n";
