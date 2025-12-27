@@ -33,7 +33,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Tangent (degrees)** (`tan10.cpp`): Exact range reduction using 360°/180°/90°/45°, then converts to radians and applies CORDIC. Works for all angles. See `docs/tan10-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
 - **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Reuses tanDeg for core computation. Precision ~4-8e-14. See `docs/sincos-algorithm-research.md`.
-- **Cosine** (`cos.cpp`): Half-angle formula cos(x) = (1-t²)/(1+t²) where t=tan(x/2). Naturally handles all quadrant signs. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
+- **Cosine** (`cos.cpp`): Phase shift identity cos(x) = sin(x + 90°). Reuses sinDeg for all computation. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
 - **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 - **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 
@@ -58,9 +58,10 @@ Domain constraints for different operations:
 - OPTS_ADDSUB (maxExp=50)
 - OPTS_MUL, OPTS_DIV (maxExp=49)
 - OPTS_LN (positiveOnly)
-- OPTS_EXP, OPTS_TAN (smallValue for radians)
-- OPTS_ATAN (maxExp=99)
-- OPTS_TAN10, OPTS_ATAN10 (degree-based, full range)
+- OPTS_EXP (smallValue for radians)
+- OPTS_TANRAD, OPTS_ATANRAD (radians, small range)
+- OPTS_TANDEG, OPTS_ATANDEG (degrees, full range)
+- OPTS_SQRT (positiveOnly, also used for asin/acos with |x|≤1)
 
 ## Next Steps
 - Implement degree-native CORDIC for sin/cos (better precision than half-angle formulas)

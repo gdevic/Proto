@@ -132,6 +132,14 @@ When subtracting nearly-equal numbers, leading digits cancel:
 | Arctangent (deg) | `atan10(S0, R)` | CORDIC + deg conversion (degrees) | Implemented |
 | Square Root | `sqrt(S0, R)` | Digit-by-digit (like long division) | Implemented |
 | Exponential | `exp(S0, R)` | CORDIC digit-by-digit (inverse of ln) | Implemented |
+| Sine (deg) | `sinDeg(S0, R)` | Half-angle formula via tanDeg | Implemented |
+| Sine (rad) | `sinRad(S0, R)` | Converts to degrees, calls sinDeg | Implemented |
+| Cosine (deg) | `cosDeg(S0, R)` | Phase shift: sin(x + 90) | Implemented |
+| Cosine (rad) | `cosRad(S0, R)` | Converts to degrees, calls cosDeg | Implemented |
+| Arcsine (deg) | `asinDeg(S0, R)` | atan(1/sqrt(1/x²-1)) identity | Implemented |
+| Arcsine (rad) | `asinRad(S0, R)` | Calls asinDeg, converts | Implemented |
+| Arccosine (deg) | `acosDeg(S0, R)` | 90 - asin(x) identity | Implemented |
+| Arccosine (rad) | `acosRad(S0, R)` | Calls acosDeg, converts | Implemented |
 
 ## Building
 
