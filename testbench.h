@@ -1,3 +1,15 @@
+/******************************************************************************
+ * testbench.h - Test framework and verification utilities
+ *
+ * Provides test running infrastructure: random BCD generation,
+ * IEEE comparison with tolerance checking, FIX mode rounding,
+ * and formatted output for hardware test vector generation.
+ * Includes template-based test runners for unary/binary operations.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include "bcd.h"

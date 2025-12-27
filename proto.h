@@ -1,3 +1,14 @@
+/******************************************************************************
+ * proto.h - Main header with registers, flags, and function declarations
+ *
+ * Declares global user registers (X, Y, S0-S4, R), error flags,
+ * arithmetic operations (add, sub, mul, div), transcendental functions
+ * (ln, exp, tan, atan, sin, cos, asin, acos, sqrt), and test functions.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include "bcd.h"

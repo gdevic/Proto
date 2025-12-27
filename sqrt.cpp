@@ -1,3 +1,15 @@
+/******************************************************************************
+ * sqrt.cpp - Square root using digit-by-digit method
+ *
+ * Implements sqrt(S0, R) extracting one decimal digit per iteration.
+ * Uses the identity (20*R + q) * q <= remainder, implemented via
+ * repeated subtraction of odd numbers. 32-digit extended precision
+ * with nibble-safe intermediates (0-9 range).
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

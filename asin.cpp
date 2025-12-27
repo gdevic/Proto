@@ -1,3 +1,16 @@
+/******************************************************************************
+ * asin.cpp - Arcsine functions via arctangent identity
+ *
+ * Implements asinDeg() and asinRad() using:
+ *   asin(x) = atan(1 / sqrt(1/x² - 1))
+ *
+ * This form avoids saving x across sqrt() which uses all registers.
+ * Domain: |x| <= 1, returns degrees or radians.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

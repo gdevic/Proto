@@ -1,3 +1,14 @@
+/******************************************************************************
+ * bcd.h - BCD register structure definition
+ *
+ * Defines the BCD struct representing a 16-digit decimal number with
+ * 2-digit exponent. Internal format: d₁.d₂d₃...d₁₆ × 10^exp.
+ * Includes string parsing constructor and Real conversion for verification.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include <array>

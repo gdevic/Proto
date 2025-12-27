@@ -1,3 +1,14 @@
+/******************************************************************************
+ * bcd.cpp - BCD number construction from string
+ *
+ * Implements BCD(string) constructor parsing decimal strings into
+ * 16-digit mantissa with 2-digit exponent. Handles scientific notation,
+ * signs, and stores original value for verification.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "bcd.h"
 #include <cmath>
 #include <cstdio>

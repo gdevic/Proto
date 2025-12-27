@@ -1,3 +1,16 @@
+/******************************************************************************
+ * tan.cpp - Tangent and arctangent (radians) via CORDIC
+ *
+ * Implements tanRad(), atanRad(), and the core cordicTan/cordicAtan.
+ * Uses Meggitt's pseudo-division/pseudo-multiplication method with
+ * atan(10^-j) constant table (HP-35 style).
+ *
+ * tanRad converts to degrees and delegates to tanDeg for range reduction.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

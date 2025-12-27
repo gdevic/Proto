@@ -1,3 +1,14 @@
+/******************************************************************************
+ * log.cpp - Natural logarithm and exponential via CORDIC
+ *
+ * Implements ln() and exp() using Meggitt's digit-by-digit method
+ * (HP-35 style). Uses ln(1 + 10^-j) constant table shared by both
+ * functions. Range reduction via ln(10) for large arguments.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

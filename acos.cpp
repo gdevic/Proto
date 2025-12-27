@@ -1,3 +1,16 @@
+/******************************************************************************
+ * acos.cpp - Arccosine functions via arcsine identity
+ *
+ * Implements acosDeg() and acosRad() using:
+ *   acos(x) = 90° - asin(x)  (degrees)
+ *   acos(x) = π/2 - asin(x)  (radians)
+ *
+ * Domain: |x| <= 1, returns [0, 180°] or [0, π].
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

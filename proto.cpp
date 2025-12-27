@@ -1,3 +1,14 @@
+/******************************************************************************
+ * proto.cpp - Main entry point and test runner
+ *
+ * Parses command-line options and runs arithmetic test suites.
+ * Compares BCD results against IEEE long double for verification.
+ * Outputs test vectors for hardware verification.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include <iostream>

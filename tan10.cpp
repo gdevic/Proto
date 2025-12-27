@@ -1,3 +1,14 @@
+/******************************************************************************
+ * tan10.cpp - Tangent and arctangent (degrees) with exact range reduction
+ *
+ * Implements tanDeg() and atanDeg(). Range reduction uses exact decimal
+ * constants (360, 180, 90, 45) avoiding precision loss from irrational π.
+ * Converts to radians only for final CORDIC computation.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

@@ -1,3 +1,14 @@
+/******************************************************************************
+ * mantissa.h - BCD mantissa operation declarations
+ *
+ * Declares 16-digit mantissa primitives: add, subtract, shift,
+ * copy, clear, compare. All operations maintain nibble-safe
+ * intermediates (0-9 range) for hardware compatibility.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include "bcd.h"

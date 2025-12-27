@@ -1,3 +1,14 @@
+/******************************************************************************
+ * register.cpp - BCD register operations
+ *
+ * Implements full register operations: copy, clear, normalize,
+ * BCD-to-IEEE conversion, rounding (FIX mode), and pre-calculation
+ * setup. Manages global registers S0-S4 and R.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "register.h"
 #include "proto.h"
 #include "mantissa.h"

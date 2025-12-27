@@ -1,3 +1,14 @@
+/******************************************************************************
+ * mantissa.cpp - BCD mantissa operations
+ *
+ * Implements 16-digit mantissa primitives: add, subtract, shift,
+ * copy, clear, compare, normalize. All operations maintain nibble-safe
+ * intermediates (0-9 range) for hardware compatibility.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "mantissa.h"
 
 // ---------------------------------------------------------------------------

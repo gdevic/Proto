@@ -1,3 +1,14 @@
+/******************************************************************************
+ * register.h - BCD register operation declarations
+ *
+ * Declares full register operations: copy, clear, normalize,
+ * rounding (FIX mode), truncation, and pre-calculation setup.
+ * Works with global registers S0-S4 and R.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include "bcd.h"

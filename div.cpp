@@ -1,3 +1,14 @@
+/******************************************************************************
+ * div.cpp - BCD division using shift-and-subtract
+ *
+ * Implements div(S0, S1, R) computing R = S0 / S1.
+ * Uses 17+ digit quotient with guard digit and sticky bit
+ * for banker's rounding. Full 16-digit precision.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

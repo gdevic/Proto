@@ -1,3 +1,13 @@
+/******************************************************************************
+ * exponent.h - BCD exponent manipulation declarations
+ *
+ * Declares 2-digit exponent operations: increment, decrement,
+ * add, subtract, comparison. Exponent range is 10^-99 to 10^99.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #pragma once
 
 #include "bcd.h"

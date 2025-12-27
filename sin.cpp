@@ -1,3 +1,16 @@
+/******************************************************************************
+ * sin.cpp - Sine functions using half-angle formula
+ *
+ * Implements sinDeg() and sinRad() using the identity:
+ *   sin(x) = 2t / (1 + t²)  where t = tan(x/2)
+ *
+ * Range reduction uses mod 180 with parity tracking, then
+ * reflection to [0, 90] to keep tan(x/2) in optimal range [0, 1].
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

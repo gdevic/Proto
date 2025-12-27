@@ -1,3 +1,15 @@
+/******************************************************************************
+ * cos.cpp - Cosine functions via phase shift identity
+ *
+ * Implements cosDeg() and cosRad() using:
+ *   cos(x) = sin(x + 90°)
+ *
+ * Delegates all computation to sinDeg/sinRad.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

@@ -1,3 +1,14 @@
+/******************************************************************************
+ * exponent.cpp - BCD exponent manipulation
+ *
+ * Implements 2-digit exponent operations: increment, decrement,
+ * add, subtract, comparison. Handles exponent sign and overflow.
+ * Exponent range is 10^-99 to 10^99.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "exponent.h"
 #include "proto.h"
 #include "register.h"

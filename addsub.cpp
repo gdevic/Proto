@@ -1,3 +1,14 @@
+/******************************************************************************
+ * addsub.cpp - BCD addition and subtraction with alignment
+ *
+ * Implements add(S0, S1, R) and sub(S0, S1, R).
+ * Aligns operands by shifting, tracks guard digit (first shifted-out)
+ * and sticky (subsequent non-zeros) for banker's rounding.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

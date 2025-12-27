@@ -1,3 +1,14 @@
+/******************************************************************************
+ * mult.cpp - BCD multiplication using shift-and-add
+ *
+ * Implements mul(S0, S1, R) computing R = S0 * S1.
+ * Uses 32-digit accumulator with guard digit (17th) and sticky
+ * (18th-32nd) for banker's rounding. Full 16-digit precision.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "proto.h"
 #include "testbench.h"
 #include "exponent.h"

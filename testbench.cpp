@@ -1,3 +1,14 @@
+/******************************************************************************
+ * testbench.cpp - Test framework utilities
+ *
+ * Provides test running infrastructure: random BCD generation,
+ * IEEE comparison, tolerance checking, FIX mode rounding, and
+ * formatted output for hardware test vector generation.
+ *
+ * Copyright (c) 2025 Goran Devic
+ * SPDX-License-Identifier: MIT
+ *****************************************************************************/
+
 #include "testbench.h"
 #include <cmath>
 
