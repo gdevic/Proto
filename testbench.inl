@@ -91,9 +91,6 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     if (err.empty() && (level == MatchLevel::OK) && !g_traceAll)
         return false;
 
-    if (g_showIndex)
-        std::cout << std::setw(5) << g_testIndex << " ";
-
     std::cout << op << " " << formatBCD(a) << " ";
 
     if constexpr (arity == Arity::Binary)
@@ -156,7 +153,6 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 
                 MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
-                g_testIndex++;
                 if (detail::printResult<arity>(opName, BCD(values[i]), BCD(values[j]), R, level, ieee))
                     return false;
                 if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
@@ -184,7 +180,6 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 
             MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
-            g_testIndex++;
             if (detail::printResult<arity>(opName, BCD(values[i]), dummy, R, level, ieee))
                 return false;
             if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
@@ -236,7 +231,6 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
 
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
-        g_testIndex++;
         if (detail::printResult<arity>(opName, BCD(strA), inputB, R, level, ieee))
             return false;
         if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
@@ -294,7 +288,6 @@ bool runRoundTripTests(const char* opName,
 
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
-        g_testIndex++;
         if (detail::printResult<Arity::Unary>(opName, BCD(strA), dummy, R, level, ieee))
             return false;
         if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)

@@ -27,7 +27,6 @@ static void printHelp(const char* prog)
               << "  -d NUM   FIX mode: round to NUM decimal places (0-15) before comparison\n"
               << "  -e       Stop on first error (FAIL) and print the failing test\n"
               << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tanrad, atanrad, tandeg, atandeg, sqrt, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
-              << "  -i       Show test index (1-based) at start of each line\n"
               << "  -r NUM   Number of random tests to run (default: 2)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
               << "  -v       Verbose: print IEEE value even on OK lines\n"
@@ -78,8 +77,6 @@ int main(int argc, char* argv[])
             }
             g_testFilters.push_back(argv[++i]);
         }
-        else if (strcmp(argv[i], "-i") == 0)
-            g_showIndex = true;
         else if (strcmp(argv[i], "-r") == 0) {
             if (i + 1 >= argc) {
                 std::cerr << "-r requires a number\n";
@@ -109,12 +106,11 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_useColor || g_stopOnError || g_showIndex || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
+    if (g_useColor || g_stopOnError || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
         std::cerr << "Flags:";
         if (g_useColor) std::cerr << " -c";
         if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
         if (g_stopOnError) std::cerr << " -e";
-        if (g_showIndex) std::cerr << " -i";
         if (g_traceAll) std::cerr << " -t";
         if (g_verbose) std::cerr << " -v";
         for (const auto& f : g_testFilters) std::cerr << " -f " << f;

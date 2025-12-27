@@ -173,7 +173,6 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 | `-d NUM` | FIX mode: round both BCD and IEEE to NUM decimal places (0-15) before comparison |
 | `-e` | Stop on first error (FAIL) and print the failing test line |
 | `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
-| `-i` | Show test index (1-based) at start of each line |
 | `-r NUM` | Number of random tests to run (default: 2) |
 | `-v` | Verbose: also print IEEE value on OK lines |
 | `-t` | Trace all: print all lines including OK (for HW file) |
