@@ -147,8 +147,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="acos.cpp" />
     <ClCompile Include="addsub.cpp" />
+    <ClCompile Include="asin.cpp" />
     <ClCompile Include="bcd.cpp" />
+    <ClCompile Include="cos.cpp" />
     <ClCompile Include="exponent.cpp" />
     <ClCompile Include="mantissa.cpp" />
     <ClCompile Include="register.cpp" />
@@ -156,6 +159,7 @@
     <ClCompile Include="div.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="proto.cpp" />
+    <ClCompile Include="sin.cpp" />
     <ClCompile Include="tan.cpp" />
     <ClCompile Include="tan10.cpp" />
     <ClCompile Include="sqrt.cpp" />
