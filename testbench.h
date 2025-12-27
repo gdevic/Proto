@@ -60,11 +60,11 @@ constexpr RandomBCDOptions OPTS_MUL     = { 49, false, false };
 constexpr RandomBCDOptions OPTS_DIV     = { 49, false, false };
 constexpr RandomBCDOptions OPTS_LN      = { 99, true,  false };
 constexpr RandomBCDOptions OPTS_EXP     = { 2,  false, true  };
+constexpr RandomBCDOptions OPTS_SQRT    = { 50, true,  false };  // positive only
 constexpr RandomBCDOptions OPTS_TANRAD  = { 1,  false, true  };  // small radians
 constexpr RandomBCDOptions OPTS_ATANRAD = { 99, false, false };  // any value
 constexpr RandomBCDOptions OPTS_TANDEG  = { 2,  false, false };  // degrees 0-99
 constexpr RandomBCDOptions OPTS_ATANDEG = { 99, false, false };  // any value
-constexpr RandomBCDOptions OPTS_SQRT    = { 50, true,  false };  // positive only
 
 // Generate a random BCD string with configurable domain constraints
 // Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)

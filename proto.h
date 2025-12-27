@@ -54,13 +54,13 @@ void div(BCD &S0, BCD &S1, BCD &R);
 // Transcendental operations: read from S0, write result to R
 void ln(BCD &S0, BCD &R);
 void exp(BCD &S0, BCD &R);
+void sqrt(BCD &S0, BCD &R);
 void tanRad(BCD &S0, BCD &R);   // Tangent, input in radians
 void atanRad(BCD &S0, BCD &R);  // Arctangent, output in radians
 void tanDeg(BCD &S0, BCD &R);   // Tangent, input in degrees
 void atanDeg(BCD &S0, BCD &R);  // Arctangent, output in degrees
 void cordicTan(BCD &S0, BCD &R);   // Core CORDIC for tan (internal)
 void cordicAtan(BCD &S0, BCD &R);  // Core CORDIC for atan (internal)
-void sqrt(BCD &S0, BCD &R);
 void sinDeg(BCD &S0, BCD &R);      // Sine, input in degrees
 void sinRad(BCD &S0, BCD &R);      // Sine, input in radians
 void cosDeg(BCD &S0, BCD &R);      // Cosine, input in degrees
@@ -77,11 +77,11 @@ void testMultiplication();
 void testDivision();
 void testLn();
 void testExp();
+void testSqrt();
 void testTanRad();
 void testAtanRad();
 void testTanDeg();
 void testAtanDeg();
-void testSqrt();
 void testSinDeg();
 void testSinRad();
 void testCosDeg();
