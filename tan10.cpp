@@ -29,44 +29,6 @@ static const uint8_t deg_180_over_pi[MAX_MANT] = {
     5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
 };
 
-// Convert degrees to BCD value for 360 (used in range reduction)
-// Returns BCD with value 360.0
-static void setBCD360(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 3;
-    x.mant[1] = 6;
-    // exp = 2 (so 3.6 * 10^2 = 360), exp[0]=tens, exp[1]=ones
-    x.exp[0] = 0;
-    x.exp[1] = 2;
-    x.esign = false;
-}
-
-// Convert degrees to BCD value for 90 (used in range reduction)
-// Returns BCD with value 90.0
-static void setBCD90(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 9;
-    // exp = 1 (so 9.0 * 10^1 = 90), exp[0]=tens, exp[1]=ones
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
-// Convert degrees to BCD value for 45 (used in range reduction)
-// Returns BCD with value 45.0
-static void setBCD45(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 4;
-    x.mant[1] = 5;
-    // exp = 1 (so 4.5 * 10^1 = 45), exp[0]=tens, exp[1]=ones
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -111,7 +73,7 @@ void tanDeg(BCD& S0, BCD& R)
     // This is O(1) instead of O(n) for large angles
 
     // Use S4 for 360 constant
-    setBCD360(S4);
+    constLoad(S4, CONST_360);
 
     if (bcdCompare(S0, S4) >= 0) {
         // Save original angle in S3 (S2 is used by mul as accumulator)
@@ -154,7 +116,7 @@ void tanDeg(BCD& S0, BCD& R)
     // Now S0 is in [0, 180)
     // Check if angle >= 90: use tan(x) = -tan(180 - x) for x in [90, 180)
     // Use S4 for 90 constant
-    setBCD90(S4);
+    constLoad(S4, CONST_90);
     bool negateResult = false;
 
     if (bcdCompare(S0, S4) >= 0) {
@@ -169,13 +131,13 @@ void tanDeg(BCD& S0, BCD& R)
     // Now S0 is in [0, 90)
     // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
     // Reuse S4 for 45 constant
-    setBCD45(S4);
+    constLoad(S4, CONST_45);
     bool useReciprocal = (bcdCompare(S0, S4) > 0);
 
     if (useReciprocal) {
         // S0 = 90 - S0
         regCopy(S1, S0);
-        setBCD90(S0);
+        constLoad(S0, CONST_90);
         sub(S0, S1, R);
         regCopy(S0, R);
     }

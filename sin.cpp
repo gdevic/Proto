@@ -25,53 +25,6 @@ static const uint8_t deg_180_over_pi[MAX_MANT] = {
     5,7,2,9,5,7,7,9,5,1,3,0,8,2,3,2
 };
 
-// Convert degrees to BCD value for 180 (used in range reduction)
-// Returns BCD with value 180.0
-static void setBCD180(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 1;
-    x.mant[1] = 8;
-    // exp = 2 (so 1.8 * 10^2 = 180)
-    x.exp[0] = 0;
-    x.exp[1] = 2;
-    x.esign = false;
-}
-
-// Convert degrees to BCD value for 90 (used in range reduction)
-// Returns BCD with value 90.0
-static void setBCD90(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 9;
-    // exp = 1 (so 9.0 * 10^1 = 90)
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
-// Set BCD to value 2.0
-static void setBCD2(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 2;
-    // exp = 0 (so 2.0 * 10^0 = 2)
-    x.exp[0] = 0;
-    x.exp[1] = 0;
-    x.esign = false;
-}
-
-// Set BCD to value 1.0
-static void setBCD1(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 1;
-    // exp = 0 (so 1.0 * 10^0 = 1)
-    x.exp[0] = 0;
-    x.exp[1] = 0;
-    x.esign = false;
-}
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -135,7 +88,7 @@ static void sinDegCore(bool negateResult, bool inputSign)
     // ---------- Compute tan(x/2) ----------
     // First divide angle by 2: S0 = S0 / 2
     // S0 already has angle, S1 = 2 (divisor)
-    setBCD2(S1);
+    constLoad(S1, CONST_2);
     div(S0, S1, R);  // R = angle / 2
     regCopy(S0, R);
 
@@ -153,7 +106,7 @@ static void sinDegCore(bool negateResult, bool inputSign)
     regCopy(S4, R);  // S4 = t
 
     // Compute 2*t first, save to S3 (before mul destroys S2)
-    setBCD2(S0);
+    constLoad(S0, CONST_2);
     regCopy(S1, S4);  // S1 = t
     mul(S0, S1, R);   // R = 2*t (mul uses S2 as accumulator)
     regCopy(S3, R);   // S3 = 2*t (safe across next mul)
@@ -165,7 +118,7 @@ static void sinDegCore(bool negateResult, bool inputSign)
 
     // Compute 1 + t² (denominator)
     regCopy(S1, R);  // S1 = t²
-    setBCD1(S0);
+    constLoad(S0, CONST_1);
     add(S0, S1, R);  // R = 1 + t²
 
     // Compute sin = (2*t) / (1 + t²)
@@ -205,7 +158,7 @@ void sinDeg(BCD& _S0, BCD& _R)
     // This combines the old mod 360 + quadrant sign into one step
 
     bool negateResult = false;
-    setBCD180(S4);
+    constLoad(S4, CONST_180);
 
     if (bcdCompare(S0, S4) >= 0) {
         // Save original angle in S3
@@ -240,11 +193,11 @@ void sinDeg(BCD& _S0, BCD& _R)
     }
 
     // ---------- Reflect to [0, 90] using sin(180-x) = sin(x) ----------
-    setBCD90(S4);
+    constLoad(S4, CONST_90);
     if (bcdCompare(S0, S4) > 0) {
         // S0 = 180 - S0
         regCopy(S1, S0);
-        setBCD180(S0);
+        constLoad(S0, CONST_180);
         sub(S0, S1, R);
         regCopy(S0, R);
     }

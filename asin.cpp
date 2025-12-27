@@ -25,26 +25,6 @@ static const uint8_t pi_over_180[MAX_MANT] = {
     1,7,4,5,3,2,9,2,5,1,9,9,4,3,3,0
 };
 
-// Set BCD to value 1.0
-static void setBCD1(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 1;
-    x.exp[0] = 0;
-    x.exp[1] = 0;
-    x.esign = false;
-}
-
-// Set BCD to value 90.0
-static void setBCD90(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 9;
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -83,7 +63,7 @@ void asinDeg(BCD& S0, BCD& R)
     S0.sign = false;
 
     // Check domain: |x| <= 1
-    setBCD1(S4);
+    constLoad(S4, CONST_1);
     int cmp = bcdCompare(S0, S4);
     if (cmp > 0) {
         // |x| > 1: domain error
@@ -94,7 +74,7 @@ void asinDeg(BCD& S0, BCD& R)
     // Special case: |x| = 1 exactly
     if (cmp == 0) {
         // asin(1) = 90, asin(-1) = -90
-        setBCD90(R);
+        constLoad(R, CONST_90);
         R.sign = inputSign;
         return;
     }
@@ -108,12 +88,12 @@ void asinDeg(BCD& S0, BCD& R)
 
     // Compute 1/x²: S0 = 1, S1 = x², result in R
     regCopy(S1, R);   // S1 = x²
-    setBCD1(S0);      // S0 = 1
+    constLoad(S0, CONST_1);      // S0 = 1
     div(S0, S1, R);   // R = 1/x²
 
     // Compute 1/x² - 1: S0 = 1/x², S1 = 1, result in R
     regCopy(S0, R);   // S0 = 1/x²
-    setBCD1(S1);      // S1 = 1
+    constLoad(S1, CONST_1);      // S1 = 1
     sub(S0, S1, R);   // R = 1/x² - 1
     regCopy(S0, R);   // S0 = 1/x² - 1
 
@@ -126,7 +106,7 @@ void asinDeg(BCD& S0, BCD& R)
 
     // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²): S0 = 1, S1 = sqrt(...), result in R
     regCopy(S1, R);   // S1 = sqrt(1/x² - 1)
-    setBCD1(S0);      // S0 = 1
+    constLoad(S0, CONST_1);      // S0 = 1
     div(S0, S1, R);   // R = 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
 
     // Compute atan in degrees

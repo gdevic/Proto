@@ -25,37 +25,6 @@ static const uint8_t pi_over_180[MAX_MANT] = {
     1,7,4,5,3,2,9,2,5,1,9,9,4,3,3,0
 };
 
-// Set BCD to value 90.0
-static void setBCD90(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 9;
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
-// Set BCD to value 1.0
-static void setBCD1(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 1;
-    x.exp[0] = 0;
-    x.exp[1] = 0;
-    x.esign = false;
-}
-
-// Set BCD to value 180.0
-static void setBCD180(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 1;
-    x.mant[1] = 8;
-    x.exp[0] = 0;
-    x.exp[1] = 2;
-    x.esign = false;
-}
-
 // Compare two BCD numbers: returns -1 if a < b, 0 if a == b, 1 if a > b
 // Assumes both are non-negative
 static int bcdCompare(const BCD& a, const BCD& b)
@@ -87,7 +56,7 @@ void acosDeg(BCD& S0, BCD& R)
 
     // Special case: acos(0) = 90 exactly
     if (FLAG_S0_ZERO) {
-        setBCD90(R);
+        constLoad(R, CONST_90);
         return;
     }
 
@@ -96,7 +65,7 @@ void acosDeg(BCD& S0, BCD& R)
 
     // Check domain: |x| <= 1
     S0.sign = false;  // work with |x|
-    setBCD1(S4);
+    constLoad(S4, CONST_1);
     int cmp = bcdCompare(S0, S4);
     if (cmp > 0) {
         // |x| > 1: domain error
@@ -114,7 +83,7 @@ void acosDeg(BCD& S0, BCD& R)
     // Special case: x = -1 exactly
     if (cmp == 0 && inputSign) {
         // acos(-1) = 180
-        setBCD180(R);
+        constLoad(R, CONST_180);
         return;
     }
 
@@ -131,7 +100,7 @@ void acosDeg(BCD& S0, BCD& R)
 
     // Compute 90 - asin(x)
     regCopy(S1, R);
-    setBCD90(S0);
+    constLoad(S0, CONST_90);
     sub(S0, S1, R);  // R = 90 - asin(x)
 }
 

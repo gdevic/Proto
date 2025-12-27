@@ -24,16 +24,6 @@ static const uint8_t pi_over_2[MAX_MANT] = {
     1,5,7,0,7,9,6,3,2,6,7,9,4,8,9,7
 };
 
-// Set BCD to value 90.0
-static void setBCD90(BCD& x)
-{
-    regClear(x);
-    x.mant[0] = 9;
-    x.exp[0] = 0;
-    x.exp[1] = 1;
-    x.esign = false;
-}
-
 // Compute cosine in degrees: R = cosDeg(S0)
 // Input in degrees, output is the cosine value
 // Uses identity: cos(x) = sin(x + 90)
@@ -44,7 +34,7 @@ void cosDeg(BCD& S0, BCD& R)
 
     // cos(x) = sin(x + 90)
     // Add 90 to input, then call sinDeg
-    setBCD90(S1);
+    constLoad(S1, CONST_90);
     add(S0, S1, R);
     regCopy(S0, R);
     sinDeg(S0, R);

@@ -30,6 +30,17 @@ inline bool FLAG_DIV0_ERR = false;  // Division by zero error
 inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
 inline bool FLAG_S1_ZERO = false;   // S1 is zero (set by preCalc)
 
+// Constant identifiers for constLoad()
+inline constexpr uint8_t CONST_1   = 0;   // Value 1.0
+inline constexpr uint8_t CONST_2   = 1;   // Value 2.0
+inline constexpr uint8_t CONST_45  = 2;   // Value 45.0
+inline constexpr uint8_t CONST_90  = 3;   // Value 90.0
+inline constexpr uint8_t CONST_180 = 4;   // Value 180.0
+inline constexpr uint8_t CONST_360 = 5;   // Value 360.0
+
+// Load a predefined constant into a BCD register
+void constLoad(BCD& x, uint8_t which);
+
 // Arithmetic operations: read from S0 and S1, write result to R
 void add(BCD &S0, BCD &S1, BCD &R);
 void sub(BCD &S0, BCD &S1, BCD &R);

@@ -164,6 +164,7 @@
     <ClCompile Include="tan10.cpp" />
     <ClCompile Include="sqrt.cpp" />
     <ClCompile Include="testbench.cpp" />
+    <ClCompile Include="const.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />
