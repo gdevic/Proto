@@ -29,6 +29,7 @@ static void printHelp(const char* prog)
               << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
               << "  -r NUM   Number of random tests to run (default: 10)\n"
               << "  -t       Trace all: print all test lines including OK (for HW file)\n"
+              << "  -T       Skip round-trip tests (enabled by default)\n"
               << "  -v       Verbose: print IEEE value even on OK lines\n"
               << "\n"
               << "Output modes:\n"
@@ -90,6 +91,8 @@ int main(int argc, char* argv[])
             g_verbose = true;
         else if (strcmp(argv[i], "-t") == 0)
             g_traceAll = true;
+        else if (strcmp(argv[i], "-T") == 0)
+            g_skipRoundTrip = true;
         else {
             std::cerr << "Unknown option: " << argv[i] << "\n";
             std::cerr << "Use -h for help.\n";
@@ -106,12 +109,13 @@ int main(int argc, char* argv[])
     std::cerr << "Verification: using double\n";
 #endif
     std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_useColor || g_stopOnError || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
+    if (g_useColor || g_stopOnError || g_skipRoundTrip || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
         std::cerr << "Flags:";
         if (g_useColor) std::cerr << " -c";
         if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
         if (g_stopOnError) std::cerr << " -e";
         if (g_traceAll) std::cerr << " -t";
+        if (g_skipRoundTrip) std::cerr << " -T";
         if (g_verbose) std::cerr << " -v";
         for (const auto& f : g_testFilters) std::cerr << " -f " << f;
         if (g_randomCount != 10) std::cerr << " -r " << g_randomCount;

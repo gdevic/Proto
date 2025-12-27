@@ -174,8 +174,9 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 | `-e` | Stop on first error (FAIL) and print the failing test line |
 | `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, tan, atan, tan10, atan10, sqrt) |
 | `-r NUM` | Number of random tests to run (default: 10) |
-| `-v` | Verbose: also print IEEE value on OK lines |
 | `-t` | Trace all: print all lines including OK (for HW file) |
+| `-T` | Skip round-trip tests (enabled by default) |
+| `-v` | Verbose: also print IEEE value on OK lines |
 
 ```bash
 ./proto               # Debug: show only problems

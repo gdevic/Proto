@@ -21,6 +21,7 @@
 inline bool g_verbose = false;      // -v: Print IEEE value even on OK
 inline bool g_traceAll = false;     // -t: Print all lines including OK
 inline bool g_stopOnError = false;  // -e: Stop on first error (FAIL)
+inline bool g_skipRoundTrip = false; // -T: Skip round-trip tests
 inline bool g_useColor = false;     // -c: Use ANSI colors for output
 inline int g_randomCount = 10;      // -r: Number of random tests to run (default: 10)
 inline int g_roundDigits = -1;      // -d: FIX mode decimal places (-1 = disabled)
