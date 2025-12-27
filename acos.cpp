@@ -6,10 +6,10 @@
 #include <cassert>
 #include <cmath>
 
-// PI/2 for radian conversion (16 digits)
-// 1.5707963267948966192313216916398...
-static const uint8_t pi_over_2[MAX_MANT] = {
-    1,5,7,0,7,9,6,3,2,6,7,9,4,8,9,7
+// PI/180 for degree to radian conversion (16 digits)
+// 0.01745329251994329... = 1.745329251994329...e-2 (normalized)
+static const uint8_t pi_over_180[MAX_MANT] = {
+    1,7,4,5,3,2,9,2,5,1,9,9,4,3,3,0
 };
 
 // Set BCD to value 90.0
@@ -124,75 +124,30 @@ void acosDeg(BCD& S0, BCD& R)
 
 // Compute arccosine in radians: R = acosRad(S0)
 // Input is a value in [-1, 1], output in radians [0, PI]
-// Uses formula: acos(x) = PI/2 - asin(x)
+// Computes acosDeg then converts to radians
 // Reads from S0, stores result in R
 void acosRad(BCD& S0, BCD& R)
 {
     assert((&S0 == &::S0) && (&R == &::R));
 
-    preCalc1(S0, R);
+    // Compute acos in degrees first
+    acosDeg(S0, R);
 
-    // Special case: acos(0) = PI/2 exactly
-    if (FLAG_S0_ZERO) {
-        mantCopy(R.mant.data(), pi_over_2);
-        R.exp[0] = 0;
-        R.exp[1] = 0;
-        R.esign = false;
-        R.sign = false;
-        return;
-    }
-
-    // Save input sign for special case handling
-    bool inputSign = S0.sign;
-
-    // Check domain: |x| <= 1
-    S0.sign = false;
-    setBCD1(S4);
-    int cmp = bcdCompare(S0, S4);
-    if (cmp > 0) {
-        FLAG_DOM_ERR = true;
-        return;
-    }
-
-    // Special case: x = 1 exactly
-    if (cmp == 0 && !inputSign) {
-        // acos(1) = 0
-        regClear(R);
-        return;
-    }
-
-    // Special case: x = -1 exactly
-    if (cmp == 0 && inputSign) {
-        // acos(-1) = PI
-        // PI = 3.141592653589793238...
-        static const uint8_t pi_const[MAX_MANT] = {
-            3,1,4,1,5,9,2,6,5,3,5,8,9,7,9,3
-        };
-        mantCopy(R.mant.data(), pi_const);
-        R.exp[0] = 0;
-        R.exp[1] = 0;
-        R.esign = false;
-        R.sign = false;
-        return;
-    }
-
-    // General case: acos(x) = PI/2 - asin(x)
-    S0.sign = inputSign;
-
-    // Compute asin(x) in radians
-    asinRad(S0, R);
-
-    if (FLAG_DOM_ERR)
+    // If error or zero, return as-is
+    if (FLAG_DOM_ERR || isMantZero(R.mant.data()))
         return;
 
-    // Compute PI/2 - asin(x)
-    regCopy(S1, R);
-    mantCopy(S0.mant.data(), pi_over_2);
-    S0.exp[0] = 0;
-    S0.exp[1] = 0;
-    S0.esign = false;
-    S0.sign = false;
-    sub(S0, S1, R);  // R = PI/2 - asin(x)
+    // Convert degrees to radians: radians = degrees * (PI/180)
+    regCopy(S0, R);
+
+    // S1 = PI/180 = 0.01745... = 1.745...e-2
+    mantCopy(S1.mant.data(), pi_over_180);
+    S1.exp[0] = 0;
+    S1.exp[1] = 2;
+    S1.esign = true;
+    S1.sign = false;
+
+    mul(S0, S1, R);
 }
 
 // IEEE operations for test runner

@@ -32,6 +32,10 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Arctangent** (`tan.cpp`): CORDIC digit-by-digit method with reciprocal reduction for |x|>1: atan(x) = π/2 - atan(1/x). Works across full range. See `docs/tan-algorithm-research.md`.
 - **Tangent (degrees)** (`tan10.cpp`): Exact range reduction using 360°/180°/90°/45°, then converts to radians and applies CORDIC. Works for all angles. See `docs/tan10-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
+- **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Reuses tanDeg for core computation. Precision ~4-8e-14. See `docs/sincos-algorithm-research.md`.
+- **Cosine** (`cos.cpp`): Half-angle formula cos(x) = (1-t²)/(1+t²) where t=tan(x/2). Naturally handles all quadrant signs. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
+- **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
+- **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 
 ### Output Format
 One test per line, fixed columns for HW parsing:
@@ -59,7 +63,7 @@ Domain constraints for different operations:
 - OPTS_TAN10, OPTS_ATAN10 (degree-based, full range)
 
 ## Next Steps
-- Implement range reduction for tan() (currently only works for small angles)
+- Implement degree-native CORDIC for sin/cos (better precision than half-angle formulas)
 - Each operation uses appropriate RandomBCDOptions preset
 
 ## Build
