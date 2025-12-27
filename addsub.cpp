@@ -88,7 +88,9 @@ void add(BCD& S0, BCD& S1, BCD& R)
     // Different signs: subtract smaller from larger magnitude
     else {
         // For subtraction, any shifted-out non-zero (guard or sticky) means borrow
-        bool anyShifted = sticky || (guard != 0);
+        // But only if S1 still has some mantissa content - if S1 was completely
+        // shifted out (mantissa all zeros), it's negligible and shouldn't affect S0
+        bool anyShifted = (sticky || (guard != 0)) && !isMantZero(S1.mant.data());
 
         // Check for exact zero (magnitudes equal and nothing shifted out)
         if (isMantEQ(S0.mant.data(), S1.mant.data()) && !anyShifted) {
