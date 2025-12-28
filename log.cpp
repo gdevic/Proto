@@ -226,23 +226,7 @@ void exp(BCD& S0, BCD& R)
     div(S0, S1, R);
 
     // Truncate R to integer k = floor(R)
-    // If exponent is negative, floor = 0
-    // Otherwise, zero out digits after the decimal point
-    // Nibble-safe: compare each position against 2-digit exponent
-    if (R.esign) {
-        regClear(R);
-    }
-    else {
-        // Zero fractional digits: position i is fractional if i > exp
-        // For i in 1..15, compare (i_hi, i_lo) > (exp[0], exp[1])
-        for (uint8_t i = 1; i < MAX_MANT; i++) {
-            uint8_t i_hi = (i >= 10) ? 1 : 0;
-            uint8_t i_lo = (i >= 10) ? (i - 10) : i;
-            // Position i is fractional if i > exp
-            if ((i_hi > R.exp[0]) || ((i_hi == R.exp[0]) && (i_lo > R.exp[1])))
-                R.mant[i] = 0;
-        }
-    }
+    truncate(R);
 
     // Extract k from R and store in S3.exp field directly
     // R contains k as BCD: mant[0].mant[1]... × 10^exp
