@@ -185,7 +185,7 @@ void cordicAtan(BCD& R, BCD& S0)
     // Special case: very large |input| (exponent >= 15)
     // atan(x) approaches π/2 so closely that difference < 10^-15
     // Return π/2 directly to avoid mantissa underflow during alignment
-    if (!S0.esign && ((S0.exp[0] >= 2) || (S0.exp[0] == 1 && (S0.exp[1] >= 5)))) {
+    if (!S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 5)))) {
         constLoad(R, CONST_PI_OVER_2);
         R.sign = inputSign;
         return;
