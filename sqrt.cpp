@@ -61,30 +61,13 @@ static bool ext32Ge(const uint8_t* highA, const uint8_t* lowA,
     return true;  // Equal
 }
 
-// Subtract mantissas in place with borrow in/out: A -= B
-// Returns borrow
-static bool mantSubBorrow(uint8_t* a, const uint8_t* b, bool borrow)
-{
-    for (int i = MAX_MANT - 1; i >= 0; i--) {
-        int diff = a[i] - b[i] - borrow;
-        if (diff < 0) {
-            diff += 10;
-            borrow = true;
-        }
-        else
-            borrow = false;
-        a[i] = uint8_t(diff);
-    }
-    return borrow;
-}
-
 // Subtract 32-digit numbers: A -= B
 // Assumes A >= B
 static void ext32Sub(uint8_t* highA,       uint8_t* lowA,
                const uint8_t* highB, const uint8_t* lowB)
 {
-    bool borrow = mantSubBorrow(lowA, lowB, false);
-    mantSubBorrow(highA, highB, borrow);
+    int borrow = mantSub(lowA, lowB, lowA);
+    mantSub(highA, highB, highA, borrow);
 }
 
 // Check if 32-digit number is zero

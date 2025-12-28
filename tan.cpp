@@ -130,7 +130,7 @@ void cordicTan(BCD& S0, BCD& R)
             mantAdd(S0.mant.data(), S4.mant.data(), R.mant.data());
 
             // x_new = x - y_shifted (S1 - S2 -> S4.mant as temp)
-            mantSub(S1.mant.data(), S2.mant.data(), S4.mant.data(), false);
+            mantSub(S1.mant.data(), S2.mant.data(), S4.mant.data());
 
             // Update: y = y_new, x = x_new
             mantCopy(S0.mant.data(), R.mant.data());

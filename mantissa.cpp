@@ -107,12 +107,10 @@ int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r)
     return carry;
 }
 
-// Subtract two aligned mantissas: r = a - b (assumes |a| >= |b|)
-// sticky generates initial borrow from beyond mant[15]
-void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
+// Subtract magnitudes of two aligned mantissas: r = a - b (assumes |a| >= |b|)
+// Returns borrow (0 or 1)
+int mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, int borrow)
 {
-    int borrow = sticky ? 1 : 0;
-
     for (uint i = MAX_MANT; i-- > 0; ) {
         int diff = int(a[i]) - int(b[i]) - borrow;
         if (diff < 0) {
@@ -123,4 +121,5 @@ void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
         }
         r[i] = uint8_t(diff);
     }
+    return borrow;
 }

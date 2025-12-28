@@ -155,7 +155,7 @@ void ln(BCD& S0, BCD& R)
     constLoad(S1, CONST_LN10);
 
     // Subtract: S1 - R -> R
-    mantSub(S1.mant.data(), R.mant.data(), R.mant.data(), false);
+    mantSub(S1.mant.data(), R.mant.data(), R.mant.data());
 
     // Set up R as a proper BCD number
     R.exp[0] = 0;
