@@ -185,22 +185,22 @@ For j = 15 down to 0 (multiplier digit, LSB to MSB):
 **Algorithm**: Shift-and-subtract producing 17 quotient digits.
 
 ```
-divDigit(overflow):
+divDigit(dig17):
     q = 0
-    While [overflow, S0] >= S1:
-        S0 = S0 - S1 (with borrow into overflow)
+    While [dig17, S0] >= S1:
+        S0 = S0 - S1 (with borrow into dig17)
         q++
     Return q
 
 Main loop (16 iterations, fits in 4-bit counter):
     For i = 0 to 15:
-        R[i] = divDigit(overflow)
-        overflow = S0[0]
+        R[i] = divDigit(dig17)
+        dig17 = S0[0]
         Shift S0 left
 
 17th iteration (epilogue):
-    q17 = divDigit(overflow)
-    hasRemainder = (overflow ≠ 0) OR (S0 ≠ 0)
+    q17 = divDigit(dig17)
+    hasRemainder = (dig17 ≠ 0) OR (S0 ≠ 0)
 ```
 
 **Normalization and Rounding**: Quotient of two normalized mantissas is in range (0.1, 10):

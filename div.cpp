@@ -16,13 +16,13 @@
 #include "register.h"
 #include <cassert>
 
-// Compute one quotient digit: count subtractions while [overflow, S0] >= S1
-// Updates overflow and S0.mant in place
+// Compute one quotient digit: count subtractions while [dig17, S0] >= S1
+// Updates dig17 and S0.mant in place
 // Returns the quotient digit (0-9)
-static uint8_t divDigit(uint8_t& overflow)
+static uint8_t divDigit(uint8_t& dig17, BCD& S0, const BCD& S1)
 {
     uint8_t q = 0;
-    while ((overflow > 0) || (isMantGT(S1.mant.data(), S0.mant.data()) == false)) {
+    while ((dig17 > 0) || (isMantGT(S1.mant.data(), S0.mant.data()) == false)) {
         int borrow = 0;
         for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
             int diff = int(S0.mant[j]) - int(S1.mant[j]) - borrow;
@@ -34,7 +34,7 @@ static uint8_t divDigit(uint8_t& overflow)
                 borrow = 0;
             S0.mant[j] = uint8_t(diff);
         }
-        overflow = uint8_t(int(overflow) - borrow);
+        dig17 = uint8_t(int(dig17) - borrow);
         q++;
     }
     return q;
@@ -68,20 +68,20 @@ void div(BCD& R, BCD& S0, BCD& S1)
     R.sign = S0.sign ^ S1.sign;
 
     // Division loop using shift-and-subtract
-    // [overflow, S0.mant] is the 17-digit partial dividend
+    // [dig17, S0.mant] is the 17-digit partial dividend
     // S1.mant is the 16-digit divisor (unchanged)
     // R.mant accumulates the quotient
-    uint8_t overflow = 0;
+    uint8_t dig17 = 0;
 
     // Main loop: 16 iterations (i = 0..15, fits in 4-bit counter)
     for (uint i = 0; i < MAX_MANT; i++) {
-        R.mant[i] = divDigit(overflow);
-        overflow = S0.mant[0];
+        R.mant[i] = divDigit(dig17, S0, S1);
+        dig17 = S0.mant[0];
         mantShl(S0.mant.data());
     }
 
     // 17th iteration: compute q17 only (no store to R.mant, no shift)
-    uint8_t q17 = divDigit(overflow);
+    uint8_t q17 = divDigit(dig17, S0, S1);
 
     // Extract guard digit and sticky for rounding
     uint8_t guard;
@@ -95,17 +95,17 @@ void div(BCD& R, BCD& S0, BCD& S1)
         R.mant[MAX_MANT - 1] = q17;
 
         // Compute 18th quotient digit as guard
-        overflow = S0.mant[0];
+        dig17 = S0.mant[0];
         mantShl(S0.mant.data());
-        guard = divDigit(overflow);
+        guard = divDigit(dig17, S0, S1);
     }
     else {
         // No normalization: q17 is guard, remainder is sticky
         guard = q17;
     }
 
-    // Sticky: any remaining non-zero in overflow or remainder
-    sticky = (overflow != 0) || !isMantZero(S0.mant.data());
+    // Sticky: any remaining non-zero in dig17 or remainder
+    sticky = (dig17 != 0) || !isMantZero(S0.mant.data());
 
     applyBankersRounding(R, guard, sticky);
 }
