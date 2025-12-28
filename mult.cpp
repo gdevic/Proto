@@ -20,11 +20,11 @@
 // Reads from S0 and S1, stores result in R
 // Uses shift-and-add algorithm with 32-digit accumulator (R + S2)
 // Uses registers: S0 (input), S1 (input), S2 (accumulator low), R (result)
-void mul(BCD& S0, BCD& S1, BCD& R)
+void mul(BCD& R, BCD& S0, BCD& S1)
 {
-    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(S0, S1, R);
+    preCalc2(R, S0, S1);
 
     // Handle zero cases
     if (FLAG_S0_ZERO || FLAG_S1_ZERO)

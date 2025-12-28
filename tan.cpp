@@ -57,7 +57,7 @@ static void getAtanConst(uint j, uint8_t* dst)
 // Input: S0 = angle in radians (already reduced to small range)
 // Output: R = tan(angle)
 // Uses registers: S0, S1, S2, S3, S4, R
-void cordicTan(BCD& S0, BCD& R)
+void cordicTan(BCD& R, BCD& S0)
 {
     // For numbers with negative exponent, right shift mantissa until exponent is zero
     normalizeToZeroExp(S0);
@@ -127,10 +127,10 @@ void cordicTan(BCD& S0, BCD& R)
                 S2.mant[i + j] = S0.mant[i];
 
             // y_new = y + x_shifted (S0 + S4 -> R.mant as temp)
-            mantAdd(S0.mant.data(), S4.mant.data(), R.mant.data());
+            mantAdd(R.mant.data(), S0.mant.data(), S4.mant.data());
 
             // x_new = x - y_shifted (S1 - S2 -> S4.mant as temp)
-            mantSub(S1.mant.data(), S2.mant.data(), S4.mant.data());
+            mantSub(S4.mant.data(), S1.mant.data(), S2.mant.data());
 
             // Update: y = y_new, x = x_new
             mantCopy(S0.mant.data(), R.mant.data());
@@ -161,18 +161,18 @@ void cordicTan(BCD& S0, BCD& R)
     normalize(S1);
 
     // ---------- Part 5: Compute result = y / x ----------
-    div(S0, S1, R);
+    div(R, S0, S1);
 }
 
 // Core CORDIC arctangent algorithm (Meggitt's digit-by-digit method)
 // Input: S0 = value to compute arctangent of
 // Output: R = atan(S0) in radians
 // Uses registers: S0 (input/y), S1 (x), S2 (temp), S3 (counter), S4 (temp), R (result)
-void cordicAtan(BCD& S0, BCD& R)
+void cordicAtan(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: atan(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -198,7 +198,7 @@ void cordicAtan(BCD& S0, BCD& R)
     if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
         useReciprocal = true;
         // Compute 1/input: R = 1/S0
-        reciprocal(S0, R);
+        reciprocal(R, S0);
         regCopy(S0, R);
         S0.sign = false;  // Work with positive value
     }
@@ -264,7 +264,7 @@ void cordicAtan(BCD& S0, BCD& R)
             mantCopy(S0.mant.data(), S4.mant.data());
 
             // Update x = x + y_shifted (y_shifted is in R.mant)
-            mantAdd(S1.mant.data(), R.mant.data(), S4.mant.data());
+            mantAdd(S4.mant.data(), S1.mant.data(), R.mant.data());
             mantCopy(S1.mant.data(), S4.mant.data());
 
             S3.mant[j]++;
@@ -289,7 +289,7 @@ void cordicAtan(BCD& S0, BCD& R)
     normalize(S1);
 
     // R = residual angle = y / x
-    div(S0, S1, R);
+    div(R, S0, S1);
 
     // ---------- Part 3: Accumulate atan constants ----------
     // Result = residual + sum of counter[j] * atan_const[j] for j = K-1 down to 0
@@ -308,7 +308,7 @@ void cordicAtan(BCD& S0, BCD& R)
             // Use S0, S1 for the add operation
             regCopy(S0, R);
             regCopy(S1, S4);
-            add(S0, S1, R);
+            add(R, S0, S1);
         }
     }
 
@@ -319,7 +319,7 @@ void cordicAtan(BCD& S0, BCD& R)
 
         // R = π/2 - R
         regCopy(S1, R);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
     }
 
     // Restore sign (atan is odd function)
@@ -330,11 +330,11 @@ void cordicAtan(BCD& S0, BCD& R)
 // Input in radians, output is the tangent value
 // Converts to degrees, calls tanDeg (which does range reduction), returns result
 // Uses registers: S0, S1, S2, S3, S4, R
-void tanRad(BCD& S0, BCD& R)
+void tanRad(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: tanRad(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -355,7 +355,7 @@ void tanRad(BCD& S0, BCD& R)
     constLoad(S1, CONST_PI_OVER_2);
 
     regCopy(S2, S0);  // Save input
-    sub(S0, S1, R);   // R = input - π/2
+    sub(R, S0, S1);   // R = input - π/2
 
     // If |input - π/2| is effectively zero (exponent <= -13), return overflow
     // This means tan would exceed 10^13, essentially infinity for our precision
@@ -372,23 +372,23 @@ void tanRad(BCD& S0, BCD& R)
     constLoad(S1, CONST_180_OVER_PI);
 
     // S0 = S0 * (180/PI)
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 
     // R now contains the angle in degrees
     regCopy(S0, R);
     S0.sign = inputSign;  // Restore sign for tanDeg
 
     // ---------- Call tanDeg which does range reduction ----------
-    tanDeg(S0, R);
+    tanDeg(R, S0);
 }
 
 // Compute arctangent in radians: R = atanRad(S0)
 // Input is a value, output in radians
 // Wrapper that calls cordicAtan (which returns radians)
 // Returns: arctangent of S0 in radians
-void atanRad(BCD& S0, BCD& R)
+void atanRad(BCD& R, BCD& S0)
 {
-    cordicAtan(S0, R);
+    cordicAtan(R, S0);
 }
 
 // IEEE operations for test runner (radians)

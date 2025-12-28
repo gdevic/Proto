@@ -44,11 +44,11 @@ static uint8_t divDigit(uint8_t& overflow)
 // Reads from S0 and S1, stores result in R
 // Uses shift-and-subtract algorithm with 16-digit BCD registers
 // Uses registers: S0 (input, modified), S1 (input), R (result)
-void div(BCD& S0, BCD& S1, BCD& R)
+void div(BCD& R, BCD& S0, BCD& S1)
 {
-    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(S0, S1, R);
+    preCalc2(R, S0, S1);
 
     // Division by zero error
     if (FLAG_S1_ZERO) {

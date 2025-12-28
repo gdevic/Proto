@@ -13,7 +13,7 @@
 #include "bcd.h"
 
 // Pre-calculation setup for unary operations: set zero flag and clear R
-void preCalc1(BCD& S0, BCD& R);
+void preCalc1(BCD& R, const BCD& S0);
 
 // Pre-calculation setup for binary operations: set zero flags and clear R
-void preCalc2(BCD& S0, BCD& S1, BCD& R);
+void preCalc2(BCD& R, const BCD& S0, const BCD& S1);

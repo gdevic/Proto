@@ -13,6 +13,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - After every major change or addition of new functionality, update readme's
 - Write function header comment with what it does
 - Every function that returns something must have a description of that return value in its function header, on its own line
+- All function arguments are output-first for consistency (e.g., `add(R, S0, S1)` not `add(S0, S1, R)`)
 
 ## Current State
 
@@ -49,7 +50,7 @@ ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 - FAIL: >1e-13
 
 ### FIX Mode Rounding
-- `roundFix(S0, d, R)` in `register.cpp`: Rounds BCD to d decimal places (HP calculator FIX mode)
+- `roundFix(R, S0, d)` in `register.cpp`: Rounds BCD to d decimal places (HP calculator FIX mode)
 - `-d <0-15>` command line option: Rounds both BCD and IEEE before comparison
 - Useful for testing at reduced precision or characterizing precision limits
 

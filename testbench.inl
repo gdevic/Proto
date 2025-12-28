@@ -142,12 +142,12 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
                 S1 = BCD(values[j]);
                 Real ieee = ieeeOp(S0.value, S1.value);
                 FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
-                bcdOp(S0, S1, R);
+                bcdOp(R, S0, S1);
 
                 // Apply FIX mode rounding if enabled
                 if (g_roundDigits >= 0) {
                     regCopy(S0, R);
-                    roundFix(S0, g_roundDigits, R);
+                    roundFix(R, S0, g_roundDigits);
                     ieee = roundFixIEEE(ieee, g_roundDigits);
                 }
 
@@ -169,12 +169,12 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
             S0 = BCD(values[i]);
             Real ieee = ieeeOp(S0.value);
             FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
-            bcdOp(S0, R);
+            bcdOp(R, S0);
 
             // Apply FIX mode rounding if enabled
             if (g_roundDigits >= 0) {
                 regCopy(S0, R);
-                roundFix(S0, g_roundDigits, R);
+                roundFix(R, S0, g_roundDigits);
                 ieee = roundFixIEEE(ieee, g_roundDigits);
             }
 
@@ -216,16 +216,16 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
             S1 = BCD(strB);
             inputB = BCD(strB);
             ieee = ieeeOp(S0.value, S1.value);
-            bcdOp(S0, S1, R);
+            bcdOp(R, S0, S1);
         } else {
             ieee = ieeeOp(S0.value);
-            bcdOp(S0, R);
+            bcdOp(R, S0);
         }
 
         // Apply FIX mode rounding if enabled
         if (g_roundDigits >= 0) {
             regCopy(S0, R);
-            roundFix(S0, g_roundDigits, R);
+            roundFix(R, S0, g_roundDigits);
             ieee = roundFixIEEE(ieee, g_roundDigits);
         }
 
@@ -278,14 +278,14 @@ bool runRoundTripTests(const char* opName,
 
         // Compute inverse(x) -> R, then forward(R) -> R
         FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
-        inverseOp(S0, R);
+        inverseOp(R, S0);
         regCopy(S0, R);
-        forwardOp(S0, R);
+        forwardOp(R, S0);
 
         // Apply FIX mode rounding if enabled (only at the very end)
         if (g_roundDigits >= 0) {
             regCopy(S0, R);
-            roundFix(S0, g_roundDigits, R);
+            roundFix(R, S0, g_roundDigits);
             ieee = roundFixIEEE(ieee, g_roundDigits);
         }
 

@@ -121,9 +121,9 @@ void normalize(BCD& x)
 // digits=1-15: round to that many significant digits
 // Uses sticky bit for precise tie-breaking (banker's rounding)
 // Uses registers: S0 (input), R (result)
-void round(BCD& S0, uint digits, BCD& R)
+void round(BCD& R, const BCD& S0, uint digits)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // No rounding needed
     if (digits == 0) {
@@ -189,9 +189,9 @@ void round(BCD& S0, uint digits, BCD& R)
 // d = number of digits after the decimal point (0-15)
 // Example: roundFix(1.23456e+02, 2) → 1.2346e+02 (keeps 123.46)
 // Returns zero if value is smaller than 10^(-d)
-void roundFix(BCD& S0, int d, BCD& R)
+void roundFix(BCD& R, const BCD& S0, int d)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // Zero input yields zero output
     if (isMantZero(S0.mant.data())) {
@@ -223,7 +223,7 @@ void roundFix(BCD& S0, int d, BCD& R)
     }
 
     // Round to pos significant digits
-    round(S0, uint(pos), R);
+    round(R, S0, uint(pos));
 }
 
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
@@ -296,13 +296,13 @@ void normalizeToZeroExp(BCD& x)
 // Compute reciprocal: R = 1/x.
 // Uses S0 and S1 internally. x is copied to S1 first, so x can be any register.
 // R must be the global R register (required by div).
-void reciprocal(const BCD& x, BCD& R)
+void reciprocal(BCD& R, const BCD& x)
 {
     assert(&R == &::R);
 
     regCopy(S1, x);
     regClear(S0);
     S0.mant[0] = 1;  // S0 = 1.0
-    div(S0, S1, R);
+    div(R, S0, S1);
 }
 

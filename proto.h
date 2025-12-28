@@ -46,29 +46,29 @@ inline constexpr uint8_t CONST_LN10        = 9;   // ln(10) = 2.302585092994046.
 void constLoad(BCD& x, uint8_t which);
 
 // Arithmetic operations: read from S0 and S1, write result to R
-void add(BCD &S0, BCD &S1, BCD &R);
-void sub(BCD &S0, BCD &S1, BCD &R);
-void mul(BCD &S0, BCD &S1, BCD &R);
-void div(BCD &S0, BCD &S1, BCD &R);
+void add(BCD &R, BCD &S0, BCD &S1);
+void sub(BCD &R, BCD &S0, BCD &S1);
+void mul(BCD &R, BCD &S0, BCD &S1);
+void div(BCD &R, BCD &S0, BCD &S1);
 
 // Transcendental operations: read from S0, write result to R
-void ln(BCD &S0, BCD &R);
-void exp(BCD &S0, BCD &R);
-void sqrt(BCD &S0, BCD &R);
-void tanRad(BCD &S0, BCD &R);   // Tangent, input in radians
-void atanRad(BCD &S0, BCD &R);  // Arctangent, output in radians
-void tanDeg(BCD &S0, BCD &R);   // Tangent, input in degrees
-void atanDeg(BCD &S0, BCD &R);  // Arctangent, output in degrees
-void cordicTan(BCD &S0, BCD &R);   // Core CORDIC for tan (internal)
-void cordicAtan(BCD &S0, BCD &R);  // Core CORDIC for atan (internal)
-void sinDeg(BCD &S0, BCD &R);      // Sine, input in degrees
-void sinRad(BCD &S0, BCD &R);      // Sine, input in radians
-void cosDeg(BCD &S0, BCD &R);      // Cosine, input in degrees
-void cosRad(BCD &S0, BCD &R);      // Cosine, input in radians
-void asinDeg(BCD &S0, BCD &R);     // Arcsine, output in degrees
-void asinRad(BCD &S0, BCD &R);     // Arcsine, output in radians
-void acosDeg(BCD &S0, BCD &R);     // Arccosine, output in degrees
-void acosRad(BCD &S0, BCD &R);     // Arccosine, output in radians
+void ln(BCD &R, BCD &S0);
+void exp(BCD &R, BCD &S0);
+void sqrt(BCD &R, BCD &S0);
+void tanRad(BCD &R, BCD &S0);   // Tangent, input in radians
+void atanRad(BCD &R, BCD &S0);  // Arctangent, output in radians
+void tanDeg(BCD &R, BCD &S0);   // Tangent, input in degrees
+void atanDeg(BCD &R, BCD &S0);  // Arctangent, output in degrees
+void cordicTan(BCD &R, BCD &S0);   // Core CORDIC for tan (internal)
+void cordicAtan(BCD &R, BCD &S0);  // Core CORDIC for atan (internal)
+void sinDeg(BCD &R, BCD &S0);      // Sine, input in degrees
+void sinRad(BCD &R, BCD &S0);      // Sine, input in radians
+void cosDeg(BCD &R, BCD &S0);      // Cosine, input in degrees
+void cosRad(BCD &R, BCD &S0);      // Cosine, input in radians
+void asinDeg(BCD &R, BCD &S0);     // Arcsine, output in degrees
+void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
+void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
+void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
 
 // Test functions
 void testAddition();

@@ -56,11 +56,11 @@ static void getLnConst(uint j, uint8_t* dst)
 // Uses CORDIC (Meggitt's digit-by-digit method) - same algorithm as HP-35
 // Reads from S0, stores result in R
 // Uses registers: S0 (input), S1 (work/constants), S2 (temp), S3 (counter), S4 (complement), R (shifted/result)
-void ln(BCD& S0, BCD& R)
+void ln(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Domain error: ln(x) undefined for x <= 0
     if (S0.sign || FLAG_S0_ZERO) {
@@ -92,7 +92,7 @@ void ln(BCD& S0, BCD& R)
                 R.mant[i + j] = S1.mant[i];
 
             // Try adding: S2 = S1 + R
-            int carry = mantAdd(S1.mant.data(), R.mant.data(), S2.mant.data());
+            int carry = mantAdd(S2.mant.data(), S1.mant.data(), R.mant.data());
 
             // If overflow (carry out), stop this iteration
             if (carry)
@@ -137,7 +137,7 @@ void ln(BCD& S0, BCD& R)
 
         // Add ln_const[j] to result, counter[j] times (repeated addition)
         for (uint8_t k = 0; k < S3.mant[j]; k++) {
-            int carry = mantAdd(R.mant.data(), S1.mant.data(), S2.mant.data());
+            int carry = mantAdd(S2.mant.data(), R.mant.data(), S1.mant.data());
             if (carry)
                 break;
             // R = S2
@@ -146,7 +146,7 @@ void ln(BCD& S0, BCD& R)
     }
 
     // Add the complement from Part 2 (stored in S4.mant)
-    mantAdd(R.mant.data(), S4.mant.data(), S2.mant.data());
+    mantAdd(S2.mant.data(), R.mant.data(), S4.mant.data());
     mantCopy(R.mant.data(), S2.mant.data());
 
     // ---------- Part 4: Subtract from ln(10) ----------
@@ -155,7 +155,7 @@ void ln(BCD& S0, BCD& R)
     constLoad(S1, CONST_LN10);
 
     // Subtract: S1 - R -> R
-    mantSub(S1.mant.data(), R.mant.data(), R.mant.data());
+    mantSub(R.mant.data(), S1.mant.data(), R.mant.data());
 
     // Set up R as a proper BCD number
     R.exp[0] = 0;
@@ -183,7 +183,7 @@ void ln(BCD& S0, BCD& R)
         while (S4.exp[0] | S4.exp[1]) {
             regCopy(S0, R);   // Current result to S0
             regCopy(S1, S3);  // ln(10) template to S1
-            add(S0, S1, R);
+            add(R, S0, S1);
             expDec(S4);
         }
     }
@@ -194,11 +194,11 @@ void ln(BCD& S0, BCD& R)
 // Algorithm: exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
 // Reads from S0, stores result in R
 // Uses registers: S0 (input/work), S1 (work), S2 (temp), S3 (counter), S4 (k), R (result)
-void exp(BCD& S0, BCD& R)
+void exp(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: exp(0) = 1 exactly
     if (FLAG_S0_ZERO) {
@@ -223,7 +223,7 @@ void exp(BCD& S0, BCD& R)
     regCopy(S4, S0);
 
     // R = x / ln(10)
-    div(S0, S1, R);
+    div(R, S0, S1);
 
     // Truncate R to integer k = floor(R)
     truncate(R);
@@ -257,13 +257,13 @@ void exp(BCD& S0, BCD& R)
     regCopy(S0, R);
     constLoad(S1, CONST_LN10);
 
-    mul(S0, S1, R);  // R = k * ln(10)
+    mul(R, S0, S1);  // R = k * ln(10)
 
     // r = x - k*ln(10) = S4 - R
     regCopy(S0, S4);
     regCopy(S1, R);
     S1.sign = true;  // Negate for subtraction
-    add(S0, S1, R);  // R = x - k*ln(10) = r
+    add(R, S0, S1);  // R = x - k*ln(10) = r
 
     // Now R = r (remainder, 0 ≤ r < ln(10))
     // S3 = k (integer exponent)
@@ -337,7 +337,7 @@ void exp(BCD& S0, BCD& R)
                 mantShr(S1.mant.data());
 
             // result = result + shifted
-            int carry = mantAdd(R.mant.data(), S1.mant.data(), S2.mant.data());
+            int carry = mantAdd(S2.mant.data(), R.mant.data(), S1.mant.data());
             mantCopy(R.mant.data(), S2.mant.data());
 
             // Handle carry: result exceeded 9.xxx, normalize by shifting
@@ -375,7 +375,7 @@ void exp(BCD& S0, BCD& R)
     // exp(-x) = 1/exp(x)
     // Note: Large negative inputs cause underflow, div() handles gracefully
     if (inputSign)
-        reciprocal(R, R);  // R = 1 / exp(|x|)
+        reciprocal(R, R);  // R = 1/exp(|x|)
 }
 
 // IEEE ln for test runner

@@ -39,13 +39,13 @@ void normalize(BCD& x);
 // digits=0: no rounding (copy S0 to R)
 // digits=1-15: round to that many significant digits
 // Uses sticky bit for precise tie-breaking (banker's rounding)
-void round(BCD& S0, uint digits, BCD& R);
+void round(BCD& R, const BCD& S0, uint digits);
 
 // Round BCD to fixed decimal places (FIX mode, like HP calculators)
 // d = number of digits after the decimal point (0-15)
 // Example: roundFix(1.23456e+02, 2) → 1.2346e+02 (keeps 123.46)
 // Returns zero if value is smaller than 10^(-d)
-void roundFix(BCD& S0, int d, BCD& R);
+void roundFix(BCD& R, const BCD& S0, int d);
 
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
@@ -63,5 +63,5 @@ void normalizeToZeroExp(BCD& x);
 // Compute reciprocal: R = 1/x.
 // Uses S0 and S1 internally. x is copied to S1 first, so x can be any register.
 // R must be the global R register (required by div).
-void reciprocal(const BCD& x, BCD& R);
+void reciprocal(BCD& R, const BCD& x);
 

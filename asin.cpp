@@ -22,11 +22,11 @@
 // Input is a value in [-1, 1], output in degrees [-90, 90]
 // Uses formula: asin(x) = atan(x / sqrt(1 - x²))
 // Reads from S0, stores result in R
-void asinDeg(BCD& S0, BCD& R)
+void asinDeg(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: asin(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -57,21 +57,21 @@ void asinDeg(BCD& S0, BCD& R)
 
     // Compute x²: S0 = x, result in R
     regCopy(S1, S0);
-    mul(S0, S1, R);  // R = x², S0 still = x (mul preserves inputs)
+    mul(R, S0, S1);  // R = x², S0 still = x (mul preserves inputs)
 
     // Compute 1/x²: S0 = 1, S1 = x², result in R
     regCopy(S1, R);   // S1 = x²
     constLoad(S0, CONST_1);      // S0 = 1
-    div(S0, S1, R);   // R = 1/x²
+    div(R, S0, S1);   // R = 1/x²
 
     // Compute 1/x² - 1: S0 = 1/x², S1 = 1, result in R
     regCopy(S0, R);   // S0 = 1/x²
     constLoad(S1, CONST_1);      // S1 = 1
-    sub(S0, S1, R);   // R = 1/x² - 1
+    sub(R, S0, S1);   // R = 1/x² - 1
     regCopy(S0, R);   // S0 = 1/x² - 1
 
     // Compute sqrt(1/x² - 1): input S0, result in R
-    sqrt(S0, R);      // R = sqrt(1/x² - 1)
+    sqrt(R, S0);      // R = sqrt(1/x² - 1)
 
     // Check for sqrt error (shouldn't happen if domain check passed)
     if (FLAG_DOM_ERR)
@@ -82,7 +82,7 @@ void asinDeg(BCD& S0, BCD& R)
 
     // Compute atan in degrees
     regCopy(S0, R);
-    atanDeg(S0, R);
+    atanDeg(R, S0);
 
     // Apply sign (asin is odd function)
     R.sign = inputSign;
@@ -92,12 +92,12 @@ void asinDeg(BCD& S0, BCD& R)
 // Input is a value in [-1, 1], output in radians [-PI/2, PI/2]
 // Computes asinDeg then converts to radians
 // Reads from S0, stores result in R
-void asinRad(BCD& S0, BCD& R)
+void asinRad(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // Compute asin in degrees first
-    asinDeg(S0, R);
+    asinDeg(R, S0);
 
     // If error or zero, return as-is
     if (FLAG_DOM_ERR || isMantZero(R.mant.data()))
@@ -112,7 +112,7 @@ void asinRad(BCD& S0, BCD& R)
     // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
 
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 
     // Restore sign
     R.sign = resultSign;

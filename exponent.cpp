@@ -164,27 +164,27 @@ bool expDec(BCD& x)
     }
 }
 
-// Add exponents: result.exp = a.exp + b.exp
+// Add exponents: r.exp = a.exp + b.exp
 // Returns true if overflow or underflow occurred
-// Overflow: result > +99 sets FLAG_OF_ERR, register state undefined
-// Underflow: result < -99 sets exponent to zero (mantissa untouched)
-bool expAdd(BCD& result, const BCD& a, const BCD& b)
+// Overflow: r > +99 sets FLAG_OF_ERR, register state undefined
+// Underflow: r < -99 sets exponent to zero (mantissa untouched)
+bool expAdd(BCD& r, const BCD& a, const BCD& b)
 {
     if (a.esign == b.esign) {
         // Same sign: add magnitudes
-        int carry = expAddMag(result.exp.data(), a.exp.data(), b.exp.data());
-        result.esign = a.esign;
+        int carry = expAddMag(r.exp.data(), a.exp.data(), b.exp.data());
+        r.esign = a.esign;
         if (carry) {
             // Overflow: magnitude >= 100
 
             // Positive overflow: set flag
-            if (result.esign == false)
+            if (r.esign == false)
                 FLAG_OF_ERR = true;
 
             // Negative overflow (underflow): set exponent to zero
-            result.esign = false;
-            result.exp[0] = 0;
-            result.exp[1] = 0;
+            r.esign = false;
+            r.exp[0] = 0;
+            r.exp[1] = 0;
 
             return true;  // Overflow or underflow
         }
@@ -192,45 +192,45 @@ bool expAdd(BCD& result, const BCD& a, const BCD& b)
     else {
         // Different signs: subtract smaller magnitude from larger
         if (isExpEQMag(a.exp.data(), b.exp.data())) {
-            // Equal magnitudes, opposite signs: result is zero
-            result.esign = false;
-            result.exp[0] = 0;
-            result.exp[1] = 0;
+            // Equal magnitudes, opposite signs: r is zero
+            r.esign = false;
+            r.exp[0] = 0;
+            r.exp[1] = 0;
         }
         else if (isExpGTMag(a.exp.data(), b.exp.data())) {
-            // |a| > |b|: result has sign of a
-            expSubMag(result.exp.data(), a.exp.data(), b.exp.data());
-            result.esign = a.esign;
+            // |a| > |b|: r has sign of a
+            expSubMag(r.exp.data(), a.exp.data(), b.exp.data());
+            r.esign = a.esign;
         }
         else {
-            // |b| > |a|: result has sign of b
-            expSubMag(result.exp.data(), b.exp.data(), a.exp.data());
-            result.esign = b.esign;
+            // |b| > |a|: r has sign of b
+            expSubMag(r.exp.data(), b.exp.data(), a.exp.data());
+            r.esign = b.esign;
         }
     }
 
     // Normalize exponent -0 to +0
-    if (isExpZeroMag(result.exp.data()))
-        result.esign = false;
+    if (isExpZeroMag(r.exp.data()))
+        r.esign = false;
 
     return false;
 }
 
-// Subtract exponents: result.exp = a.exp - b.exp
+// Subtract exponents: r.exp = a.exp - b.exp
 // Returns true if overflow or underflow occurred
-// Overflow: result > +99 sets FLAG_OF_ERR, register state undefined
-// Underflow: result < -99 sets exponent to zero (mantissa untouched)
-bool expSub(BCD& result, const BCD& a, BCD& b)
+// Overflow: r > +99 sets FLAG_OF_ERR, register state undefined
+// Underflow: r < -99 sets exponent to zero (mantissa untouched)
+bool expSub(BCD& r, const BCD& a, BCD& b)
 {
     // Special case: a - 0 = a
     if (isExpZeroMag(b.exp.data())) {
-        expCopy(result, a);
+        expCopy(r, a);
         return false;
     }
 
     // a - b = a + (-b)
     b.esign = !b.esign;
-    bool ofuf = expAdd(result, a, b);
+    bool ofuf = expAdd(r, a, b);
 
     return ofuf;
 }

@@ -16,14 +16,14 @@
 #include "register.h"
 #include <cassert>
 
-// Subtract two BCD numbers: S0 - S1 = S0 + (-S1)
+// Subtract two BCD numbers: R = S0 - S1 = S0 + (-S1)
 // Reads from S0 and S1, stores result in R
 // Uses registers: S0 (input), S1 (input, sign flipped), R (result)
-void sub(BCD &S0, BCD &S1, BCD &R)
+void sub(BCD &R, BCD &S0, BCD &S1)
 {
-    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(S0, S1, R);
+    preCalc2(R, S0, S1);
 
     if (FLAG_S1_ZERO)
     {
@@ -31,17 +31,17 @@ void sub(BCD &S0, BCD &S1, BCD &R)
         return;
     }
     S1.sign = !S1.sign;
-    add(S0, S1, R);  // Could jump to add() skipping its preCalc()
+    add(R, S0, S1);  // Could jump to add() skipping its preCalc()
 }
 
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
 // Reads from S0 and S1, stores result in R
 // Uses registers: S0 (input, may swap), S1 (input, may swap/shift), R (result)
-void add(BCD& S0, BCD& S1, BCD& R)
+void add(BCD& R, BCD& S0, BCD& S1)
 {
-    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(S0, S1, R);
+    preCalc2(R, S0, S1);
 
     // Handle zero cases
     if (FLAG_S0_ZERO) { regCopy(R, S1); return; }
@@ -68,7 +68,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
 
     // Same signs: add magnitudes
     if (S0.sign == S1.sign) {
-        int carry = mantAdd(S0.mant.data(), S1.mant.data(), R.mant.data());
+        int carry = mantAdd(R.mant.data(), S0.mant.data(), S1.mant.data());
         R.sign = S0.sign;
 
         // Handle carry overflow: shift result right, bringing in carry
@@ -102,7 +102,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
             swapped = true;
             anyShifted = false;  // S0 was not shifted, has no extra precision
         }
-        mantSub(S0.mant.data(), S1.mant.data(), R.mant.data(), anyShifted);
+        mantSub(R.mant.data(), S0.mant.data(), S1.mant.data(), anyShifted);
         R.sign = swapped ? S1.sign : S0.sign;
     }
 

@@ -43,10 +43,10 @@ bool mantShr(uint8_t* mant);
 // Returns carry (0 or 1)
 int mantInc(uint8_t* mant);
 
-// Add magnitudes of two aligned mantissas (all 16 positions)
+// Add magnitudes of two aligned mantissas (all 16 positions): r = a + b
 // Returns carry (0 or 1)
-int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r);
+int mantAdd(uint8_t* r, const uint8_t* a, const uint8_t* b);
 
 // Subtract magnitudes of two aligned mantissas: r = a - b (assumes |a| >= |b|)
 // Returns borrow (0 or 1)
-int mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, int borrow = 0);
+int mantSub(uint8_t* r, const uint8_t* a, const uint8_t* b, int borrow = 0);

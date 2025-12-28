@@ -22,11 +22,11 @@
 // Input is a value in [-1, 1], output in degrees [0, 180]
 // Uses formula: acos(x) = 90 - asin(x)
 // Reads from S0, stores result in R
-void acosDeg(BCD& S0, BCD& R)
+void acosDeg(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: acos(0) = 90 exactly
     if (FLAG_S0_ZERO) {
@@ -65,7 +65,7 @@ void acosDeg(BCD& S0, BCD& R)
     S0.sign = inputSign;
 
     // Compute asin(x) in R
-    asinDeg(S0, R);
+    asinDeg(R, S0);
 
     // Check for domain error from asin
     if (FLAG_DOM_ERR)
@@ -74,19 +74,19 @@ void acosDeg(BCD& S0, BCD& R)
     // Compute 90 - asin(x)
     regCopy(S1, R);
     constLoad(S0, CONST_90);
-    sub(S0, S1, R);  // R = 90 - asin(x)
+    sub(R, S0, S1);  // R = 90 - asin(x)
 }
 
 // Compute arccosine in radians: R = acosRad(S0)
 // Input is a value in [-1, 1], output in radians [0, PI]
 // Computes acosDeg then converts to radians
 // Reads from S0, stores result in R
-void acosRad(BCD& S0, BCD& R)
+void acosRad(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // Compute acos in degrees first
-    acosDeg(S0, R);
+    acosDeg(R, S0);
 
     // If error or zero, return as-is
     if (FLAG_DOM_ERR || isMantZero(R.mant.data()))
@@ -98,7 +98,7 @@ void acosRad(BCD& S0, BCD& R)
     // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
 
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 }
 
 // IEEE operations for test runner

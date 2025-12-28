@@ -54,11 +54,11 @@ static void sinDegCore(bool negateResult, bool inputSign)
     // First divide angle by 2: S0 = S0 / 2
     // S0 already has angle, S1 = 2 (divisor)
     constLoad(S1, CONST_2);
-    div(S0, S1, R);  // R = angle / 2
+    div(R, S0, S1);  // R = angle / 2
     regCopy(S0, R);
 
     // Compute tan(x/2) using existing tanDeg
-    tanDeg(S0, R);
+    tanDeg(R, S0);
 
     // Check for overflow (shouldn't happen for valid inputs)
     if (FLAG_OF_ERR)
@@ -73,23 +73,23 @@ static void sinDegCore(bool negateResult, bool inputSign)
     // Compute 2*t first, save to S3 (before mul destroys S2)
     constLoad(S0, CONST_2);
     regCopy(S1, S4);  // S1 = t
-    mul(S0, S1, R);   // R = 2*t (mul uses S2 as accumulator)
+    mul(R, S0, S1);   // R = 2*t (mul uses S2 as accumulator)
     regCopy(S3, R);   // S3 = 2*t (safe across next mul)
 
     // Compute t² (S4 still has t)
     regCopy(S0, S4);
     regCopy(S1, S4);
-    mul(S0, S1, R);  // R = t² (mul uses S2)
+    mul(R, S0, S1);  // R = t² (mul uses S2)
 
     // Compute 1 + t² (denominator)
     regCopy(S1, R);  // S1 = t²
     constLoad(S0, CONST_1);
-    add(S0, S1, R);  // R = 1 + t²
+    add(R, S0, S1);  // R = 1 + t²
 
     // Compute sin = (2*t) / (1 + t²)
     regCopy(S1, R);   // S1 = 1 + t²
     regCopy(S0, S3);  // S0 = 2*t (from S3)
-    div(S0, S1, R);   // R = sin(x)
+    div(R, S0, S1);   // R = sin(x)
 
     // Apply final sign
     if (negateResult)
@@ -104,11 +104,11 @@ static void sinDegCore(bool negateResult, bool inputSign)
 // Range reduction: mod 180 with parity, then reflect to [0, 90]
 // This keeps tan(x/2) in [0, 1] range for optimal precision
 // Reads from S0, stores result in R
-void sinDeg(BCD& _S0, BCD& _R)
+void sinDeg(BCD& _R, BCD& _S0)
 {
-    assert((&_S0 == &::S0) && (&_R == &::R));
+    assert((&_R == &::R) && (&_S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: sinDeg(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -131,7 +131,7 @@ void sinDeg(BCD& _S0, BCD& _R)
 
         // Compute quotient: q = floor(S0 / 180)
         regCopy(S1, S4);
-        div(S0, S1, R);
+        div(R, S0, S1);
         truncate(R);
 
         // Check if q is odd (determines sign)
@@ -140,12 +140,12 @@ void sinDeg(BCD& _S0, BCD& _R)
         // Compute product: R = q * 180
         regCopy(S0, R);
         regCopy(S1, S4);
-        mul(S0, S1, R);
+        mul(R, S0, S1);
 
         // Compute remainder: S0 = original - q * 180
         regCopy(S0, S3);
         regCopy(S1, R);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
     }
 
@@ -163,7 +163,7 @@ void sinDeg(BCD& _S0, BCD& _R)
         // S0 = 180 - S0
         regCopy(S1, S0);
         constLoad(S0, CONST_180);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
     }
 
@@ -189,11 +189,11 @@ void sinDeg(BCD& _S0, BCD& _R)
 // Input in radians, output is the sine value
 // Converts to degrees and calls sinDeg
 // Reads from S0, stores result in R
-void sinRad(BCD& S0, BCD& R)
+void sinRad(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: sinRad(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -206,14 +206,14 @@ void sinRad(BCD& S0, BCD& R)
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     constLoad(S1, CONST_180_OVER_PI);
 
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 
     // R now contains degrees, move to S0
     regCopy(S0, R);
     S0.sign = inputSign;
 
     // Call sinDeg (but we need to set up properly since sinDeg expects S0)
-    sinDeg(S0, R);
+    sinDeg(R, S0);
 }
 
 // IEEE operation for test runner

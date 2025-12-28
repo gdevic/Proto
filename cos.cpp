@@ -20,33 +20,33 @@
 // Input in degrees, output is the cosine value
 // Uses identity: cos(x) = sin(x + 90)
 // Reads from S0, stores result in R
-void cosDeg(BCD& S0, BCD& R)
+void cosDeg(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // cos(x) = sin(x + 90)
     // Add 90 to input, then call sinDeg
     constLoad(S1, CONST_90);
-    add(S0, S1, R);
+    add(R, S0, S1);
     regCopy(S0, R);
-    sinDeg(S0, R);
+    sinDeg(R, S0);
 }
 
 // Compute cosine in radians: R = cosRad(S0)
 // Input in radians, output is the cosine value
 // Uses identity: cos(x) = sin(x + PI/2)
 // Reads from S0, stores result in R
-void cosRad(BCD& S0, BCD& R)
+void cosRad(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
     // cos(x) = sin(x + PI/2)
     // Add PI/2 to input, then call sinRad
     constLoad(S1, CONST_PI_OVER_2);
 
-    add(S0, S1, R);
+    add(R, S0, S1);
     regCopy(S0, R);
-    sinRad(S0, R);
+    sinRad(R, S0);
 }
 
 // IEEE operations for test runner

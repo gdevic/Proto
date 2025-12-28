@@ -20,11 +20,11 @@
 // Input in degrees, output is the tangent value
 // Reads from S0, stores result in R
 // Uses registers: S0, S1, S2, S3, S4, R
-void tanDeg(BCD& S0, BCD& R)
+void tanDeg(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: tanDeg(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -47,7 +47,7 @@ void tanDeg(BCD& S0, BCD& R)
 
         // Compute quotient: R = S0 / 360
         regCopy(S1, S4);
-        div(S0, S1, R);
+        div(R, S0, S1);
 
         // Truncate to integer: n = floor(S0 / 360)
         truncate(R);
@@ -55,12 +55,12 @@ void tanDeg(BCD& S0, BCD& R)
         // Compute product: R = n * 360
         regCopy(S0, R);
         regCopy(S1, S4);
-        mul(S0, S1, R);
+        mul(R, S0, S1);
 
         // Compute remainder: S0 = original - n * 360
         regCopy(S0, S3);
         regCopy(S1, R);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
     }
 
@@ -71,7 +71,7 @@ void tanDeg(BCD& S0, BCD& R)
 
     if (isRegGE(S0, S2)) {
         regCopy(S1, S2);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
     }
 
@@ -85,7 +85,7 @@ void tanDeg(BCD& S0, BCD& R)
         // S0 = 180 - S0 (S2 still holds 180)
         regCopy(S1, S0);
         regCopy(S0, S2);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
         negateResult = true;
     }
@@ -100,7 +100,7 @@ void tanDeg(BCD& S0, BCD& R)
         // S0 = 90 - S0
         regCopy(S1, S0);
         constLoad(S0, CONST_90);
-        sub(S0, S1, R);
+        sub(R, S0, S1);
         regCopy(S0, R);
     }
 
@@ -129,14 +129,14 @@ void tanDeg(BCD& S0, BCD& R)
     // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
 
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 
     // R now contains the angle in radians
     regCopy(S0, R);
     regClear(R);
 
     // ---------- Apply CORDIC ----------
-    cordicTan(S0, R);
+    cordicTan(R, S0);
 
     // ---------- Apply reciprocal if needed ----------
     if (useReciprocal)
@@ -153,11 +153,11 @@ void tanDeg(BCD& S0, BCD& R)
 // Input is a value, output in degrees
 // Calls cordicAtan for radians, then converts to degrees
 // Returns: arctangent of S0 in degrees
-void atanDeg(BCD& S0, BCD& R)
+void atanDeg(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Special case: atan(0) = 0 exactly
     if (FLAG_S0_ZERO)
@@ -176,7 +176,7 @@ void atanDeg(BCD& S0, BCD& R)
     }
 
     // Get arctangent in radians
-    cordicAtan(S0, R);
+    cordicAtan(R, S0);
 
     // If zero result, no conversion needed (0 rad = 0 deg)
     if (isMantZero(R.mant.data()))
@@ -189,7 +189,7 @@ void atanDeg(BCD& S0, BCD& R)
     // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     constLoad(S1, CONST_180_OVER_PI);
 
-    mul(S0, S1, R);
+    mul(R, S0, S1);
 
     // Preserve sign through multiplication
     R.sign = resultSign;

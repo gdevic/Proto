@@ -66,8 +66,8 @@ static bool ext32Ge(const uint8_t* highA, const uint8_t* lowA,
 static void ext32Sub(uint8_t* highA,       uint8_t* lowA,
                const uint8_t* highB, const uint8_t* lowB)
 {
-    int borrow = mantSub(lowA, lowB, lowA);
-    mantSub(highA, highB, highA, borrow);
+    int borrow = mantSub(lowA, lowA, lowB);
+    mantSub(highA, highA, highB, borrow);
 }
 
 // Check if 32-digit number is zero
@@ -106,11 +106,11 @@ static void ext32Double(uint8_t* high, uint8_t* low)
 // Reads from S0, stores result in R
 // Uses registers: S0 (input, consumed), S1 (remainder low), S2 (subtrahend low),
 //                 S3 (remainder high), S4 (subtrahend high), R (result)
-void sqrt(BCD& S0, BCD& R)
+void sqrt(BCD& R, BCD& S0)
 {
-    assert((&S0 == &::S0) && (&R == &::R));
+    assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(S0, R);
+    preCalc1(R, S0);
 
     // Domain error: sqrt(negative) is undefined
     if (S0.sign) {
