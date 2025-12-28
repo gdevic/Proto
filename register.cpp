@@ -38,25 +38,6 @@ void regSwap(BCD& a, BCD& b)
     std::swap(a, b);
 }
 
-// Pre-calculation setup for unary operations: set zero flag and clear R
-void preCalc1(BCD& S0, BCD& R)
-{
-    assert((&S0 == &::S0) && (&R == &::R));
-
-    FLAG_S0_ZERO = isMantZero(S0.mant.data());
-    regClear(R);
-}
-
-// Pre-calculation setup for binary operations: set zero flags and clear R
-void preCalc2(BCD& S0, BCD& S1, BCD& R)
-{
-    assert((&S0 == &::S0) && (&S1 == &::S1) && (&R == &::R));
-
-    FLAG_S0_ZERO = isMantZero(S0.mant.data());
-    FLAG_S1_ZERO = isMantZero(S1.mant.data());
-    regClear(R);
-}
-
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x)
 {

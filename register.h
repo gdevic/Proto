@@ -12,6 +12,7 @@
 #pragma once
 
 #include "bcd.h"
+#include "calculator.h"
 
 // Clear a register to zero
 void regClear(BCD& x);
@@ -21,12 +22,6 @@ void regCopy(BCD& dst, const BCD& src);
 
 // Swap the complete content of two User Registers
 void regSwap(BCD& a, BCD& b);
-
-// Pre-calculation setup for unary operations: set zero flag and clear R
-void preCalc1(BCD& S0, BCD& R);
-
-// Pre-calculation setup for binary operations: set zero flags and clear R
-void preCalc2(BCD& S0, BCD& S1, BCD& R);
 
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x);

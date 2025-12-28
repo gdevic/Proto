@@ -57,6 +57,9 @@
     <ClCompile Include="const.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="calculator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h">
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="testbench.inl">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="calculator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

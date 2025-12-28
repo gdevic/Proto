@@ -165,9 +165,11 @@
     <ClCompile Include="sqrt.cpp" />
     <ClCompile Include="testbench.cpp" />
     <ClCompile Include="const.cpp" />
+    <ClCompile Include="calculator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />
+    <ClInclude Include="calculator.h" />
     <ClInclude Include="exponent.h" />
     <ClInclude Include="mantissa.h" />
     <ClInclude Include="register.h" />
