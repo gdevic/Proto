@@ -16,29 +16,22 @@
 #include <cassert>
 #include <cmath>
 
-// Compute tangent in degrees: R = tanDeg(S0)
-// Input in degrees, output is the tangent value
-// Reads from S0, stores result in R
+// Range reduction result flags for tanDeg
+struct TanDegReduceResult {
+    bool negateResult;   // True if result should be negated
+    bool useReciprocal;  // True if result should be reciprocated (cot = 1/tan)
+};
+
+// Range reduction for tanDeg: reduces angle to [0, 45] degrees
+// Input: S0 = positive angle in degrees
+// Output: S0 = reduced angle in [0, 45], flags indicating transformations needed
 // Uses registers: S0, S1, S2, S3, S4, R
-void tanDeg(BCD& R, BCD& S0)
+static TanDegReduceResult tanDegRangeReduce()
 {
-    assert((&R == &::R) && (&S0 == &::S0));
+    TanDegReduceResult result = {false, false};
 
-    preCalc1(R, S0);
-
-    // Special case: tanDeg(0) = 0 exactly
-    if (FLAG_S0_ZERO)
-        return;
-
-    // Store sign and work with positive value (tan is odd function)
-    bool inputSign = S0.sign;
-    S0.sign = false;
-
-    // ---------- Range Reduction ----------
     // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
     // This is O(1) instead of O(n) for large angles
-
-    // Use S4 for 360 constant
     constLoad(S4, CONST_360);
 
     if (isRegGE(S0, S4)) {
@@ -65,8 +58,7 @@ void tanDeg(BCD& R, BCD& S0)
     }
 
     // Now S0 is in [0, 360)
-    // First reduce to [0, 180) using tan(x) = tan(x - 180)
-    // Use S2 for 180 constant (needed until line ~152)
+    // Reduce to [0, 180) using tan(x) = tan(x - 180)
     constLoad(S2, CONST_180);
 
     if (isRegGE(S0, S2)) {
@@ -77,9 +69,7 @@ void tanDeg(BCD& R, BCD& S0)
 
     // Now S0 is in [0, 180)
     // Check if angle >= 90: use tan(x) = -tan(180 - x) for x in [90, 180)
-    // Use S4 for 90 constant
     constLoad(S4, CONST_90);
-    bool negateResult = false;
 
     if (isRegGE(S0, S4)) {
         // S0 = 180 - S0 (S2 still holds 180)
@@ -87,16 +77,15 @@ void tanDeg(BCD& R, BCD& S0)
         regCopy(S0, S2);
         sub(R, S0, S1);
         regCopy(S0, R);
-        negateResult = true;
+        result.negateResult = true;
     }
 
     // Now S0 is in [0, 90)
     // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
-    // Reuse S4 for 45 constant
     constLoad(S4, CONST_45);
-    bool useReciprocal = isRegGT(S0, S4);
+    result.useReciprocal = isRegGT(S0, S4);
 
-    if (useReciprocal) {
+    if (result.useReciprocal) {
         // S0 = 90 - S0
         regCopy(S1, S0);
         constLoad(S0, CONST_90);
@@ -105,17 +94,40 @@ void tanDeg(BCD& R, BCD& S0)
     }
 
     // Now S0 is in [0, 45] degrees
+    return result;
+}
+
+// Compute tangent in degrees: R = tanDeg(S0)
+// Input in degrees, output is the tangent value
+// Reads from S0, stores result in R
+// Uses registers: S0, S1, S2, S3, S4, R
+void tanDeg(BCD& R, BCD& S0)
+{
+    assert((&R == &::R) && (&S0 == &::S0));
+
+    preCalc1(R, S0);
+
+    // Special case: tanDeg(0) = 0 exactly
+    if (FLAG_S0_ZERO)
+        return;
+
+    // Store sign and work with positive value (tan is odd function)
+    bool inputSign = S0.sign;
+    S0.sign = false;
+
+    // ---------- Range Reduction ----------
+    TanDegReduceResult reduction = tanDegRangeReduce();
 
     // Handle tan(0) = 0 after reduction
     if (isMantZero(S0.mant.data())) {
         // But if useReciprocal was set, we would have tan(90) = infinity
-        if (useReciprocal) {
+        if (reduction.useReciprocal) {
             FLAG_OF_ERR = true;
             return;
         }
         regClear(R);
         // Apply sign
-        if (negateResult)
+        if (reduction.negateResult)
             R.sign = !inputSign;
         else
             R.sign = inputSign;
@@ -139,11 +151,11 @@ void tanDeg(BCD& R, BCD& S0)
     cordicTan(R, S0);
 
     // ---------- Apply reciprocal if needed ----------
-    if (useReciprocal)
+    if (reduction.useReciprocal)
         reciprocal(R, R);  // R = 1 / R (cot = 1/tan)
 
     // ---------- Apply sign ----------
-    if (negateResult)
+    if (reduction.negateResult)
         R.sign = !inputSign;
     else
         R.sign = inputSign;

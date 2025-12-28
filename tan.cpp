@@ -157,6 +157,25 @@ void cordicTan(BCD& R, BCD& S0)
     div(R, S0, S1);
 }
 
+// Reciprocal reduction for atan: reduces |input| > 1 to |input| < 1
+// Uses identity: atan(x) = π/2 - atan(1/x) for |x| > 1
+// Input: S0 = positive value
+// Output: S0 = reduced value (either original or 1/original)
+// Returns: true if reciprocal was applied (caller must subtract result from π/2)
+// Uses registers: S0, R
+static bool atanReciprocalReduce()
+{
+    // Check if |input| > 1: positive exponent, or exp=0 and mant[0] > 1
+    if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
+        // Compute 1/input: R = 1/S0
+        reciprocal(R, S0);
+        regCopy(S0, R);
+        S0.sign = false;  // Work with positive value
+        return true;
+    }
+    return false;
+}
+
 // Core CORDIC arctangent algorithm (Meggitt's digit-by-digit method)
 // Input: S0 = value to compute arctangent of
 // Output: R = atan(S0) in radians
@@ -186,15 +205,7 @@ void cordicAtan(BCD& R, BCD& S0)
 
     // Reciprocal reduction for |input| > 1: atan(x) = π/2 - atan(1/x)
     // This ensures CORDIC works with input ratio y/x <= 1 for faster convergence
-    // Check if |input| > 1: positive exponent, or exp=0 and mant[0] > 1
-    bool useReciprocal = false;
-    if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
-        useReciprocal = true;
-        // Compute 1/input: R = 1/S0
-        reciprocal(R, S0);
-        regCopy(S0, R);
-        S0.sign = false;  // Work with positive value
-    }
+    bool useReciprocal = atanReciprocalReduce();
 
     // Initialize: y = input (S0), x = 1.0 (S1)
     // Align mantissas so their ratio reflects the true input value

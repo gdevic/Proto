@@ -184,29 +184,13 @@ void ln(BCD& R, BCD& S0)
     }
 }
 
-// Compute exponential: R = exp(S0)
-// Uses CORDIC (Meggitt's digit-by-digit method) - inverse of ln()
-// Algorithm: exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
-// Reads from S0, stores result in R
-// Uses registers: S0 (input/work), S1 (work), S2 (temp), S3 (counter), S4 (k), R (result)
-void exp(BCD& R, BCD& S0)
+// Range reduction for exp: computes k and r where x = k*ln(10) + r
+// Input: S0 = x (positive value to reduce)
+// Output: R = r (remainder, 0 ≤ r < ln(10)), S3.exp = k (integer multiplier)
+// Returns: true if overflow (k >= 100), false otherwise
+// Uses registers: S0, S1, S2, S3, S4, R
+static bool expRangeReduce()
 {
-    assert((&R == &::R) && (&S0 == &::S0));
-
-    preCalc1(R, S0);
-
-    // Special case: exp(0) = 1 exactly
-    if (FLAG_S0_ZERO) {
-        R.mant[0] = 1;
-        return;
-    }
-
-    // Store sign and work with positive value
-    // exp(-x) = 1/exp(x), computed at the end
-    bool inputSign = S0.sign;
-    S0.sign = false;
-
-    // ---------- Part 1: Range reduction ----------
     // exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
     // Division-based method: k = floor(x / ln(10)), r = x - k*ln(10)
     // Constant number of operations regardless of k
@@ -230,11 +214,8 @@ void exp(BCD& R, BCD& S0)
         // k = 0: S3.exp already 0 from regClear
     }
     else if ((R.exp[0] > 0) || (R.exp[1] > 1)) {
-        // k >= 100: overflow/underflow
-        if (inputSign == false)  // Large *positive* values cause overflow
-            FLAG_OF_ERR = true;
-        regClear(R);
-        return;
+        // k >= 100: overflow
+        return true;
     }
     else if (R.exp[1] == 1) {
         // k = 10-99: stored as d0.d1 × 10^1
@@ -261,7 +242,43 @@ void exp(BCD& R, BCD& S0)
     add(R, S0, S1);  // R = x - k*ln(10) = r
 
     // Now R = r (remainder, 0 ≤ r < ln(10))
-    // S3 = k (integer exponent)
+    // S3.exp = k (integer exponent)
+    return false;
+}
+
+// Compute exponential: R = exp(S0)
+// Uses CORDIC (Meggitt's digit-by-digit method) - inverse of ln()
+// Algorithm: exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
+// Reads from S0, stores result in R
+// Uses registers: S0 (input/work), S1 (work), S2 (temp), S3 (counter), S4 (k), R (result)
+void exp(BCD& R, BCD& S0)
+{
+    assert((&R == &::R) && (&S0 == &::S0));
+
+    preCalc1(R, S0);
+
+    // Special case: exp(0) = 1 exactly
+    if (FLAG_S0_ZERO) {
+        R.mant[0] = 1;
+        return;
+    }
+
+    // Store sign and work with positive value
+    // exp(-x) = 1/exp(x), computed at the end
+    bool inputSign = S0.sign;
+    S0.sign = false;
+
+    // ---------- Part 1: Range reduction ----------
+    if (expRangeReduce()) {
+        // k >= 100: overflow/underflow
+        if (inputSign == false)  // Large *positive* values cause overflow
+            FLAG_OF_ERR = true;
+        regClear(R);
+        return;
+    }
+
+    // Now R = r (remainder, 0 ≤ r < ln(10))
+    // S3.exp = k (integer exponent)
 
     // ---------- Part 2: Normalize remainder ----------
     // For small r (negative exponent), shift mantissa right until exponent is zero

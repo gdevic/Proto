@@ -98,30 +98,16 @@ static void sinDegCore(bool negateResult, bool inputSign)
         R.sign = inputSign;
 }
 
-// Compute sine in degrees: R = sinDeg(S0)
-// Input in degrees, output is the sine value
-// Uses half-angle formula: sin(x) = 2*tan(x/2) / (1 + tan²(x/2))
-// Range reduction: mod 180 with parity, then reflect to [0, 90]
-// This keeps tan(x/2) in [0, 1] range for optimal precision
-// Reads from S0, stores result in R
-void sinDeg(BCD& _R, BCD& _S0)
+// Range reduction for sinDeg: reduces angle to (0, 90] degrees
+// Uses mod 180 with parity tracking, then reflection to [0, 90]
+// Input: S0 = positive angle in degrees
+// Output: S0 = reduced angle in (0, 90], negateResult flag
+// Returns: true if result should be negated (odd number of 180° periods)
+// Note: Caller must check for sin(0) after reduction (sin(n*180) = 0)
+// Uses registers: S0, S1, S3, S4, R
+static bool sinDegRangeReduce()
 {
-    assert((&_R == &::R) && (&_S0 == &::S0));
-
-    preCalc1(R, S0);
-
-    // Special case: sinDeg(0) = 0 exactly
-    if (FLAG_S0_ZERO)
-        return;
-
-    // Store sign and work with positive value (sin is odd function)
-    bool inputSign = S0.sign;
-    S0.sign = false;
-
-    // ---------- Range Reduction using mod 180 with parity ----------
     // sin(x + 180) = -sin(x), so we reduce mod 180 and track parity
-    // This combines the old mod 360 + quadrant sign into one step
-
     bool negateResult = false;
     constLoad(S4, CONST_180);
 
@@ -150,14 +136,9 @@ void sinDeg(BCD& _R, BCD& _S0)
     }
 
     // Now S0 is in [0, 180)
+    // Caller should check for sin(0) after this point
 
-    // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
-    if (isMantZero(S0.mant.data())) {
-        regClear(R);
-        return;
-    }
-
-    // ---------- Reflect to [0, 90] using sin(180-x) = sin(x) ----------
+    // Reflect to [0, 90] using sin(180-x) = sin(x)
     constLoad(S4, CONST_90);
     if (isRegGT(S0, S4)) {
         // S0 = 180 - S0
@@ -168,8 +149,42 @@ void sinDeg(BCD& _R, BCD& _S0)
     }
 
     // Now S0 is in (0, 90]
+    return negateResult;
+}
+
+// Compute sine in degrees: R = sinDeg(S0)
+// Input in degrees, output is the sine value
+// Uses half-angle formula: sin(x) = 2*tan(x/2) / (1 + tan²(x/2))
+// Range reduction: mod 180 with parity, then reflect to [0, 90]
+// This keeps tan(x/2) in [0, 1] range for optimal precision
+// Reads from S0, stores result in R
+void sinDeg(BCD& _R, BCD& _S0)
+{
+    assert((&_R == &::R) && (&_S0 == &::S0));
+
+    preCalc1(R, S0);
+
+    // Special case: sinDeg(0) = 0 exactly
+    if (FLAG_S0_ZERO)
+        return;
+
+    // Store sign and work with positive value (sin is odd function)
+    bool inputSign = S0.sign;
+    S0.sign = false;
+
+    // ---------- Range Reduction ----------
+    bool negateResult = sinDegRangeReduce();
+
+    // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
+    if (isMantZero(S0.mant.data())) {
+        regClear(R);
+        return;
+    }
+
+    // Now S0 is in (0, 90]
 
     // Special case: sin(90) = 1 exactly
+    constLoad(S4, CONST_90);
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
