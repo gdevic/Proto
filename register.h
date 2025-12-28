@@ -14,6 +14,15 @@
 #include "bcd.h"
 #include "calculator.h"
 
+// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
+bool isRegOne(const BCD& x);  // Returns true if register value is one
+
+// Full signed register comparisons
+bool isRegEQ(const BCD& a, const BCD& b);  // a == b
+bool isRegGT(const BCD& a, const BCD& b);  // a > b
+bool isRegLT(const BCD& a, const BCD& b);  // a < b
+bool isRegGE(const BCD& a, const BCD& b);  // a >= b
+
 // Clear a register to zero
 void regClear(BCD& x);
 
@@ -41,16 +50,6 @@ void roundFix(BCD& S0, int d, BCD& R);
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
 void truncate(BCD& x);
-
-// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
-// Returns true if register value is one
-bool isRegOne(const BCD& x);
-
-// Full signed register comparisons
-bool isRegEQ(const BCD& a, const BCD& b);  // a == b
-bool isRegGT(const BCD& a, const BCD& b);  // a > b
-bool isRegLT(const BCD& a, const BCD& b);  // a < b
-bool isRegGE(const BCD& a, const BCD& b);  // a >= b
 
 // Apply banker's rounding (round-to-even) using guard digit and sticky bit.
 // Handles overflow from rounding (9999...9 + 1) by shifting and incrementing exponent.

@@ -11,6 +11,34 @@
 
 #include "mantissa.h"
 
+// Check if mantissa is zero (checks all 16 positions)
+// Returns true if all mantissa digits are zero
+bool isMantZero(const uint8_t* mant)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+        if (mant[i] != 0) return false;
+    return true;
+}
+
+// Returns true if two mantissas are equal
+bool isMantEQ(const uint8_t *a, const uint8_t *b)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+        if (a[i] != b[i]) return false;
+    return true;
+}
+
+// Returns true if mantissa a > mantissa b
+bool isMantGT(const uint8_t *a, const uint8_t *b)
+{
+    for (uint i = 0; i < MAX_MANT; i++)
+    {
+        if (a[i] > b[i]) return true;
+        if (a[i] < b[i]) return false;
+    }
+    return false;
+}
+
 // Clear mantissa to all zeros
 void mantClear(uint8_t *mant)
 {
@@ -95,32 +123,4 @@ void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky)
         }
         r[i] = uint8_t(diff);
     }
-}
-
-// Check if mantissa is zero (checks all 16 positions)
-// Returns true if all mantissa digits are zero
-bool isMantZero(const uint8_t* mant)
-{
-    for (uint i = 0; i < MAX_MANT; i++)
-        if (mant[i] != 0) return false;
-    return true;
-}
-
-// Returns true if two mantissas are equal
-bool isMantEQ(const uint8_t *a, const uint8_t *b)
-{
-    for (uint i = 0; i < MAX_MANT; i++)
-        if (a[i] != b[i]) return false;
-    return true;
-}
-
-// Returns true if mantissa a > mantissa b
-bool isMantGT(const uint8_t *a, const uint8_t *b)
-{
-    for (uint i = 0; i < MAX_MANT; i++)
-    {
-        if (a[i] > b[i]) return true;
-        if (a[i] < b[i]) return false;
-    }
-    return false;
 }
