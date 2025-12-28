@@ -236,11 +236,9 @@ void exp(BCD& S0, BCD& R)
     }
     else if ((R.exp[0] > 0) || (R.exp[1] > 1)) {
         // k >= 100: overflow/underflow
-        if (inputSign) {
-            regClear(R);
-            return;
-        }
-        FLAG_OF_ERR = true;
+        if (inputSign == false)  // Large *positive* values cause overflow
+            FLAG_OF_ERR = true;
+        regClear(R);
         return;
     }
     else if (R.exp[1] == 1) {
@@ -361,9 +359,8 @@ void exp(BCD& S0, BCD& R)
         if (inputSign) {
             FLAG_OF_ERR = false;  // Clear flag, handle as underflow
             regClear(R);
-            return;
         }
-        return;  // FLAG_OF_ERR already set for overflow
+        return;
     }
 
     // Copy k directly to R's exponent
