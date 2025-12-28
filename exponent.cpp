@@ -231,7 +231,6 @@ bool expSub(BCD& result, const BCD& a, BCD& b)
     // a - b = a + (-b)
     b.esign = !b.esign;
     bool ofuf = expAdd(result, a, b);
-    b.esign = !b.esign;  // XXX Prhaps we don't need to save/restore?
 
     return ofuf;
 }

@@ -98,13 +98,14 @@ void div(BCD& S0, BCD& S1, BCD& R)
         overflow = S0.mant[0];
         mantShl(S0.mant.data());
         guard = divDigit(overflow);
-        sticky = (overflow != 0) || !isMantZero(S0.mant.data());
     }
     else {
         // No normalization: q17 is guard, remainder is sticky
         guard = q17;
-        sticky = (overflow != 0) || !isMantZero(S0.mant.data());
     }
+
+    // Sticky: any remaining non-zero in overflow or remainder
+    sticky = (overflow != 0) || !isMantZero(S0.mant.data());
 
     applyBankersRounding(R, guard, sticky);
 }

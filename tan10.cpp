@@ -67,11 +67,7 @@ void tanDeg(BCD& S0, BCD& R)
     // Now S0 is in [0, 360)
     // First reduce to [0, 180) using tan(x) = tan(x - 180)
     // Use S2 for 180 constant (needed until line ~152)
-    regClear(S2);
-    S2.mant[0] = 1;
-    S2.mant[1] = 8;
-    S2.exp[0] = 0;
-    S2.exp[1] = 2;  // exp = 2
+    constLoad(S2, CONST_180);
 
     if (isRegGE(S0, S2)) {
         regCopy(S1, S2);
