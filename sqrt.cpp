@@ -223,22 +223,7 @@ void sqrt(BCD& R, BCD& S0)
 
     // Rounding (banker's rounding: round half to even)
     bool sticky = !ext32IsZero(S3.mant.data(), S1.mant.data());
-    bool roundUp = false;
-
-    if (guard > 5)
-        roundUp = true;
-    else if (guard == 5)
-        roundUp = sticky || ((R.mant[MAX_MANT - 1] & 1) != 0);
-
-    if (roundUp) {
-        if (mantInc(R.mant.data())) {
-            // Overflow: 9.999...9 + 1 = 10.000...0
-            // Shift right and increment exponent
-            mantClear(R.mant.data());
-            R.mant[0] = 1;
-            expInc(R);
-        }
-    }
+    applyBankersRounding(R, guard, sticky);
 }
 
 // IEEE sqrt for test runner

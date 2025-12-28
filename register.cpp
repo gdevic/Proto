@@ -273,7 +273,7 @@ void applyBankersRounding(BCD& R, uint8_t guard, bool sticky)
     if (roundUp) {
         if (mantInc(R.mant.data())) {
             // Rounding caused overflow (e.g., 9.999...9 + 1 ULP)
-            mantShr(R.mant.data());
+            mantClear(R.mant.data());
             R.mant[0] = 1;
             expInc(R);
         }
