@@ -29,64 +29,13 @@ void regCopy(BCD& dst, const BCD& src)
     dst = src;
 }
 
-// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
-// Returns true if register value is one
-bool isRegOne(const BCD& x)
+// Swap the complete content of two User Registers
+void regSwap(BCD& a, BCD& b)
 {
-    if (x.mant[0] != 1)
-        return false;
-    for (uint i = 1; i < MAX_MANT; i++)
-        if (x.mant[i] != 0)
-            return false;
-    return (x.exp[0] | x.exp[1]) == 0;
-}
-
-// Returns true if |a| > |b| (magnitude only)
-static bool isRegGTMag(const BCD& a, const BCD& b)
-{
-    if (isExpGT(a, b)) return true;
-    if (isExpGT(b, a)) return false;
-    return isMantGT(a.mant.data(), b.mant.data());
-}
-
-// Returns true if a == b (full signed comparison)
-bool isRegEQ(const BCD& a, const BCD& b)
-{
-    bool aZero = isMantZero(a.mant.data());
-    bool bZero = isMantZero(b.mant.data());
-
-    if (aZero && bZero) return true;
-    if (aZero || bZero) return false;
-    if (a.sign != b.sign) return false;
-
-    return isExpEQ(a, b) && isMantEQ(a.mant.data(), b.mant.data());
-}
-
-// Returns true if a > b (full signed comparison)
-bool isRegGT(const BCD& a, const BCD& b)
-{
-    bool aZero = isMantZero(a.mant.data());
-    bool bZero = isMantZero(b.mant.data());
-
-    if (aZero && bZero) return false;
-    if (aZero) return b.sign;   // 0 > b only if b negative
-    if (bZero) return !a.sign;  // a > 0 only if a positive
-    if (a.sign != b.sign) return b.sign;  // positive > negative
-
-    // Same sign: positive wants larger magnitude, negative wants smaller
-    return a.sign ? isRegGTMag(b, a) : isRegGTMag(a, b);
-}
-
-// Returns true if a < b
-bool isRegLT(const BCD& a, const BCD& b)
-{
-    return isRegGT(b, a);
-}
-
-// Returns true if a >= b
-bool isRegGE(const BCD& a, const BCD& b)
-{
-    return !isRegLT(a, b);
+    // In microcode, this will swap mantissa (16), exponent (2) and the sign nibble (1)
+    // We would call mantSwap() as part of this swapping (or fall-through)
+    // Note: this function also implements "key_exchg"
+    std::swap(a, b);
 }
 
 // Pre-calculation setup for unary operations: set zero flag and clear R
@@ -106,22 +55,6 @@ void preCalc2(BCD& S0, BCD& S1, BCD& R)
     FLAG_S0_ZERO = isMantZero(S0.mant.data());
     FLAG_S1_ZERO = isMantZero(S1.mant.data());
     regClear(R);
-}
-
-// Swap the complete content of two User Registers
-void swapReg(BCD& a, BCD& b)
-{
-    // In microcode, this will swap mantissa (16), exponent (2) and the sign nibble (1)
-    // We would call swapMant() as part of this swapping (or fall-through)
-    // Note: this function also implements "key_exchg"
-    std::swap(a, b);
-}
-
-// Swap two mantissa arrays
-void swapMant(uint8_t* a, uint8_t* b)
-{
-    for (uint i = 0; i < MAX_MANT; i++)
-        std::swap(a[i], b[i]);
 }
 
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
@@ -284,4 +217,64 @@ void truncate(BCD& x)
     // 1. Before zeroing, check if any fractional digits are non-zero (hadFraction flag)
     // 2. After zeroing, if (x.sign && hadFraction) then subtract 1 from mantissa
     // 3. Handle borrow propagation and potential underflow to -1.000...e(exp+1)
+}
+
+// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
+// Returns true if register value is one
+bool isRegOne(const BCD& x)
+{
+    if (x.mant[0] != 1)
+        return false;
+    for (uint i = 1; i < MAX_MANT; i++)
+        if (x.mant[i] != 0)
+            return false;
+    return (x.exp[0] | x.exp[1]) == 0;
+}
+
+// Returns true if |a| > |b| (magnitude only)
+static bool isRegGTMag(const BCD& a, const BCD& b)
+{
+    if (isExpGT(a, b)) return true;
+    if (isExpGT(b, a)) return false;
+    return isMantGT(a.mant.data(), b.mant.data());
+}
+
+// Returns true if a == b (full signed comparison)
+bool isRegEQ(const BCD& a, const BCD& b)
+{
+    bool aZero = isMantZero(a.mant.data());
+    bool bZero = isMantZero(b.mant.data());
+
+    if (aZero && bZero) return true;
+    if (aZero || bZero) return false;
+    if (a.sign != b.sign) return false;
+
+    return isExpEQ(a, b) && isMantEQ(a.mant.data(), b.mant.data());
+}
+
+// Returns true if a > b (full signed comparison)
+bool isRegGT(const BCD& a, const BCD& b)
+{
+    bool aZero = isMantZero(a.mant.data());
+    bool bZero = isMantZero(b.mant.data());
+
+    if (aZero && bZero) return false;
+    if (aZero) return b.sign;   // 0 > b only if b negative
+    if (bZero) return !a.sign;  // a > 0 only if a positive
+    if (a.sign != b.sign) return b.sign;  // positive > negative
+
+    // Same sign: positive wants larger magnitude, negative wants smaller
+    return a.sign ? isRegGTMag(b, a) : isRegGTMag(a, b);
+}
+
+// Returns true if a < b
+bool isRegLT(const BCD& a, const BCD& b)
+{
+    return isRegGT(b, a);
+}
+
+// Returns true if a >= b
+bool isRegGE(const BCD& a, const BCD& b)
+{
+    return !isRegLT(a, b);
 }

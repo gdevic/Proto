@@ -50,7 +50,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
     // Ensure S0 has larger or equal exponent (swap if needed)
     // This means only S1 ever needs shifting
     if (isExpGT(S1, S0))
-        swapReg(S0, S1);
+        regSwap(S0, S1);
 
     // Shift S1 until exponents match
     // Guard digit: first digit shifted out (for rounding)
@@ -112,7 +112,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
         // Ensure |A| >= |B| for subtraction
         bool swapped = false;
         if (isMantGT(S1.mant.data(), S0.mant.data())) {
-            swapMant(S0.mant.data(), S1.mant.data());
+            mantSwap(S0.mant.data(), S1.mant.data());
             swapped = true;
             anyShifted = false;  // S0 was not shifted, has no extra precision
         }

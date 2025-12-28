@@ -19,15 +19,8 @@ void mantClear(uint8_t *mant);
 // Copy mantissa from src to dst
 void mantCopy(uint8_t *dst, const uint8_t *src);
 
-// Check if mantissa is zero (checks all 16 positions)
-// Returns true if all mantissa digits are zero
-bool isMantZero(const uint8_t* mant);
-
-// Returns true if two mantissas are equal
-bool isMantEQ(const uint8_t *a, const uint8_t *b);
-
-// Returns true if mantissa a > mantissa b
-bool isMantGT(const uint8_t *a, const uint8_t *b);
+// Swap two mantissa arrays
+void mantSwap(uint8_t* a, uint8_t* b);
 
 // Shift mantissa left by one digit
 void mantShl(uint8_t* mant);
@@ -47,3 +40,13 @@ int mantAdd(const uint8_t* a, const uint8_t* b, uint8_t* r);
 // Subtract two aligned mantissas: r = a - b (assumes |a| >= |b|)
 // sticky generates initial borrow from beyond mant[15]
 void mantSub(const uint8_t* a, const uint8_t* b, uint8_t* r, bool sticky);
+
+// Check if mantissa is zero (checks all 16 positions)
+// Returns true if all mantissa digits are zero
+bool isMantZero(const uint8_t* mant);
+
+// Returns true if two mantissas are equal
+bool isMantEQ(const uint8_t *a, const uint8_t *b);
+
+// Returns true if mantissa a > mantissa b
+bool isMantGT(const uint8_t *a, const uint8_t *b);

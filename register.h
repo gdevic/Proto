@@ -19,27 +19,14 @@ void regClear(BCD& x);
 // Copy register from src to dst
 void regCopy(BCD& dst, const BCD& src);
 
-// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
-// Returns true if register value is one
-bool isRegOne(const BCD& x);
-
-// Full signed register comparisons
-bool isRegEQ(const BCD& a, const BCD& b);  // a == b
-bool isRegGT(const BCD& a, const BCD& b);  // a > b
-bool isRegLT(const BCD& a, const BCD& b);  // a < b
-bool isRegGE(const BCD& a, const BCD& b);  // a >= b
+// Swap the complete content of two User Registers
+void regSwap(BCD& a, BCD& b);
 
 // Pre-calculation setup for unary operations: set zero flag and clear R
 void preCalc1(BCD& S0, BCD& R);
 
 // Pre-calculation setup for binary operations: set zero flags and clear R
 void preCalc2(BCD& S0, BCD& S1, BCD& R);
-
-// Swap the complete content of two User Registers
-void swapReg(BCD& a, BCD& b);
-
-// Swap two mantissa arrays
-void swapMant(uint8_t* a, uint8_t* b);
 
 // Normalize: shift mantissa left until first digit is non-zero, adjust exponent
 void normalize(BCD& x);
@@ -59,3 +46,13 @@ void roundFix(BCD& S0, int d, BCD& R);
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
 void truncate(BCD& x);
+
+// Check if a register represents exactly 1.0 (mant=1.000...0, exp=0)
+// Returns true if register value is one
+bool isRegOne(const BCD& x);
+
+// Full signed register comparisons
+bool isRegEQ(const BCD& a, const BCD& b);  // a == b
+bool isRegGT(const BCD& a, const BCD& b);  // a > b
+bool isRegLT(const BCD& a, const BCD& b);  // a < b
+bool isRegGE(const BCD& a, const BCD& b);  // a >= b
