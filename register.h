@@ -26,6 +26,9 @@ bool isRegGE(const BCD& a, const BCD& b);  // a >= b
 // Clear a register to zero
 void regClear(BCD& x);
 
+// Clear exponent and sign fields, leaving mantissa unchanged
+void regClearExpSign(BCD& x);
+
 // Copy register from src to dst
 void regCopy(BCD& dst, const BCD& src);
 

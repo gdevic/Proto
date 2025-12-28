@@ -82,6 +82,15 @@ void regClear(BCD& x)
     x = BCD{};
 }
 
+// Clear exponent and sign fields, leaving mantissa unchanged
+void regClearExpSign(BCD& x)
+{
+    x.exp[0] = 0;
+    x.exp[1] = 0;
+    x.esign = false;
+    x.sign = false;
+}
+
 // Copy register from src to dst
 void regCopy(BCD& dst, const BCD& src)
 {

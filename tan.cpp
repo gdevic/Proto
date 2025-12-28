@@ -146,18 +146,11 @@ void cordicTan(BCD& R, BCD& S0)
     }
 
     // ---------- Part 4: Normalize Y (in S0) ----------
-    // Set up S0 as a proper BCD number for division
-    S0.exp[0] = 0;
-    S0.exp[1] = 0;
-    S0.esign = false;
-    S0.sign = false;
+    // Set up S0 and S1 as proper BCD numbers for division
+    regClearExpSign(S0);
     normalize(S0);
 
-    // Set up S1 as a proper BCD number for division
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+    regClearExpSign(S1);
     normalize(S1);
 
     // ---------- Part 5: Compute result = y / x ----------
@@ -276,16 +269,10 @@ void cordicAtan(BCD& R, BCD& S0)
 
     // ---------- Part 2: Compute residual = y / x ----------
     // Set up S0 and S1 as proper BCD numbers for division
-    S0.exp[0] = 0;
-    S0.exp[1] = 0;
-    S0.esign = false;
-    S0.sign = false;
+    regClearExpSign(S0);
     normalize(S0);
 
-    S1.exp[0] = 0;
-    S1.exp[1] = 0;
-    S1.esign = false;
-    S1.sign = false;
+    regClearExpSign(S1);
     normalize(S1);
 
     // R = residual angle = y / x
@@ -298,10 +285,7 @@ void cordicAtan(BCD& R, BCD& S0)
     for (int j = int(K) - 1; j >= 0; j--) {
         // Get the atan constant for this position into S4
         getAtanConst(uint(j), S4.mant.data());
-        S4.exp[0] = 0;
-        S4.exp[1] = 0;
-        S4.esign = false;
-        S4.sign = false;
+        regClearExpSign(S4);
 
         // Add atan_const[j] to result, counter[j] times
         for (uint8_t k = 0; k < S3.mant[j]; k++) {

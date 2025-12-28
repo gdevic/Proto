@@ -157,13 +157,8 @@ void ln(BCD& R, BCD& S0)
     // Subtract: S1 - R -> R
     mantSub(R.mant.data(), S1.mant.data(), R.mant.data());
 
-    // Set up R as a proper BCD number
-    R.exp[0] = 0;
-    R.exp[1] = 0;
-    R.esign = false;
-    R.sign = false;
-
-    // Normalize the result
+    // Set up R as a proper BCD number and normalize
+    regClearExpSign(R);
     normalize(R);
 
     // ---------- Part 5: Exponent adjustment ----------
