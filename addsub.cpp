@@ -80,21 +80,7 @@ void add(BCD& S0, BCD& S1, BCD& R)
             expInc(R);
         }
 
-        // Round using guard digit and sticky (banker's rounding)
-        bool roundUp = false;
-        if (guard > 5)
-            roundUp = true;
-        else if (guard == 5)
-            roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
-
-        if (roundUp) {
-            if (mantInc(R.mant.data())) {
-                // Rounding caused overflow (e.g., 9.999...9 + 1 ULP)
-                mantShr(R.mant.data());
-                R.mant[0] = 1;
-                expInc(R);
-            }
-        }
+        applyBankersRounding(R, guard, sticky);
     }
     // Different signs: subtract smaller from larger magnitude
     else {

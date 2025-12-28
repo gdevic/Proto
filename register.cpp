@@ -259,3 +259,50 @@ bool isRegGE(const BCD& a, const BCD& b)
 {
     return !isRegLT(a, b);
 }
+
+// Apply banker's rounding (round-to-even) using guard digit and sticky bit.
+// Handles overflow from rounding (9999...9 + 1) by shifting and incrementing exponent.
+void applyBankersRounding(BCD& R, uint8_t guard, bool sticky)
+{
+    bool roundUp = false;
+    if (guard > 5)
+        roundUp = true;
+    else if (guard == 5)
+        roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
+
+    if (roundUp) {
+        if (mantInc(R.mant.data())) {
+            // Rounding caused overflow (e.g., 9.999...9 + 1 ULP)
+            mantShr(R.mant.data());
+            R.mant[0] = 1;
+            expInc(R);
+        }
+    }
+}
+
+// Shift mantissa right and increment exponent until exponent reaches zero.
+// Used to align small numbers (negative exponent) to zero exponent representation.
+// Only acts if x has negative exponent (esign=true).
+void normalizeToZeroExp(BCD& x)
+{
+    if (x.esign) {
+        while (x.exp[0] || x.exp[1]) {
+            mantShr(x.mant.data());
+            expInc(x);
+        }
+    }
+}
+
+// Compute reciprocal: R = 1/x.
+// Uses S0 and S1 internally. x is copied to S1 first, so x can be any register.
+// R must be the global R register (required by div).
+void reciprocal(const BCD& x, BCD& R)
+{
+    assert(&R == &::R);
+
+    regCopy(S1, x);
+    regClear(S0);
+    S0.mant[0] = 1;  // S0 = 1.0
+    div(S0, S1, R);
+}
+

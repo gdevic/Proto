@@ -106,21 +106,7 @@ void div(BCD& S0, BCD& S1, BCD& R)
         sticky = (overflow != 0) || !isMantZero(S0.mant.data());
     }
 
-    // Banker's rounding using guard digit and sticky
-    bool roundUp = false;
-    if (guard > 5)
-        roundUp = true;
-    else if (guard == 5)
-        roundUp = sticky || (R.mant[MAX_MANT - 1] & 1);
-
-    if (roundUp) {
-        if (mantInc(R.mant.data())) {
-            // Rounding overflow: 9.999...9 + 1 ULP → 10.000...0
-            mantShr(R.mant.data());
-            R.mant[0] = 1;
-            expInc(R);
-        }
-    }
+    applyBankersRounding(R, guard, sticky);
 }
 
 // IEEE division for test runner

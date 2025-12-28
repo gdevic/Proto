@@ -360,12 +360,7 @@ void exp(BCD& S0, BCD& R)
     // ---------- Part 2: Normalize remainder ----------
     // For small r (negative exponent), shift mantissa right until exponent is zero
     regCopy(S0, R);
-    if (S0.esign) {
-        while (S0.exp[0] || S0.exp[1]) {
-            mantShr(S0.mant.data());
-            expInc(S0);
-        }
-    }
+    normalizeToZeroExp(S0);
 
     // Copy working mantissa to S1
     mantCopy(S1.mant.data(), S0.mant.data());
@@ -469,12 +464,8 @@ void exp(BCD& S0, BCD& R)
     // ---------- Part 6: Handle negative input ----------
     // exp(-x) = 1/exp(x)
     // Note: Large negative inputs cause underflow, div() handles gracefully
-    if (inputSign) {
-        regCopy(S1, R);  // S1 = exp(|x|) (denominator)
-        regClear(S0);
-        S0.mant[0] = 1;  // S0 = 1 (numerator)
-        div(S0, S1, R);  // R = 1 / exp(|x|)
-    }
+    if (inputSign)
+        reciprocal(R, R);  // R = 1 / exp(|x|)
 }
 
 // IEEE ln for test runner

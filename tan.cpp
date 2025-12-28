@@ -60,12 +60,7 @@ static void getAtanConst(uint j, uint8_t* dst)
 void cordicTan(BCD& S0, BCD& R)
 {
     // For numbers with negative exponent, right shift mantissa until exponent is zero
-    if (S0.esign) {
-        while (S0.exp[0] || S0.exp[1]) {
-            mantShr(S0.mant.data());
-            expInc(S0);
-        }
-    }
+    normalizeToZeroExp(S0);
 
     // Initialize S1.mant as working mantissa (copy of S0's mantissa = angle)
     mantCopy(S1.mant.data(), S0.mant.data());
@@ -203,10 +198,7 @@ void cordicAtan(BCD& S0, BCD& R)
     if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
         useReciprocal = true;
         // Compute 1/input: R = 1/S0
-        regCopy(S1, S0);
-        regClear(S0);
-        S0.mant[0] = 1;  // S0 = 1.0
-        div(S0, S1, R);
+        reciprocal(S0, R);
         regCopy(S0, R);
         S0.sign = false;  // Work with positive value
     }
@@ -223,10 +215,7 @@ void cordicAtan(BCD& S0, BCD& R)
     // For positive exponent (|input| > 1): shift x right
     if (S0.esign) {
         // Negative exponent: shift y (S0) right
-        while (S0.exp[0] || S0.exp[1]) {
-            mantShr(S0.mant.data());
-            expInc(S0);
-        }
+        normalizeToZeroExp(S0);
     }
     else {
         // Positive exponent: shift x (S1) right

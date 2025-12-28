@@ -143,13 +143,8 @@ void tanDeg(BCD& S0, BCD& R)
     cordicTan(S0, R);
 
     // ---------- Apply reciprocal if needed ----------
-    if (useReciprocal) {
-        // R = 1 / R (cot = 1/tan)
-        regCopy(S1, R);
-        regClear(S0);
-        S0.mant[0] = 1;  // S0 = 1.0
-        div(S0, S1, R);
-    }
+    if (useReciprocal)
+        reciprocal(R, R);  // R = 1 / R (cot = 1/tan)
 
     // ---------- Apply sign ----------
     if (negateResult)

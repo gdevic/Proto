@@ -51,3 +51,18 @@ bool isRegEQ(const BCD& a, const BCD& b);  // a == b
 bool isRegGT(const BCD& a, const BCD& b);  // a > b
 bool isRegLT(const BCD& a, const BCD& b);  // a < b
 bool isRegGE(const BCD& a, const BCD& b);  // a >= b
+
+// Apply banker's rounding (round-to-even) using guard digit and sticky bit.
+// Handles overflow from rounding (9999...9 + 1) by shifting and incrementing exponent.
+void applyBankersRounding(BCD& R, uint8_t guard, bool sticky);
+
+// Shift mantissa right and increment exponent until exponent reaches zero.
+// Used to align small numbers (negative exponent) to zero exponent representation.
+// Only acts if x has negative exponent (esign=true).
+void normalizeToZeroExp(BCD& x);
+
+// Compute reciprocal: R = 1/x.
+// Uses S0 and S1 internally. x is copied to S1 first, so x can be any register.
+// R must be the global R register (required by div).
+void reciprocal(const BCD& x, BCD& R);
+

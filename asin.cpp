@@ -77,10 +77,8 @@ void asinDeg(BCD& S0, BCD& R)
     if (FLAG_DOM_ERR)
         return;
 
-    // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²): S0 = 1, S1 = sqrt(...), result in R
-    regCopy(S1, R);   // S1 = sqrt(1/x² - 1)
-    constLoad(S0, CONST_1);      // S0 = 1
-    div(S0, S1, R);   // R = 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
+    // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
+    reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1)
 
     // Compute atan in degrees
     regCopy(S0, R);
