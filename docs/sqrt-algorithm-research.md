@@ -1,6 +1,6 @@
 # Square Root Algorithm Research for BCD Arithmetic
 
-## Executive Summary
+## Summary
 
 This document analyzes algorithms for computing square root with BCD arithmetic, targeting 16-digit decimal precision using nibble-safe operations (all intermediates 0-9) suitable for hardware microcode implementation.
 

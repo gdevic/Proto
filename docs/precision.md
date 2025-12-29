@@ -24,8 +24,100 @@ struct BCD {
     array<uint8_t, 2> exp;    // Exponent (00-99)
     bool sign;                 // Number sign
     bool esign;                // Exponent sign
+    Real value;                // Original input value (for verification)
 };
 ```
+
+## Constructor
+
+- `BCD(std::string_view str)` - Parse string representation
+  - Format: `[±]digits[.digits][E[±]exp]`
+  - Examples: `"123"`, `"-1.5"`, `".001"`, `"1.23e-5"`
+  - Supports up to 16 mantissa digits
+  - Auto-normalizes leading zeros
+
+## Relative vs Absolute Error
+
+**Absolute Error** = |actual - expected|
+```
+actual=100.001, expected=100.000 → abs error = 0.001
+actual=0.001001, expected=0.001000 → abs error = 0.000001
+```
+Problem: Same "accuracy" gives wildly different absolute errors depending on magnitude.
+
+**Relative Error** = |actual - expected| / |expected|
+```
+actual=100.001, expected=100.000 → rel error = 0.001/100 = 1e-5 (5 correct digits)
+actual=0.001001, expected=0.001000 → rel error = 0.000001/0.001 = 1e-3 (3 correct digits)
+```
+Better: Measures "correct digits" regardless of magnitude.
+
+### Correct Digits ↔ Relative Error
+
+| Correct Digits | Relative Error |
+|----------------|----------------|
+| 10 | ≤ 1e-10 |
+| 13 | ≤ 1e-13 |
+| 14 | ≤ 1e-14 |
+| 15 | ≤ 1e-15 |
+
+### The Near-Zero Problem
+
+When result ≈ 0, relative error explodes (dividing by near-zero):
+- expected = 1e-16, actual = 1e-15
+- relative error = |1e-15 - 1e-16| / 1e-15 = 0.9 = 90%
+
+But both values are essentially "zero" in 13-14 digit precision. For near-zero results (|value| < 1e-13), we switch to **absolute error** instead.
+
+## Tolerance System
+
+For complex functions, BCD calculations target **13-14 correct digits** when compared to IEEE results.
+
+| Level | Tolerance | Correct Digits | Meaning |
+|-------|-----------|----------------|---------|
+| **OK** | ≤ 1e-14 | 14+ | Full precision |
+| **~OK** (APPROX) | ≤ 1e-13 | 13-14 | Acceptable precision loss |
+| **FAIL** | > 1e-13 | <13 | Actual algorithm bug or deficiency |
+
+### Tolerance Logic
+
+- **Near-zero results** (|value| < 1e-13): Uses **absolute** tolerance
+  - Avoids meaningless relative error from catastrophic cancellation
+  - Example: `1e-15` vs `1e-14` → absolute error = 9e-15 → OK
+
+- **Normal results**: Uses **relative** tolerance
+  - `relErr = |expected - actual| / max(|expected|, |actual|)`
+
+### Why Tiered Tolerance?
+
+1. **Catastrophic cancellation**: When subtracting nearly-equal numbers (e.g., `1.0 - 0.9999999999999999`), precision is inherently lost due to mantissa alignment shifts. This is expected behavior, not a bug.
+
+2. **Hardware correlation**: Both software and hardware will exhibit identical precision loss. The `~OK` category documents these cases without flagging them as failures.
+
+3. **Bug detection**: Complex functions (log, tan, etc.) may have actual algorithmic bugs. The `FAIL` category catches errors beyond expected precision loss.
+
+## Precision Loss Scenarios
+
+### Alignment Shift Loss
+
+When exponents differ by N, the smaller operand is shifted right, losing N digits:
+
+| Exponent Diff | Digits Lost | Digits Remaining |
+|---------------|-------------|------------------|
+| 0 | 0 | 16 |
+| 5 | 5 | 11 |
+| 10 | 10 | 6 |
+| ≥16 | 16 | 0 (completely lost) |
+
+### Catastrophic Cancellation
+
+When subtracting nearly-equal numbers, leading digits cancel:
+
+| Matching Digits | Result Digits |
+|-----------------|---------------|
+| 0 | 16 |
+| 10 | 6 |
+| 15 | 1 |
 
 ## The Problem: Catastrophic Cancellation
 
@@ -437,3 +529,15 @@ This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 4. **For CORDIC tables**: Store arctan(10^-i) constants to 17 digits—one more than working precision ensures table lookup error doesn't dominate.
 
 5. **Use FIX mode testing** to characterize precision limits and verify behavior at reduced precision levels.
+
+## Known Limitations
+
+**LN**: Has some APPROX/FAIL results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
+
+**TANRAD**: The CORDIC algorithm works correctly for small angles (~0 to PI/4 radians) but requires range reduction for larger angles. Random tests fail because they use large angles outside this range. The fixed tests show 1e-14 to 1e-12 errors which are at or near machine precision.
+
+**ATANRAD**: Uses reciprocal reduction for |x| > 1: atan(x) = π/2 - atan(1/x). This ensures CORDIC converges quickly for all inputs. Works well across the full range with errors at machine precision limits.
+
+**TANDEG/ATANDEG**: Degree-based versions with range reduction. Range reduction is exact since 90° and 360° are exact decimals (unlike π for radians). Works well for angles away from asymptotes (90°, 270°). Round-trip tests show accumulated precision loss.
+
+**EXP**: CORDIC digit-by-digit method (inverse of ln). Uses range reduction via division by ln(10): exp(x) = exp(r) × 10^k where k = floor(x/ln(10)) and r = x - k×ln(10). Overflow (exp(x) > 10^99) returns max value; underflow (exp(-x) < 10^-99) returns zero. Achieves 13-14 digits of precision.

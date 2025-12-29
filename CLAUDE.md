@@ -64,10 +64,6 @@ Domain constraints for different operations:
 - OPTS_TANDEG, OPTS_ATANDEG (degrees, full range)
 - OPTS_SQRT (positiveOnly, also used for asin/acos with |x|≤1)
 
-## Next Steps
-- Implement degree-native CORDIC for sin/cos (better precision than half-angle formulas)
-- Each operation uses appropriate RandomBCDOptions preset
-
 ## Build
 ```bash
 make              # Linux, long double
