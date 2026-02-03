@@ -1,5 +1,5 @@
 /******************************************************************************
- * sqrt.cpp - Square root using digit-by-digit method
+ * sqrt_dd.cpp - Square root using digit-by-digit method
  *
  * Implements sqrt(S0, R) extracting one decimal digit per iteration.
  * Uses the identity (20*R + q) * q <= remainder, implemented via

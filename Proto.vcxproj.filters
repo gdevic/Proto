@@ -51,7 +51,10 @@
     <ClCompile Include="tan10.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="sqrt.cpp">
+    <ClCompile Include="sqrt_dd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sqrt_nr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="const.cpp">

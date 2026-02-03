@@ -162,7 +162,8 @@
     <ClCompile Include="sin.cpp" />
     <ClCompile Include="tan.cpp" />
     <ClCompile Include="tan10.cpp" />
-    <ClCompile Include="sqrt.cpp" />
+    <ClCompile Include="sqrt_dd.cpp" />
+    <ClCompile Include="sqrt_nr.cpp" />
     <ClCompile Include="testbench.cpp" />
     <ClCompile Include="const.cpp" />
     <ClCompile Include="calculator.cpp" />
