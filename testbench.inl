@@ -14,11 +14,14 @@
 namespace detail {
 
 // ANSI escape codes for colored output
-constexpr const char* RED_BG = "\033[48;5;160m"; // Medium-bright red background
-constexpr const char* YELLOW = "\033[93m";       // Bright yellow text
+constexpr const char* RED_BG = "\033[48;5;160m";    // Red background (source of error)
+constexpr const char* YELLOW_BG = "\033[30;48;5;178m"; // Black text, yellow background (cascade victim)
+constexpr const char* YELLOW = "\033[93m";          // Bright yellow text
 constexpr const char* RESET = "\033[0m";
 
 // Print BCD result with colored background on digits that mismatch IEEE expected value
+// Red = source of error (last N digits based on error magnitude)
+// Yellow = cascade victim (other differing digits)
 inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
 {
     if (!g_useColor) {
@@ -32,15 +35,61 @@ inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
     std::string ieeeStr = oss.str();
 
     // Normalize IEEE format to match BCD (22 chars: +D.DDDDDDDDDDDDDDDe+EE)
-    // std::scientific may produce different formats, so pad/adjust as needed
     if (ieeeStr[0] != '+' && ieeeStr[0] != '-')
         ieeeStr = "+" + ieeeStr;
 
+    // Calculate how many mantissa digits from the end are affected by the error
+    Real bcdVal = std::stold(bcd);
+    Real err = std::fabs(bcdVal - ieee);
+    int sourceDigits = 1;  // At least 1 digit affected
+
+    if (err > 0 && ieee != 0) {
+        Real relErr = err / std::fabs(ieee);
+        int correctDigits = int(-std::log10(relErr));
+        if (correctDigits < 0) correctDigits = 0;
+        if (correctDigits > 15) correctDigits = 15;
+        sourceDigits = 16 - correctDigits;
+    }
+
+    // Find 'e' position
+    size_t ePos = bcd.find('e');
+    if (ePos == std::string::npos)
+        ePos = bcd.size();
+
+    // Map string index to mantissa digit position (0-15)
+    // Format: ±D.DDDDDDDDDDDDDDDe±EE
+    //         0123456789...
+    // Index 1 = digit 0, indices 3-17 = digits 1-15
+    auto mantissaPos = [ePos](size_t i) -> int {
+        if (i == 1) return 0;
+        if (i >= 3 && i < ePos) return int(i - 2);
+        return -1;
+    };
+
+    // A position is "source" if it's in the last sourceDigits of mantissa
+    auto isSource = [sourceDigits](int mpos) -> bool {
+        return mpos >= 0 && mpos >= (16 - sourceDigits);
+    };
+
+    // Print with appropriate colors
+    // In source region: red only from first mismatch onwards (including trailing matches)
+    bool inSourceMismatch = false;
     for (size_t i = 0; i < bcd.size(); i++) {
-        if (i < ieeeStr.size() && bcd[i] != ieeeStr[i])
-            std::cout << RED_BG << bcd[i] << RESET;
-        else
+        int mpos = mantissaPos(i);
+        bool mismatch = (i < ieeeStr.size() && bcd[i] != ieeeStr[i]);
+
+        if (isSource(mpos)) {
+            if (mismatch)
+                inSourceMismatch = true;
+            if (inSourceMismatch)
+                std::cout << RED_BG << bcd[i] << RESET;     // Source: red from first mismatch
+            else
+                std::cout << bcd[i];  // Source but before first mismatch: no color
+        } else if (mismatch) {
+            std::cout << YELLOW_BG << bcd[i] << RESET;      // Cascade victim
+        } else {
             std::cout << bcd[i];
+        }
     }
 }
 
