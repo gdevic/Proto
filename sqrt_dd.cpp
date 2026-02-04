@@ -6,13 +6,17 @@
  * repeated subtraction of odd numbers. 32-digit extended precision
  * with nibble-safe intermediates (0-9 range).
  *
+ * Note: This implementation turned out to be very complex to implement in
+ *       microcode, so there is a different one, based on Newton-Raphson method
+ *       that is used instead, with a slight loss of precision (~1 ULP)
+ *       See sqrt_nr.cpp
+ *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
  *****************************************************************************/
 
 #include "proto.h"
 #include "testbench.h"
-#include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
 #include <cassert>
@@ -100,13 +104,13 @@ static void ext32Double(uint8_t* high, uint8_t* low)
     mantDouble(high, carry);
 }
 
-// Compute square root: R = sqrt(S0)
+// Compute square root: R = sqrt_dd(S0)
 // Uses digit-by-digit algorithm (similar to long division)
 // For each output digit q, finds largest q such that (20*R + q) * q <= remainder
 // Reads from S0, stores result in R
 // Uses registers: S0 (input, consumed), S1 (remainder low), S2 (subtrahend low),
 //                 S3 (remainder high), S4 (subtrahend high), R (result)
-void sqrt(BCD& R, BCD& S0)
+void sqrt_dd(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 

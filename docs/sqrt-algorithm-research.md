@@ -4,14 +4,11 @@
 
 This document analyzes algorithms for computing square root with BCD arithmetic, targeting 16-digit decimal precision using nibble-safe operations (all intermediates 0-9) suitable for hardware microcode implementation.
 
-**Current Implementation**: Digit-by-digit method using `(20*R + q) * q <= remainder`
+**Current Implementation**: Newton-Raphson method (`sqrt_nr.cpp`)
 
-**Recommendation**: The current digit-by-digit implementation is the optimal choice for this project. It provides:
-- Guaranteed convergence in exactly 17 iterations (16 digits + guard)
-- Nibble-safe intermediates throughout (0-9 range)
-- Natural alignment with BCD register architecture
-- Consistency with existing mult/div shift-and-add/subtract patterns
-- Hardware-friendly sequential digit extraction
+**Alternative Implementation**: Digit-by-digit method (`sqrt_dd.cpp`) - preserved for reference
+
+**Recommendation**: The Newton-Raphson implementation is used for microcode. While the digit-by-digit method provides theoretically optimal precision, it proved too complex to implement in microcode due to its 32-digit extended arithmetic requirements (using 4 register pairs). Newton-Raphson reuses existing div/mul/add operations with a slight precision loss (~1 ULP) but much simpler microcode.
 
 ---
 
@@ -19,8 +16,8 @@ This document analyzes algorithms for computing square root with BCD arithmetic,
 
 | Algorithm | Iterations | Ops/Iteration | Convergence | BCD Suitability | HW Complexity |
 |-----------|------------|---------------|-------------|-----------------|---------------|
-| **Digit-by-digit** | 17 | ~50 add/cmp | Linear (1 digit/iter) | Excellent | Low |
-| Newton-Raphson | 5-6 | 1 div + 2 add | Quadratic | Poor (needs div) | Medium |
+| Digit-by-digit | 17 | ~50 add/cmp | Linear (1 digit/iter) | Excellent | High (microcode) |
+| **Newton-Raphson** | 5-6 | 1 div + 2 add | Quadratic | Good (reuses div) | Low (microcode) |
 | Binary Search | ~55 | 1 mul + cmp | Linear | Poor (full mul) | Low |
 | CORDIC (hyperbolic) | 54-60 | ~10 add/shift | Linear (~0.3 digit/iter) | Good | Medium |
 | Goldschmidt | 4-5 | 2 mul/iter | Quadratic | Poor (needs mul) | High |
@@ -28,11 +25,13 @@ This document analyzes algorithms for computing square root with BCD arithmetic,
 
 ---
 
-## 1. Digit-by-Digit Method (Current Implementation)
+## 1. Digit-by-Digit Method (Reference Implementation)
 
 ### Overview
 
 The digit-by-digit square root algorithm extracts one decimal digit per iteration, similar to long division. It is the BCD equivalent of the "paper and pencil" square root algorithm taught in schools.
+
+**Note**: This method is implemented in `sqrt_dd.cpp` but is NOT used in microcode. While it provides excellent precision, the 32-digit extended arithmetic (requiring 4 register pairs) proved too complex to implement in microcode. See section 2 for the Newton-Raphson method that is actually used.
 
 ### Algorithm Principle
 
@@ -54,7 +53,7 @@ When we've already accounted for `100*R^2`, the new term to subtract is `(20*R +
 
 ### Current Implementation Analysis
 
-The current `sqrt.cpp` implementation uses:
+The current `sqrt_dd.cpp` implementation uses:
 
 **32-digit extended arithmetic**: Register pairs (S3+S1 for remainder, S4+S2 for subtrahend) provide 32 digits of working precision.
 
@@ -106,7 +105,7 @@ This exploits the pattern: `q^2 = 1 + 3 + 5 + ... + (2q-1)` (sum of first q odd 
 
 ---
 
-## 2. Newton-Raphson (Babylonian Method)
+## 2. Newton-Raphson (Babylonian Method) - Current Implementation
 
 ### Overview
 
@@ -115,7 +114,7 @@ The Newton-Raphson method for square root iterates:
 x_{n+1} = (x_n + S/x_n) / 2
 ```
 
-This is the "Babylonian method," known since antiquity.
+This is the "Babylonian method," known since antiquity. It is implemented in `sqrt_nr.cpp` and is the method used in microcode.
 
 ### Convergence Analysis
 
@@ -173,9 +172,26 @@ In binary hardware:
 
 None of these advantages apply to nibble-safe BCD microcode.
 
+### Why Newton-Raphson Was Chosen for Microcode
+
+Despite the higher operation count, Newton-Raphson was chosen because:
+1. **Simplicity**: Reuses existing `div`, `mul`, and `add` operations - no new primitives needed
+2. **Low register pressure**: Uses only S0, S1, S3, S4, R (digit-by-digit needs 32-digit extended arithmetic with 4 register pairs)
+3. **Straightforward microcode**: The iteration loop is simple to express
+4. **Acceptable precision**: ~1 ULP error is within tolerance for most applications
+
+The digit-by-digit method's 32-digit extended arithmetic, while elegant in C++, requires complex microcode to manage two 16-digit register pairs for remainder and subtrahend.
+
+### Current Implementation Details (`sqrt_nr.cpp`)
+
+The implementation includes:
+1. **Initial guess via exponent halving**: `R = S0` with `exp = exp/2` gives a good starting point
+2. **Newton-Raphson loop**: Iterates until 14 digits converge (indices 0-13)
+3. **Square-based correction**: Up to 3 iterations comparing R² with n, incrementing/decrementing mantissa to refine within 1 ULP
+
 ### Verdict
 
-**Not recommended** for this project. The quadratic convergence doesn't compensate for division cost in BCD arithmetic.
+**Chosen for microcode** despite theoretical operation count disadvantage. The simplicity of reusing existing arithmetic operations outweighs the cost of division in practice.
 
 ---
 
@@ -415,7 +431,7 @@ Requires:
 
 ---
 
-## Implementation Notes for Current sqrt.cpp
+## Implementation Notes for sqrt_dd.cpp (Reference Implementation)
 
 ### What Works Well
 
@@ -454,19 +470,19 @@ Requires:
 
 ### Primary Recommendation
 
-**Keep the current digit-by-digit implementation.** It is:
-- Optimal for BCD arithmetic with nibble constraints
-- Consistent with existing mult.cpp and div.cpp patterns
-- Hardware-verification friendly with deterministic timing
-- Already well-implemented with proper edge case handling
+**Use the Newton-Raphson implementation (`sqrt_nr.cpp`) for microcode.** It:
+- Reuses existing div/mul/add operations with no new microcode primitives
+- Has low register pressure compared to digit-by-digit's 32-digit extended arithmetic
+- Provides acceptable precision (~1 ULP) for practical applications
+- Is simple to verify and maintain
 
 ### Secondary Considerations
 
-1. **For highest hardware performance**: Consider non-restoring SRT with lookup table for digit selection. This would reduce the inner loop from 0-9 subtractions to a single table lookup + subtraction.
+1. **For golden reference testing**: The digit-by-digit implementation (`sqrt_dd.cpp`) provides higher precision and can be used as a reference to validate Newton-Raphson results.
 
-2. **For algorithm variety in test vectors**: CORDIC hyperbolic could be implemented as an alternative to cross-validate results.
+2. **Trade-off accepted**: The ~1 ULP precision loss in Newton-Raphson is acceptable given the significant reduction in microcode complexity.
 
-3. **Not recommended**: Newton-Raphson, Goldschmidt, or binary search - all require expensive operations (div/mul) that negate convergence advantages.
+3. **Not recommended for microcode**: Goldschmidt or binary search - both require expensive operations without the simplicity benefit of Newton-Raphson.
 
 ---
 

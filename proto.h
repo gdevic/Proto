@@ -54,7 +54,12 @@ void div(BCD &R, BCD &S0, BCD &S1);
 // Transcendental operations: read from S0, write result to R
 void ln(BCD &R, BCD &S0);
 void exp(BCD &R, BCD &S0);
-void sqrt(BCD &R, BCD &S0);
+void sqrt_dd(BCD &R, BCD &S0);   // Digit-by-digit method (sqrt_dd.cpp)
+void sqrt_nr(BCD &R, BCD &S0);   // Newton-Raphson method (sqrt_nr.cpp)
+// Uncomment sqrt implementation: sqrt_nr (default) or sqrt_dd
+// Use inline function to avoid conflict with std::sqrt
+//inline void sqrt(BCD &R, BCD &S0) { sqrt_dd(R, S0); }
+inline void sqrt(BCD &R, BCD &S0) { sqrt_nr(R, S0); }
 void tanRad(BCD &R, BCD &S0);   // Tangent, input in radians
 void atanRad(BCD &R, BCD &S0);  // Arctangent, output in radians
 void tanDeg(BCD &R, BCD &S0);   // Tangent, input in degrees
