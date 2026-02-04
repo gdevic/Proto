@@ -261,6 +261,10 @@ void testTanDeg()
         "3600045",                // 10000*360+45, tan=1
         "1000000",                // ~2778 rotations
         "1e10",                   // 10 billion degrees
+        // Range reduction boundaries
+        "44.99999999999999",      // Just under 45 (16 sig digits)
+        "45.00000000000001",      // Just over 45 (reciprocal path, 16 sig digits)
+        "89.99999999999999",      // Near asymptote (16 sig digits)
     };
 
     if (!runTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, val, sizeof(val) / sizeof(val[0])))
@@ -301,6 +305,14 @@ void testAtanDeg()
         "-1",                     // atan = -45
         "-0.5773502691896257",    // -1/sqrt(3): atan = -30
         "-1.732050807568877",     // -sqrt(3): atan = -60
+        // Reciprocal boundary
+        "0.999999999999999",      // Just under 1
+        "1.000000000000001",      // Just over 1
+        // Large value shortcut
+        "1e15",                   // exp>=15 returns 90 exactly
+        "1e14",                   // Just under shortcut
+        // Negative symmetry
+        "-1e15",                  // Large negative -> -90
     };
 
     if (!runTests<Arity::Unary>("ATANDEG", atanDeg, ieeeAtanDeg, val, sizeof(val) / sizeof(val[0])))

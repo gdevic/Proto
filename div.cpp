@@ -151,6 +151,8 @@ void testDivision()
         "1e49",
         // Exponent near underflow: -50 - 49 = -99 (at limit)
         "1e-50",
+        // Tiny quotient (many zeros) - normalization stress
+        "1e-30",                   // Very small value for quotient tests
     };
 
     if (!runTests<Arity::Binary>("DIV", BcdBinaryOp(div), ieeeDiv, val, sizeof(val) / sizeof(val[0])))

@@ -90,6 +90,10 @@ void testCosDeg()
         "-30",
         "-90",
         "-180",
+        // Boundary transitions (identity: cos(x) = sin(x+90))
+        "89.99999999999999",      // Near 90 (16 sig digits)
+        "90.00000000000001",      // Just past 90 (16 sig digits)
+        "179.9999999999999",      // Near 180 (16 sig digits)
     };
 
     if (!runTests<Arity::Unary>("COSDEG", cosDeg, ieeeCosDeg, val, sizeof(val) / sizeof(val[0])))

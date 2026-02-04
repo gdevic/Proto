@@ -292,6 +292,14 @@ void testSinDeg()
         "-90",
         "-180",
         "-270",                   // sin(-270) = -sin(270) = 1
+        // Parity transitions (180 period)
+        "179.9999999999999",      // Just under 180 (16 sig digits)
+        "180.0000000000001",      // Just over 180 (16 sig digits)
+        // Quadrant reflection
+        "89.99999999999999",      // Just under 90 (16 sig digits)
+        "90.00000000000001",      // Just over 90 (reflection, 16 sig digits)
+        // Very small angle
+        "0.0001",                 // tan(x/2) approximation
     };
 
     if (!runTests<Arity::Unary>("SINDEG", sinDeg, ieeeSinDeg, val, sizeof(val) / sizeof(val[0])))

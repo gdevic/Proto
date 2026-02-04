@@ -142,6 +142,16 @@ void testAddition()
         "1.0000000000009",
         "1.00000000000009",
         "1.000000000000009",
+        // === Corner cases for alignment/shift stress ===
+        "1e50",                    // Max exponent diff with small values (pair: 1e-50)
+        // === Guard/sticky rounding ===
+        "1.000000000000005",       // Guard=5, sticky=0, banker's rounding (16 sig digits)
+        "1.000000000000015",       // Guard=5, sticky=1, always rounds up (16 sig digits)
+        // === Catastrophic cancellation ===
+        "-1.0000000000000",        // Pair for near-equal subtraction tests
+        // === Sign swap path ===
+        "2",                       // Subtraction requiring mantSwap: 1-2
+        "-2",                      // Different sign tests
     };
 
     if (!runTests<Arity::Binary>("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
@@ -160,6 +170,12 @@ void testSubtraction()
         "3.141592653589793",
         "-1234567890123456",
         "1e-50",
+        // Exact cancellation
+        "5.0",                     // 5-5=0 (exact zero return)
+        "-5.0",                    // Pair
+        // Borrow cascade
+        "1000000000000001",        // Large with trailing 1
+        "999999999999999",         // Subtraction triggers borrow cascade
     };
 
     if (!runTests<Arity::Binary>("SUB", sub, ieeeSub, val, sizeof(val) / sizeof(val[0])))

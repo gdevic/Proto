@@ -153,6 +153,11 @@ void testMultiplication()
         "1e49",
         // Exponent near underflow: -50 + -49 = -99 (at limit)
         "1e-50",
+        // sqrt(10) x sqrt(10) ~= 10, tests R[0]==0 normalization path
+        "3.162277660168379",       // sqrt(10), product near 10
+        // Near 10 - tests guard digit interaction with near-boundary
+        "3.333333333333333",       // 3.33... x 3 = 9.999...
+        "3",                       // Pair for near-10 product
     };
 
     if (!runTests<Arity::Binary>("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))

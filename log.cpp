@@ -418,6 +418,12 @@ void testLn()
         "0.5",                    // ln(0.5) = -ln(2)
         "4",                      // ln(4) = 2*ln(2)
         "8",                      // ln(8) = 3*ln(2)
+        // Near identity (ln(1)=0)
+        "0.999999999999999",      // Tiny negative log
+        // Maximum mantissa value
+        "9.999999999999999",      // Maximum mantissa value
+        // Powers of e
+        "20.08553692318767",      // e^3, should give ln=3
     };
 
     if (!runTests<Arity::Unary>("LN", ln, ieeeLn, val, sizeof(val) / sizeof(val[0])))
@@ -454,7 +460,13 @@ void testExp()
         "0.000000000000001",      // Very close to 0
         "-227.955924",            // Last value before underflow (≈ 99*ln(10))
         "-228",                   // Underflows to 0
-        "-1.2345e99"              // Very large value
+        "-1.2345e99",             // Very large value
+        // Range reduction boundaries
+        "6.907755278982137",      // 3*ln(10), k=3 boundary
+        "227.9559242041521",      // 99*ln(10), just before overflow
+        // Pseudo-division constants
+        "0.095310179804325",      // ln(1.1), matches ln_const[1]
+        "3",                      // exp(3) = e^3 ~= 20.09
     };
 
     if (!runTests<Arity::Unary>("EXP", BcdUnaryOp(exp), ieeeExp, val, sizeof(val) / sizeof(val[0])))

@@ -131,6 +131,12 @@ void testAcosDeg()
         "0.99",
         "-0.9",
         "-0.99",
+        // Domain boundaries
+        "0.999999999999999",      // Near +1 boundary
+        "-0.999999999999999",     // Near -1 boundary
+        // Very small values
+        "0.0001",                 // acos near 90
+        "0.00001",                // acos very near 90
     };
 
     if (!runTests<Arity::Unary>("ACOSDEG", acosDeg, ieeeAcosDeg, val, sizeof(val) / sizeof(val[0])))

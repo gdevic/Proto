@@ -147,6 +147,12 @@ void testAsinDeg()
         "0.99",
         "0.999",
         "-0.9",
+        // Domain boundaries
+        "0.999999999999999",      // Near +1 boundary
+        "-0.999999999999999",     // Near -1 boundary
+        // Formula stress: asin(x) = atan(1/sqrt(1/x^2-1))
+        "0.0001",                 // Very small (1/x^2 very large)
+        "0.00001",                // Even smaller
     };
 
     if (!runTests<Arity::Unary>("ASINDEG", asinDeg, ieeeAsinDeg, val, sizeof(val) / sizeof(val[0])))

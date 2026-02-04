@@ -267,6 +267,18 @@ void testSqrt()
         "0.000001",
         "9.999999999999999",
         "1.000000000000001",
+        // Perfect squares
+        "10000",                  // sqrt=100, e=4 -> e'=2
+        "1000000",                // sqrt=1000, e=6 -> e'=3
+        // Odd exponent handling
+        "50",                     // 5e1, odd exp -> sqrt~7.07
+        "500",                    // 5e2, even exp -> sqrt~22.36
+        "5000",                   // 5e3, odd exp -> sqrt~70.7
+        // Near 1 precision boundary
+        "0.999999999999999",      // Just under 1
+        // Irrational results
+        "5",                      // sqrt(5) = 2.236...
+        "7",                      // sqrt(7) = 2.646...
     };
 
     if (!runTests<Arity::Unary>("SQRT", BcdUnaryOp(sqrt), ieeeSqrt, val, sizeof(val) / sizeof(val[0])))

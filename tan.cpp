@@ -420,6 +420,10 @@ void testTanRad()
         "10000.0",                // ~1592 rotations
         "1e6",                    // ~159155 rotations
         "1e8",                    // ~16 million rotations
+        // Very small angles (CORDIC precision)
+        "0.00001",                // Even smaller angle
+        // Near asymptote
+        "1.5707963267948",        // Just under PI/2
     };
 
     if (!runTests<Arity::Unary>("TANRAD", tanRad, ieeeTanRad, val, sizeof(val) / sizeof(val[0])))
@@ -456,6 +460,14 @@ void testAtanRad()
         // Negative values
         "-1",                     // atan = -PI/4
         "-0.5773502691896257",    // -1/sqrt(3): atan = -PI/6
+        // Reciprocal reduction boundary
+        "0.999999999999999",      // Just under 1
+        "1.000000000000001",      // Just over 1
+        // Very large (approaches PI/2)
+        "1e10",                   // Large value, atan -> PI/2
+        "1e15",                   // exp>=15 shortcut
+        // Very small
+        "0.00001",                // Very small atan
     };
 
     if (!runTests<Arity::Unary>("ATANRAD", atanRad, ieeeAtanRad, val, sizeof(val) / sizeof(val[0])))
