@@ -254,7 +254,8 @@ bool runRoundTripTests(const char* opName,
                        const std::string* values, size_t count,
                        const RandomBCDOptions& opts)
 {
-    if (g_skipRoundTrip)
+    // Skip round-trip tests in HW vector mode (-t) or when explicitly disabled (-T)
+    if (g_traceAll || g_skipRoundTrip)
         return true;
 
     int ok = 0, approx = 0, fail = 0;

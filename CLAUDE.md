@@ -68,5 +68,22 @@ Domain constraints for different operations:
 ```bash
 make              # Linux, long double
 ./proto -h        # Help
-./proto           # Silently run tests
 ```
+
+## Usage Modes
+
+**Dev mode (default)**: Compare BCD vs IEEE, show only APPROX/FAIL, includes round-trip tests.
+```bash
+./proto -a            # Run all tests, show problems
+./proto -a -c -e      # Colors, stop on first error
+./proto -f ln -r 100  # 100 random ln tests
+```
+
+**HW vectors mode (-t)**: Generate test vectors, print all lines, skip round-trip tests.
+```bash
+./proto -t -a > hw.txt      # All test vectors to file
+./proto -t -f sqrt -r 1000  # 1000 sqrt vectors
+./proto -t -v -f add        # With IEEE values
+```
+
+Note: `-f` takes precedence over `-a`. Invalid combinations (e.g., `-t -c`) are rejected.

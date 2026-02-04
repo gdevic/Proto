@@ -19,40 +19,51 @@ static void printHelp(const char* prog)
 {
     std::cerr << "Usage: " << prog << " [options]\n"
               << "\n"
-              << "BCD arithmetic reference implementation for hardware verification and prototyping.\n"
+              << "BCD arithmetic reference implementation for prototyping and hardware verification.\n"
               << "\n"
-              << "Options:\n"
-              << "  -h       Show this help message\n"
-              << "  -c       Use ANSI colors\n"
-              << "  -d NUM   FIX mode: round to NUM decimal places (0-15) before comparison\n"
-              << "  -e       Stop on first error (FAIL) and print the failing test\n"
-              << "  -f NAME  Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad)\n"
-              << "  -r NUM   Number of random tests to run (default: 10)\n"
-              << "  -t       Trace all: print all test lines including OK (for HW file)\n"
-              << "  -T       Skip round-trip tests (enabled by default)\n"
-              << "  -v       Verbose: print IEEE value even on OK lines\n"
+              << "Common options:\n"
+              << "  -a       Run all tests\n"
+              << "  -f NAME  Run only specified test(s); can repeat\n"
+              << "  -r NUM   Number of random tests (default: 10)\n"
+              << "  -h       Show this help\n"
               << "\n"
-              << "Output modes:\n"
-              << "  (default)    Only print APPROX and FAIL lines (debugging)\n"
-              << "  -e           Stop at first FAIL, print failing line, exit\n"
-              << "  -t           Print all lines (redirect to file for HW verification)\n"
-              << "  -t -v        Print all lines with IEEE values\n"
+              << "Dev mode (default):\n"
+              << "  Compare BCD vs IEEE long double. Only prints APPROX/FAIL. Includes round-trip tests.\n"
+              << "  -c       Use ANSI colors to highlight mismatched digits\n"
+              << "  -d NUM   FIX mode: round to NUM decimal places (0-15)\n"
+              << "  -e       Stop on first error (FAIL)\n"
+              << "  -T       Skip round-trip tests\n"
               << "\n"
-              << "Examples:\n"
-              << "  " << prog << "               # Debug: show only problems\n"
-              << "  " << prog << " -e            # Stop at first failure\n"
-              << "  " << prog << " -d 10         # Compare at 10 decimal places\n"
-              << "  " << prog << " -f ln         # Run only ln tests\n"
-              << "  " << prog << " -f add -f sub # Run add and sub tests\n"
-              << "  " << prog << " -f ln -r 100  # Run ln tests with 100 random cases\n"
-              << "  " << prog << " -t > hw.txt   # Generate HW test file\n";
+              << "HW vectors mode (-t):\n"
+              << "  Generate test vectors for hardware. Prints all lines. Skips round-trip tests.\n"
+              << "  -t       Enable HW vectors mode\n"
+              << "  -v       Append IEEE reference values\n"
+              << "\n"
+              << "Examples (dev mode):\n"
+              << "  " << prog << " -a            # Run all tests, show only problems\n"
+              << "  " << prog << " -a -c -e      # Run all, colors, stop on first error\n"
+              << "  " << prog << " -f ln -r 100  # Run 100 random ln tests\n"
+              << "\n"
+              << "Examples (HW vectors mode):\n"
+              << "  " << prog << " -t -a > hw.txt      # Generate all test vectors\n"
+              << "  " << prog << " -t -f sqrt -r 1000  # 1000 random sqrt vectors\n"
+              << "  " << prog << " -t -v -f add        # Add vectors with IEEE values\n";
 }
 
 int main(int argc, char* argv[])
 {
+    // Show help if no arguments given
+    if (argc == 1) {
+        printHelp(argv[0]);
+        return 0;
+    }
+
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+        if (strcmp(argv[i], "-a") == 0) {
+            // Run all tests (default behavior, no filter needed)
+        }
+        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printHelp(argv[0]);
             return 0;
         }
@@ -96,6 +107,26 @@ int main(int argc, char* argv[])
         else {
             std::cerr << "Unknown option: " << argv[i] << "\n";
             std::cerr << "Use -h for help.\n";
+            return 1;
+        }
+    }
+
+    // Validate option combinations
+    if (g_traceAll) {
+        if (g_useColor) {
+            std::cerr << "Error: -c (colors) is a dev mode option, not valid with -t\n";
+            return 1;
+        }
+        if (g_stopOnError) {
+            std::cerr << "Error: -e (stop on error) is a dev mode option, not valid with -t\n";
+            return 1;
+        }
+        if (g_roundDigits >= 0) {
+            std::cerr << "Error: -d (FIX rounding) is a dev mode option, not valid with -t\n";
+            return 1;
+        }
+        if (g_skipRoundTrip) {
+            std::cerr << "Error: -T is redundant with -t (HW mode already skips round-trip tests)\n";
             return 1;
         }
     }

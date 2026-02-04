@@ -1,12 +1,16 @@
 # Proto - BCD Arithmetic Reference Implementation
 
-A software BCD (Binary-Coded Decimal) arithmetic implementation serving as a golden reference for hardware verification and prototyping (Verilog + microcode).
+A software BCD (Binary-Coded Decimal) arithmetic implementation for algorithm prototyping and a golden reference for hardware verification (Verilog + microcode).
 
 This code accompanies the Calculator project described here: https://baltazarstudios.com
 
 ## Overview
 
-This implementation provides 16-digit decimal precision arithmetic operations (add/sub/mul/div). Other functions are also implemented and they provide somewhat less precision, which is also characterized in this or another supporting document. The software and hardware implementations share identical precision limits and alignment behavior, enabling direct result comparison. In addition, this code includes computation of golden values for verification using IEEE long double operations.
+BCD arithmetic with a 16-digit mantissa and 2-digit exponent. Basic operations (add/sub/mul/div) achieve full 16-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically 13-14 digits).
+
+The tool operates in two modes:
+- **Dev mode**: Compare BCD results against IEEE long double to validate algorithms
+- **HW vectors mode**: Generate test vectors for hardware verification
 
 ## Documentation
 
@@ -70,33 +74,59 @@ Or from regular command prompt, first initialize the environment:
 msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 ```
 
-## Command Line Flags
+## Command Line Options
+
+The tool operates in two modes: **Dev mode** (default) for debugging and **HW vectors mode** for generating hardware test vectors.
+
+### Common Options
 
 | Flag | Description |
 |------|-------------|
-| (none) | Debug mode: only print APPROX and FAIL lines |
-| `-c` | Use ANSI colors (red background for mismatched digits, yellow for summary) |
-| `-d NUM` | FIX mode: round both BCD and IEEE to NUM decimal places (0-15) before comparison |
-| `-e` | Stop on first error (FAIL) and print the failing test line |
-| `-f NAME` | Run only specified test(s); can repeat (add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad) |
-| `-r NUM` | Number of random tests to run (default: 10) |
-| `-t` | Trace all: print all lines including OK (for HW file) |
-| `-T` | Skip round-trip tests (enabled by default) |
-| `-v` | Verbose: also print IEEE value on OK lines |
+| `-a` | Run all tests (ignored if `-f` is specified) |
+| `-f NAME` | Run only specified test(s); can repeat |
+| `-r NUM` | Number of random tests (default: 10) |
+| `-h` | Show help |
+
+Available test names for `-f`: add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad
+
+### Dev Mode (default)
+
+Compare BCD results against IEEE long double. Only prints APPROX/FAIL lines. Includes round-trip tests.
+
+| Flag | Description |
+|------|-------------|
+| `-c` | Use ANSI colors to highlight mismatched digits |
+| `-d NUM` | FIX mode: round to NUM decimal places (0-15) |
+| `-e` | Stop on first error (FAIL) |
+| `-T` | Skip round-trip tests |
 
 ```bash
-./proto               # Debug: show only problems
-./proto -c            # Debug with colored output
-./proto -e            # Stop at first failure
-./proto -f ln         # Run only ln tests
-./proto -f add -f sub # Run add and sub tests
-./proto -f ln -r 100  # Run ln tests with 100 random cases
-./proto -d 10         # Test with FIX 10 precision (10 decimal places)
+./proto -a            # Run all tests, show only problems
+./proto -a -c -e      # Run all, colors, stop on first error
+./proto -f ln -r 100  # Run 100 random ln tests
 ./proto -f tanrad -d 8   # Test tanrad with reduced precision
-./proto -v            # Debug: problems + IEEE on OK
-./proto -t > hw.txt   # Generate HW test file (all lines)
-./proto -t -v         # All lines with IEEE everywhere
 ```
+
+### HW Vectors Mode (-t)
+
+Generate test vectors for hardware verification. Prints all test lines to stdout (redirect to file). Automatically skips round-trip tests.
+
+| Flag | Description |
+|------|-------------|
+| `-t` | Enable HW vectors mode |
+| `-v` | Append IEEE reference values |
+
+```bash
+./proto -t -a > hw.txt      # Generate all test vectors
+./proto -t -f sqrt -r 1000  # 1000 random sqrt vectors
+./proto -t -v -f add        # Add vectors with IEEE values
+```
+
+### Invalid Combinations
+
+The following combinations are rejected with an error:
+- `-t` with `-c`, `-e`, or `-d` (dev mode options not valid in HW vectors mode)
+- `-t` with `-T` (redundant, HW mode already skips round-trip tests)
 
 ## Output Format
 
