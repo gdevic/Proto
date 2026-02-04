@@ -197,57 +197,39 @@ void ln(BCD& R, BCD& S0)
 static bool expRangeReduce()
 {
     // exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
-    // Division-based method: k = floor(x / ln(10)), r = x - k*ln(10)
-    // Constant number of operations regardless of k
+    // k = floor(x / ln(10)), r = x - k*ln(10)
 
-    // Set up S1 = ln(10)
+    regCopy(S4, S0);                    // Save input x
     constLoad(S1, CONST_LN10);
-
-    // Save input x to S4 for later
-    regCopy(S4, S0);
-
-    // R = x / ln(10)
-    div(R, S0, S1);
-
-    // Truncate R to integer k = floor(R)
-    truncate(R);
-
-    // Extract k from R and store in S3.exp field directly
-    // R contains k as BCD: mant[0].mant[1]... × 10^exp
+    div(R, S0, S1);                     // R = x / ln(10)
+    truncate(R);                        // R = k = floor(x / ln(10))
     regClear(S3);
-    if (R.esign || isMantZero(R.mant.data())) {
-        // k = 0: S3.exp already 0 from regClear
-    }
-    else if ((R.exp[0] > 0) || (R.exp[1] > 1)) {
-        // k >= 100: overflow
+
+    // Check overflow: k >= 100 means exp[0] != 0 or exp[1] > 1
+    if ((R.exp[0] != 0) || (R.exp[1] > 1))
         return true;
-    }
-    else if (R.exp[1] == 1) {
-        // k = 10-99: stored as d0.d1 × 10^1
+
+    // Extract k into S3.exp (k is 0-99)
+    if (R.exp[1] == 1) {
+        // k = 10-99: two digits
         S3.exp[0] = R.mant[0];
         S3.exp[1] = R.mant[1];
     }
-    else {
-        // k = 1-9: stored as d0 × 10^0
-        S3.exp[0] = 0;
+    else if (R.mant[0]) {
+        // k = 1-9: one digit
         S3.exp[1] = R.mant[0];
     }
+    // else k = 0: S3.exp already [0,0] from regClear
 
     // Compute r = x - k*ln(10)
-    // S1 = ln(10), R = k, S4 = x
-    regCopy(S0, R);
-    constLoad(S1, CONST_LN10);
-
-    mul(R, S0, S1);  // R = k * ln(10)
-
-    // r = x - k*ln(10) = S4 - R
-    regCopy(S0, S4);
+    regCopy(S0, R);                     // S0 = k
+    constLoad(S1, CONST_LN10);          // Reload (div modified S1)
+    mul(R, S0, S1);                     // R = k * ln(10)
+    regCopy(S0, S4);                    // S0 = x (saved earlier)
     regCopy(S1, R);
-    S1.sign = true;  // Negate for subtraction
-    add(R, S0, S1);  // R = x - k*ln(10) = r
+    S1.sign = true;                     // Negate for subtraction
+    add(R, S0, S1);                     // R = x - k*ln(10) = r
 
-    // Now R = r (remainder, 0 ≤ r < ln(10))
-    // S3.exp = k (integer exponent)
     return false;
 }
 
@@ -265,7 +247,7 @@ void exp(BCD& R, BCD& S0)
 
     // Special case: exp(0) = 1 exactly
     if (FLAG_S0_ZERO) {
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         return;
     }
 
@@ -279,7 +261,7 @@ void exp(BCD& R, BCD& S0)
         // k >= 100: overflow/underflow
         if (inputSign == false)  // Large *positive* values cause overflow
             FLAG_OF_ERR = true;
-        regClear(R);
+        regClear(R);             // Large *negative* values result in 0 (not underflow!)
         return;
     }
 
@@ -365,13 +347,12 @@ void exp(BCD& R, BCD& S0)
                 R.mant[0] = uint8_t(carry);
                 // Increment k in S3.exp
                 expInc(S3);
-                // Note: FLAG_OF_ERR checked in Part 5 below
             }
         }
     }
 
     // ---------- Part 5: Set exponent from k ----------
-    // k is stored directly in S3.exp[0] and S3.exp[1]
+    // k is stored in S3.exp[0] (tens) and S3.exp[1] (units)
 
     // Check for overflow from Part 4 carry handling
     if (FLAG_OF_ERR) {
@@ -382,7 +363,7 @@ void exp(BCD& R, BCD& S0)
         return;
     }
 
-    // Copy k directly to R's exponent
+    // Copy k to R's exponent
     R.exp[0] = S3.exp[0];
     R.exp[1] = S3.exp[1];
     R.esign = false;
@@ -392,7 +373,7 @@ void exp(BCD& R, BCD& S0)
 
     // ---------- Part 6: Handle negative input ----------
     // exp(-x) = 1/exp(x)
-    // Note: Large negative inputs cause underflow, div() handles gracefully
+    // Note: Large negative inputs cause underflow; reciprocal returns ~0
     if (inputSign)
         reciprocal(R, R);  // R = 1/exp(|x|)
 }
