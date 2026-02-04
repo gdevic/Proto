@@ -23,6 +23,10 @@ bool isMantEQ(const uint8_t *a, const uint8_t *b);
 // Returns true if mantissa a > mantissa b
 bool isMantGT(const uint8_t *a, const uint8_t *b);
 
+// Compare two mantissas
+// Returns: -1 if a < b, 0 if a == b, +1 if a > b
+int mantCmp(const uint8_t* a, const uint8_t* b);
+
 // Clear mantissa to all zeros
 void mantClear(uint8_t *mant);
 
@@ -42,6 +46,10 @@ bool mantShr(uint8_t* mant);
 // Increment mantissa by 1
 // Returns carry (0 or 1)
 int mantInc(uint8_t* mant);
+
+// Decrement mantissa by 1
+// Returns borrow (0 or 1)
+int mantDec(uint8_t* mant);
 
 // Add magnitudes of two aligned mantissas (all 16 positions): r = a + b
 // Returns carry (0 or 1)

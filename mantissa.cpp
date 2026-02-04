@@ -39,6 +39,17 @@ bool isMantGT(const uint8_t *a, const uint8_t *b)
     return false;
 }
 
+// Compare two mantissas
+// Returns: -1 if a < b, 0 if a == b, +1 if a > b
+int mantCmp(const uint8_t* a, const uint8_t* b)
+{
+    for (uint i = 0; i < MAX_MANT; i++) {
+        if (a[i] < b[i]) return -1;
+        if (a[i] > b[i]) return +1;
+    }
+    return 0;
+}
+
 // Clear mantissa to all zeros
 void mantClear(uint8_t *mant)
 {
@@ -90,6 +101,24 @@ int mantInc(uint8_t* mant)
         carry = sum / 10;
     }
     return carry;
+}
+
+// Decrement mantissa by 1
+// Returns borrow (0 or 1)
+int mantDec(uint8_t* mant)
+{
+    int borrow = 1;
+    for (int i = MAX_MANT - 1; (i >= 0) && borrow; i--) {
+        int diff = mant[i] - borrow;
+        if (diff < 0) {
+            mant[i] = uint8_t(diff + 10);
+            borrow = 1;
+        } else {
+            mant[i] = uint8_t(diff);
+            borrow = 0;
+        }
+    }
+    return borrow;
 }
 
 // Add magnitudes of two aligned mantissas (all 16 positions): r = a + b

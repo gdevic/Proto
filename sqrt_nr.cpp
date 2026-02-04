@@ -17,24 +17,6 @@
 #include "register.h"
 #include <cassert>
 
-// Decrement mantissa by 1
-// Returns true if underflow (borrow out of MSB)
-static bool mantDec(uint8_t* mant)
-{
-    int borrow = 1;
-    for (int i = MAX_MANT - 1; (i >= 0) && borrow; i--) {
-        int diff = mant[i] - borrow;
-        if (diff < 0) {
-            mant[i] = uint8_t(diff + 10);
-            borrow = 1;
-        } else {
-            mant[i] = uint8_t(diff);
-            borrow = 0;
-        }
-    }
-    return borrow != 0;
-}
-
 // Halve the exponent of a register
 // Uses BSHR chaining: H' = H/2, L' = L/2 + (H_odd ? 5 : 0)
 static void expHalf(BCD& x)
@@ -49,17 +31,6 @@ static void expHalf(BCD& x)
     // If result is 00, clear exponent sign to avoid -0
     if ((x.exp[0] | x.exp[1]) == 0)
         x.esign = false;
-}
-
-// Compare mantissas
-// Returns: -1 if a < b, 0 if a == b, +1 if a > b
-static int mantCmp(const uint8_t* a, const uint8_t* b)
-{
-    for (uint i = 0; i < MAX_MANT; i++) {
-        if (a[i] < b[i]) return -1;
-        if (a[i] > b[i]) return +1;
-    }
-    return 0;
 }
 
 // Compute square root using Newton-Raphson: R = sqrt(S0)
