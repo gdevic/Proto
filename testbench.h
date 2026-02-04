@@ -26,6 +26,7 @@ inline bool g_useColor = false;      // -c: Use ANSI colors for output
 inline int g_randomCount = 10;       // -r: Number of random tests to run (default: 10)
 inline int g_roundDigits = -1;       // -d: FIX mode decimal places (-1 = disabled)
 inline std::vector<std::string> g_testFilters; // -f: Filters to run only specific tests
+inline int g_vectorCount = 0;        // Count of test vectors printed (for -t mode)
 
 // Tolerance levels for verification (13-14 correct digits required)
 constexpr Real TIGHT_TOL = REAL_LITERAL(1e-14);  // 14 correct digits

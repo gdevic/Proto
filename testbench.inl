@@ -154,6 +154,7 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         if (g_verbose)
             std::cout << " " << std::scientific << std::setprecision(15) << ieee;
         std::cout << "\n";
+        g_vectorCount++;
         return false;  // Never stop in HW mode
     }
 

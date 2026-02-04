@@ -194,25 +194,27 @@ int main(int argc, char* argv[])
     std::cout << std::setprecision(15);
     std::cerr << std::setprecision(15);
 
+    // In HW vectors mode (-t), skip verbose output - just generate vectors
+    if (!g_traceAll) {
 #ifdef USE_LONG_DOUBLE
-    std::cerr << "Verification: using long double\n";
+        std::cerr << "Verification: using long double\n";
 #else
-    std::cerr << "Verification: using double\n";
+        std::cerr << "Verification: using double\n";
 #endif
-    std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
-    if (g_useColor || g_stopOnError || g_skipRoundTrip || g_traceAll || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
-        std::cerr << "Flags:";
-        if (g_useColor) std::cerr << " -c";
-        if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
-        if (g_stopOnError) std::cerr << " -e";
-        if (g_traceAll) std::cerr << " -t";
-        if (g_skipRoundTrip) std::cerr << " -T";
-        if (g_verbose) std::cerr << " -v";
-        for (const auto& f : g_testFilters) std::cerr << " -f " << f;
-        if (g_randomCount != 10) std::cerr << " -r " << g_randomCount;
+        std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
+        if (g_useColor || g_stopOnError || g_skipRoundTrip || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
+            std::cerr << "Flags:";
+            if (g_useColor) std::cerr << " -c";
+            if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
+            if (g_stopOnError) std::cerr << " -e";
+            if (g_skipRoundTrip) std::cerr << " -T";
+            if (g_verbose) std::cerr << " -v";
+            for (const auto& f : g_testFilters) std::cerr << " -f " << f;
+            if (g_randomCount != 10) std::cerr << " -r " << g_randomCount;
+            std::cerr << "\n";
+        }
         std::cerr << "\n";
     }
-    std::cerr << "\n";
 
     // Helper to check if a test should run
     auto shouldRun = [](const char* name) {
@@ -243,4 +245,8 @@ int main(int argc, char* argv[])
     if (shouldRun("asinrad")) testAsinRad();
     if (shouldRun("acosdeg")) testAcosDeg();
     if (shouldRun("acosrad")) testAcosRad();
+
+    // In HW vectors mode, print count of vectors generated
+    if (g_traceAll)
+        std::cerr << "Generated " << g_vectorCount << " test vectors\n";
 }
