@@ -1,9 +1,12 @@
 /******************************************************************************
  * log.cpp - Natural logarithm and exponential via CORDIC
  *
- * Implements ln() and exp() using Meggitt's digit-by-digit method
- * (HP-35 style). Uses ln(1 + 10^-j) constant table shared by both
- * functions. Range reduction via ln(10) for large arguments.
+ * Implements loge() and expe() using Meggitt's digit-by-digit method.
+ * Same algorithm as HP-35, but extended: HP-35 used 6 constants for
+ * 10-digit precision; we use 15 iterations for 16-digit precision.
+ * (16th iteration adds nothing - ln(1+10^-15) shifts to all zeros.)
+ * Uses ln(1 + 10^-j) constant table shared by both functions.
+ * Range reduction via ln(10) for large arguments.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -33,7 +36,7 @@ static const uint8_t ln_const[K][MAX_MANT] = {
     {0,0,0,0,0,0,0,0,9,9,9,9,9,9,9,5},  // ln(1.0000001) = 0.0000000999999950
 };
 
-// Get ln constant for position j
+// Get ln constant for position j (j = 0..14; j=15 is not used)
 // For j < K: return table entry
 // For j >= K: generate dynamically ((j+1) leading zeros, then 9s)
 // Writes result to dst array
@@ -53,7 +56,8 @@ static void getLnConst(uint j, uint8_t* dst)
 
 
 // Compute natural logarithm: R = ln(S0)
-// Uses CORDIC (Meggitt's digit-by-digit method) - same algorithm as HP-35
+// Uses CORDIC (Meggitt's digit-by-digit method)
+// Algorithm: https://archived.hpcalc.org/laporte/Logarithm_1.htm
 // Reads from S0, stores result in R
 // Uses registers: S0 (input), S1 (work/constants), S2 (temp), S3 (counter), S4 (complement), R (shifted/result)
 void ln(BCD& R, BCD& S0)
@@ -84,7 +88,8 @@ void ln(BCD& R, BCD& S0)
     // ---------- Part 1: Digit extraction ----------
     // For each position j, keep multiplying work by (1 + 10^-j) until overflow
     // Multiplication by (1 + 10^-j) is: work = work + (work >> j)
-    for (uint j = 0; j < MAX_MANT; j++) {
+    // Only 15 iterations: j=15 would add nothing (ln(1+10^-15) shifts to zeros)
+    for (uint j = 0; j < MAX_MANT - 1; j++) {
         while (true) {
             // Create shifted copy in R.mant: R = S1 >> j (shift right by j digits)
             mantClear(R.mant.data());
@@ -127,11 +132,11 @@ void ln(BCD& R, BCD& S0)
     mantShr(S4.mant.data());
 
     // ---------- Part 3: Accumulate ln constants ----------
-    // Result = sum of counter[j] * ln_const[j] for j = 15 down to 0
+    // Result = sum of counter[j] * ln_const[j] for j = 14 down to 0
     // Store result in R.mant
     mantClear(R.mant.data());
 
-    for (int j = int(MAX_MANT) - 1; j >= 0; j--) {
+    for (int j = int(MAX_MANT) - 2; j >= 0; j--) {
         // Get the ln constant for this position into S1.mant
         getLnConst(uint(j), S1.mant.data());
 
@@ -248,7 +253,8 @@ static bool expRangeReduce()
 
 // Compute exponential: R = exp(S0)
 // Uses CORDIC (Meggitt's digit-by-digit method) - inverse of ln()
-// Algorithm: exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
+// Algorithm: https://archived.hpcalc.org/laporte/expx.htm
+// exp(x) = exp(r) * 10^k where x = k*ln(10) + r, 0 ≤ r < ln(10)
 // Reads from S0, stores result in R
 // Uses registers: S0 (input/work), S1 (work), S2 (temp), S3 (counter), S4 (k), R (result)
 void exp(BCD& R, BCD& S0)
@@ -294,7 +300,8 @@ void exp(BCD& R, BCD& S0)
     // ---------- Part 3: Pseudo-division ----------
     // Subtract ln constants from remainder, count iterations
     // This decomposes r as sum of counter[j] * ln(1 + 10^-j)
-    for (uint j = 0; j < MAX_MANT; j++) {
+    // Only 15 iterations: j=15 would add nothing (ln(1+10^-15) shifts to zeros)
+    for (uint j = 0; j < MAX_MANT - 1; j++) {
         // Get the ln constant for this position into S4.mant
         getLnConst(j, S4.mant.data());
 
@@ -332,13 +339,13 @@ void exp(BCD& R, BCD& S0)
     // ---------- Part 4: Pseudo-multiplication ----------
     // Build exp(r) by starting with 1.0 and multiplying by (1 + 10^-j)
     // for each counter[j] times
-    // exp(r) = (1+10^-0)^c0 * (1+10^-1)^c1 * ... * (1+10^-15)^c15
+    // exp(r) = (1+10^-0)^c0 * (1+10^-1)^c1 * ... * (1+10^-14)^c14
 
     // Initialize result = 1.0
     mantClear(R.mant.data());
     R.mant[0] = 1;
 
-    for (uint j = 0; j < MAX_MANT; j++) {
+    for (uint j = 0; j < MAX_MANT - 1; j++) {
         for (uint8_t c = 0; c < S4.mant[j]; c++) {
             // Multiply result by (1 + 10^-j)
             // This is: result = result + (result >> j)

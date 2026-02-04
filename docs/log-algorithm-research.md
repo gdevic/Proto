@@ -66,20 +66,21 @@ Output: ln(x)
    - Extract: x = m * 10^e where 1 <= m < 10
    - ln(x) = ln(m) + e*ln(10)
 
-2. Digit extraction (K=16 iterations):
-   For j = 0 to 15:
+2. Digit extraction (K=15 iterations):
+   For j = 0 to 14:
      counter[j] = 0
      While no overflow:
        temp = mantissa + (mantissa >> j)
        if overflow: break
        mantissa = temp
        counter[j]++
+   (j=15 skipped: ln(1+10^-15) shifts to all zeros, contributes nothing)
 
 3. Complement:
    mantissa = (10 - mantissa) / 10
 
 4. Accumulate ln constants:
-   For j = 15 down to 0:
+   For j = 14 down to 0:
      result += counter[j] * ln_const[j]
 
 5. Subtract from ln(10):
@@ -95,14 +96,36 @@ ln_const[0]  = ln(2)               = 0.6931471805599453
 ln_const[1]  = ln(1.1)             = 0.0953101798043249
 ln_const[2]  = ln(1.01)            = 0.0099503308531681
 ...
-ln_const[15] = ln(1.000000000000001)
+ln_const[14] = ln(1.00000000000001)
 ln(10)       = 2.3025850929940457
 ```
+Note: ln_const[15] = ln(1+10^-15) ≈ 10^-15 is not used; it shifts to all zeros in 16-digit BCD.
 
 ### Performance
 - **Convergence**: ~1 decimal digit per iteration
-- **For 16 digits**: 16-20 iterations
+- **For 16 digits**: 15 iterations
 - **Operations**: ~100 BCD additions/shifts total
+
+### Comparison: HP-35 vs Our Implementation
+
+Both use Meggitt's digit-by-digit method with the same fundamental approach:
+1. Repeatedly multiply mantissa by factors (1 + 10^-j)
+2. Count iterations (pseudo-quotients) for each factor
+3. Accumulate result: `ln(M) = ln(10) - Σ[q[j] × ln(1+10^-j)] - ln(remainder)`
+4. Process coarse-to-fine (j=0 first, then j=1, etc.)
+
+| Aspect | HP-35 | Our Implementation |
+|--------|-------|-------------------|
+| **Constants** | 6 (j=0..5) | 8 in table + 7 generated dynamically (j=0..14) |
+| **Precision** | 10 digits | 16 digits |
+| **Constant storage** | All 6 in ROM | 8 in table, j=8..14 generated via shift |
+| **Termination** | Tests if product crosses 1 | Tests for carry/overflow |
+
+**The "Driving Toward" Difference**: The HP-35 documentation describes "driving a product toward 1" using 10's complement form (10-M). Our code drives the mantissa *upward* until overflow (carry out). This is mathematically equivalent - HP-35 tracks `10/M → 1`, we track `M → 10`.
+
+**The Complement/Remainder**: HP-35 uses 10's complement throughout. Our Part 2 computes the remainder as `complement = (10 - work) / 10 = 1 - work/10`, which captures the "leftover" after pseudo-multiplication and becomes the `ln(remainder)` term.
+
+**Summary**: The algorithm is the same Meggitt method. The differences are precision (15 vs 6 iterations), constant generation (dynamic vs ROM), and minor implementation details (overflow detection vs crossing-1 detection, which are mathematically equivalent).
 
 ---
 
@@ -180,6 +203,8 @@ Hybrid approach: Reduce argument to small range, apply Chebyshev/minimax polynom
 ### Overview
 The exponential function `exp(x)` is implemented as the inverse of `ln(x)` using the same CORDIC digit-by-digit approach. Since `ln()` decomposes a number using pseudo-division, `exp()` reconstructs it using pseudo-multiplication.
 
+Same algorithm as HP-35, extended for 16-digit precision. See [Exponential Algorithm - Jacques Laporte](https://archived.hpcalc.org/laporte/expx.htm) for detailed explanation.
+
 ### Algorithm
 ```
 Input: x (BCD number)
@@ -201,15 +226,16 @@ Output: exp(x)
    Both yield: exp(x) = exp(r) * 10^k, where 0 <= r < ln(10)
 
 3. Pseudo-division (decompose r):
-   For j = 0 to 15:
+   For j = 0 to 14:
      counter[j] = 0
      While r >= ln_const[j]:
        r = r - ln_const[j]
        counter[j]++
+   (j=15 skipped: ln(1+10^-15) shifts to all zeros, contributes nothing)
 
 4. Pseudo-multiplication (build result):
    result = 1.0
-   For j = 0 to 15:
+   For j = 0 to 14:
      For c = 0 to counter[j]-1:
        result = result + (result >> j)
        if overflow:
@@ -330,7 +356,8 @@ The repeated subtraction method would only be appropriate for hardware that cann
 
 ### CORDIC and Digit-by-Digit Methods
 - [CORDIC - Wikipedia](https://en.wikipedia.org/wiki/CORDIC)
-- [Meggitt's Pseudo Division - HPC Archive](https://archived.hpcalc.org/laporte/Logarithm_1.htm)
+- [Meggitt's Pseudo Division (ln) - Jacques Laporte](https://archived.hpcalc.org/laporte/Logarithm_1.htm)
+- [Exponential Algorithm (exp) - Jacques Laporte](https://archived.hpcalc.org/laporte/expx.htm)
 - [CORDIC Secrets - Jacques Laporte](https://archived.hpcalc.org/laporte/TheSecretOfTheAlgorithms.htm)
 - [Digit-by-digit methods](https://www.jacques-laporte.org/digit_by_digit.htm)
 - [Computing Logarithms Digit-by-Digit - BRICS](https://www.brics.dk/RS/04/17/BRICS-RS-04-17.pdf)
