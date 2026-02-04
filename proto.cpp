@@ -164,17 +164,17 @@ int main(int argc, char* argv[])
         return false;
     };
 
-    if (shouldRun("add")) testAddition();
-    if (shouldRun("sub")) testSubtraction();
-    if (shouldRun("mul")) testMultiplication();
-    if (shouldRun("div")) testDivision();
-    if (shouldRun("ln"))   testLn();
-    if (shouldRun("exp"))  testExp();
+    if (shouldRun("add"))     testAddition();
+    if (shouldRun("sub"))     testSubtraction();
+    if (shouldRun("mul"))     testMultiplication();
+    if (shouldRun("div"))     testDivision();
+    if (shouldRun("sqrt"))    testSqrt();
+    if (shouldRun("ln"))      testLn();
+    if (shouldRun("exp"))     testExp();
     if (shouldRun("tanrad"))  testTanRad();
     if (shouldRun("atanrad")) testAtanRad();
     if (shouldRun("tandeg"))  testTanDeg();
     if (shouldRun("atandeg")) testAtanDeg();
-    if (shouldRun("sqrt"))   testSqrt();
     if (shouldRun("sindeg"))  testSinDeg();
     if (shouldRun("sinrad"))  testSinRad();
     if (shouldRun("cosdeg"))  testCosDeg();

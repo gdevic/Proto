@@ -115,9 +115,11 @@ inline bool recordResult(MatchLevel level, int& ok, int& approx, int& fail)
     return (level == MatchLevel::FAIL) && g_stopOnError;
 }
 
-// Print summary line to stderr
+// Print summary line to stderr (skipped in HW vectors mode)
 inline void printSummary(const char* opName, const char* suffix, int ok, int approx, int fail)
 {
+    if (g_traceAll)
+        return;
     if (g_useColor)
         std::cerr << YELLOW;
     std::cerr << "= " << opName << " " << suffix << ": " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL";
@@ -133,20 +135,31 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
 {
     // Check for error flags - R is undefined, show error instead
     std::string err;
-    if (FLAG_DOM_ERR) err += "DOMAIN ";
-    if (FLAG_OF_ERR) err += "OVERFLOW ";
-    if (FLAG_DIV0_ERR) err += "DIV0 ";
+    if (FLAG_DOM_ERR) err = "DOMAIN";
+    else if (FLAG_OF_ERR) err = "OVERFLOW";
+    else if (FLAG_DIV0_ERR) err = "DIV0";
 
-    if (err.empty() && (level == MatchLevel::OK) && !g_traceAll)
+    // In dev mode, skip OK results (only show APPROX/FAIL)
+    if (!g_traceAll && err.empty() && (level == MatchLevel::OK))
         return false;
 
+    // Print op name and input(s)
     std::cout << op << " " << formatBCD(a) << " ";
-
     if constexpr (arity == Arity::Binary)
         std::cout << formatBCD(b) << " ";
 
+    // HW vectors mode (-t): clean output for hardware parsing
+    if (g_traceAll) {
+        std::cout << formatBCD(result) << " " << (err.empty() ? "OK" : err);
+        if (g_verbose)
+            std::cout << " " << std::scientific << std::setprecision(15) << ieee;
+        std::cout << "\n";
+        return false;  // Never stop in HW mode
+    }
+
+    // Dev mode: detailed output with error diagnostics
     if (!err.empty()) {
-        std::cout << err << std::scientific << std::setprecision(15) << ieee << "\n";
+        std::cout << err << " " << std::scientific << std::setprecision(15) << ieee << "\n";
         return false;  // Never stop on expected errors
     }
 
