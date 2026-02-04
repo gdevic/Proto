@@ -84,10 +84,9 @@ The tool operates in two modes: **Dev mode** (default) for debugging and **HW ve
 |------|-------------|
 | `-a` | Run all tests (ignored if `-f` is specified) |
 | `-f NAME` | Run only specified test(s); can repeat |
+| `-l` | List available test functions |
 | `-r NUM` | Number of random tests (default: 10) |
 | `-h` | Show help |
-
-Available test names for `-f`: add, sub, mul, div, ln, exp, sqrt, tanrad, atanrad, tandeg, atandeg, sindeg, sinrad, cosdeg, cosrad, asindeg, asinrad, acosdeg, acosrad
 
 ### Dev Mode (default)
 

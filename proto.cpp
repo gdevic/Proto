@@ -15,6 +15,56 @@
 #include <iomanip>
 #include <cstring>
 
+// Valid test function names
+static const char* validFunctions[] = {
+    "add", "sub", "mul", "div", "sqrt",
+    "ln", "exp",
+    "sinrad", "cosrad", "tanrad", "asinrad", "acosrad", "atanrad",
+    "sindeg", "cosdeg", "tandeg", "asindeg", "acosdeg", "atandeg"
+};
+
+// Checks if a function name is valid
+// Returns true if valid, false otherwise
+static bool isValidFunction(const char* name)
+{
+    for (const auto& f : validFunctions)
+        if (strcmp(f, name) == 0)
+            return true;
+    return false;
+}
+
+// Prints available test function names for -l option
+static void printFunctions()
+{
+    std::cerr << "Available test functions (-f NAME):\n\n";
+    std::cerr << "  Arithmetic:\n";
+    std::cerr << "    add        Addition\n";
+    std::cerr << "    sub        Subtraction\n";
+    std::cerr << "    mul        Multiplication\n";
+    std::cerr << "    div        Division\n";
+    std::cerr << "    sqrt       Square root\n";
+    std::cerr << "\n";
+    std::cerr << "  Transcendental:\n";
+    std::cerr << "    ln         Natural logarithm\n";
+    std::cerr << "    exp        Exponential (e^x)\n";
+    std::cerr << "\n";
+    std::cerr << "  Trigonometric (radians):\n";
+    std::cerr << "    sinrad     Sine\n";
+    std::cerr << "    cosrad     Cosine\n";
+    std::cerr << "    tanrad     Tangent\n";
+    std::cerr << "    asinrad    Arcsine\n";
+    std::cerr << "    acosrad    Arccosine\n";
+    std::cerr << "    atanrad    Arctangent\n";
+    std::cerr << "\n";
+    std::cerr << "  Trigonometric (degrees):\n";
+    std::cerr << "    sindeg     Sine\n";
+    std::cerr << "    cosdeg     Cosine\n";
+    std::cerr << "    tandeg     Tangent\n";
+    std::cerr << "    asindeg    Arcsine\n";
+    std::cerr << "    acosdeg    Arccosine\n";
+    std::cerr << "    atandeg    Arctangent\n";
+}
+
 static void printHelp(const char* prog)
 {
     std::cerr << "Usage: " << prog << " [options]\n"
@@ -24,6 +74,7 @@ static void printHelp(const char* prog)
               << "Common options:\n"
               << "  -a       Run all tests\n"
               << "  -f NAME  Run only specified test(s); can repeat\n"
+              << "  -l       List available test functions\n"
               << "  -r NUM   Number of random tests (default: 10)\n"
               << "  -h       Show this help\n"
               << "\n"
@@ -67,6 +118,10 @@ int main(int argc, char* argv[])
             printHelp(argv[0]);
             return 0;
         }
+        else if (strcmp(argv[i], "-l") == 0) {
+            printFunctions();
+            return 0;
+        }
         else if (strcmp(argv[i], "-c") == 0)
             g_useColor = true;
         else if (strcmp(argv[i], "-d") == 0) {
@@ -84,10 +139,15 @@ int main(int argc, char* argv[])
             g_stopOnError = true;
         else if (strcmp(argv[i], "-f") == 0) {
             if (i + 1 >= argc) {
-                std::cerr << "-f requires a test name (add, sub, mul, div, ln)\n";
+                std::cerr << "Error: -f requires a test name. Use -l to list available functions.\n";
                 return 1;
             }
-            g_testFilters.push_back(argv[++i]);
+            const char* name = argv[++i];
+            if (!isValidFunction(name)) {
+                std::cerr << "Error: unknown function '" << name << "'. Use -l to list available functions.\n";
+                return 1;
+            }
+            g_testFilters.push_back(name);
         }
         else if (strcmp(argv[i], "-r") == 0) {
             if (i + 1 >= argc) {
