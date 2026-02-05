@@ -118,15 +118,19 @@ void tanDeg(BCD& R, BCD& S0)
     // ---------- Range Reduction ----------
     TanDegReduceResult reduction = tanDegRangeReduce();
 
-    // Handle tan(0) = 0 after reduction
-    if (isMantZero(S0.mant.data())) {
-        // But if useReciprocal was set, we would have tan(90) = infinity
-        if (reduction.useReciprocal) {
+    // Near-zero with reciprocal = asymptote (reduced angle ≈ 0 at 90+180k degrees)
+    // Threshold: exponent <= -13 means result would exceed 10^13, beyond 16-digit precision
+    if (reduction.useReciprocal) {
+        if (isMantZero(S0.mant.data()) ||
+            (S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 3))))) {
             FLAG_OF_ERR = true;
             return;
         }
+    }
+
+    // Handle tan(0) = 0 after reduction (non-reciprocal case)
+    if (isMantZero(S0.mant.data())) {
         regClear(R);
-        // Apply sign
         if (reduction.negateResult)
             R.sign = !inputSign;
         else

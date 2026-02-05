@@ -160,18 +160,15 @@ flowchart TD
     L --> M
 ```
 
-#### tanRad (tan.cpp:328-378)
+#### tanRad (tan.cpp:328-352)
 
 ```mermaid
 flowchart TD
     A[tanRad entry] --> B{S0 = 0?}
     B -- yes --> C[Return 0]
     B -- no --> D[Save sign, work positive]
-    D --> E["Check proximity to pi/2 (first asymptote only)"]
-    E --> F{"exponent of |S0 - pi/2| <= -13?"}
-    F -- yes --> G[FLAG_OF_ERR = true]
-    F -- no --> H["Convert to degrees: S0 * 180/pi"]
-    H --> I["Call tanDeg (handles all asymptotes via range reduction)"]
+    D --> E["Convert to degrees: S0 * 180/pi"]
+    E --> F["Call tanDeg (handles all asymptotes via near-zero detection)"]
 ```
 
 #### atanDeg (tan10.cpp:168-208)
@@ -304,7 +301,7 @@ After reduction to [0, 45] degrees, the angle is converted to radians (multiplyi
 - `negateResult`: true if angle was reflected at 90 degrees
 - `useReciprocal`: true if angle was reflected at 45 degrees (compute cot = 1/tan)
 
-**Asymptote detection**: If the reduced angle is exactly 0 and `useReciprocal` is true, the original angle was of the form 90 + 180*k degrees (an asymptote). This sets FLAG_OF_ERR.
+**Asymptote detection**: If the reduced angle is zero or near-zero (exponent <= -13) and `useReciprocal` is true, the original angle was at or near an asymptote (90 + 180*k degrees). This sets FLAG_OF_ERR. The near-zero threshold catches both exact degree asymptotes (mantissa exactly zero) and radian-converted inputs where multiplication by 180/pi introduces rounding error that prevents exact zero.
 
 ### 4.2 sinDeg: Mod-180 with Parity (sin.cpp:108-153)
 
@@ -343,7 +340,7 @@ Radian variants perform conversions between radians and degrees:
 | `asinRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 | `acosRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 
-**tanRad asymptote check**: tanRad does *not* perform range reduction before converting to degrees - that is handled by tanDeg after conversion. However, tanRad does check proximity to the *first* asymptote at pi/2: it computes `|input - pi/2|` and if this difference has exponent <= -13 (i.e., the value is less than ~1e-12), it returns FLAG_OF_ERR. This is necessary because the conversion to degrees would produce a value very close to but not exactly 90, and tanDeg's range reduction would not detect it as an exact asymptote. For other asymptotes (3*pi/2, 5*pi/2, etc.), the conversion to degrees and tanDeg's exact decimal range reduction handle asymptote detection normally.
+**tanRad asymptote handling**: tanRad simply converts to degrees and delegates entirely to tanDeg. It performs no asymptote detection of its own. tanDeg's unified near-zero check (see Section 4.1) catches all asymptotes uniformly: for degree inputs the reduced angle is exactly zero, and for radian inputs converted to degrees the reduced angle may be tiny but nonzero due to rounding in the 180/pi multiplication. The near-zero threshold (exponent <= -13) catches both cases.
 
 ---
 
@@ -449,7 +446,7 @@ Three error flags declared in `proto.h:27-31`:
 | Function | Possible Error | Condition | Detection |
 |----------|---------------|-----------|-----------|
 | tanDeg | OVERFLOW | Asymptote at 90 + 180k deg | Reduced angle = 0 with reciprocal flag |
-| tanRad | OVERFLOW | Asymptote at pi/2 + k*pi | pi/2 proximity check (see Section 6.3) + tanDeg range reduction |
+| tanRad | OVERFLOW | Asymptote at pi/2 + k*pi | tanDeg range reduction (unified near-zero check after reduction) |
 | atanDeg | (none) | Full domain | N/A |
 | atanRad | (none) | Full domain | N/A |
 | sinDeg | (none) | Full domain | N/A |
@@ -463,9 +460,9 @@ Three error flags declared in `proto.h:27-31`:
 
 ### 6.3 Asymptote Detection Details
 
-**tanDeg**: Asymptotes are detected by the range reduction machinery. After reducing to [0, 45], if the reduced angle is exactly zero *and* the reciprocal flag is set, the original angle was exactly 90 + 180k degrees. The function sets FLAG_OF_ERR and returns.
+**tanDeg**: Asymptotes are detected after range reduction to [0, 45]. If the reduced angle is zero or near-zero (mantissa zero OR exponent <= -13) *and* the reciprocal flag is set, the original angle was at or near an asymptote (90 + 180k degrees). The function sets FLAG_OF_ERR and returns. The near-zero threshold catches both exact degree inputs (where reduction yields exactly zero) and radian inputs converted to degrees (where the 180/pi multiplication introduces rounding error, producing a tiny nonzero residual instead of exact zero). At exponent <= -13, the reciprocal result would exceed 10^13, beyond meaningful 16-digit precision.
 
-**tanRad**: tanRad performs no range reduction of its own. It only checks proximity to the first asymptote at pi/2 by computing `|input - pi/2|`. If the difference is zero or has exponent <= -13 (meaning |difference| < ~1e-12), it returns overflow. This check is needed because pi/2 is irrational and cannot be represented exactly in BCD: the conversion to degrees would yield a value like 89.9999999999... which tanDeg's exact-integer range reduction would not recognize as an asymptote. For higher-order asymptotes (3*pi/2, 5*pi/2, etc.), the conversion to degrees produces values near 270, 450, etc., and tanDeg's mod-360/mod-180 reduction handles them via exact integer arithmetic.
+**tanRad**: tanRad simply converts to degrees and calls tanDeg. All asymptote detection is handled by tanDeg's unified near-zero check. This works uniformly for all asymptotes (pi/2, 3*pi/2, 5*pi/2, etc.) without needing special-case proximity checks in tanRad.
 
 ### 6.4 IEEE Validation of BCD Errors
 
@@ -512,8 +509,8 @@ Test results from running each function with fixed test vectors, round-trip test
 
 | Function | Tests | OK | APPROX | FAIL | Notes |
 |----------|------:|---:|-------:|-----:|-------|
-| tanDeg | 45 | 12 | 19 | 14 | Small angles and near-asymptote cases FAIL |
-| tanRad | 28 | 9 | 9 | 10 | Extra conversion error |
+| tanDeg | 45 | 13 | 19 | 13 | Small angles and near-asymptote cases FAIL |
+| tanRad | 28 | 8 | 9 | 11 | Extra conversion error |
 | atanDeg | 24 | 20 | 2 | 2 | Only very small inputs FAIL |
 | atanRad | 20 | 15 | 2 | 3 | Small input FAIL from CORDIC residual |
 | sinDeg | 48 | 22 | 13 | 13 | Half-angle chain costs ~1 digit |
@@ -530,13 +527,14 @@ Test results from running each function with fixed test vectors, round-trip test
 | Function | OK | APPROX | FAIL | Notes |
 |----------|---:|-------:|-----:|-------|
 | tanDeg | 0 | 175 | 825 | All random results exceed TIGHT_TOL |
+| tanRad | 0 | 495 | 505 | Conversion overhead, similar profile to tanDeg |
 | atanDeg | 929 | 13 | 58 | Small-input FAIL from CORDIC digit precision |
 | sinDeg | 48 | 190 | 762 | Half-angle chain costs ~1 digit consistently |
 | sinRad | 119 | 515 | 366 | Conversion overhead adds errors |
 | cosDeg | 647 | 233 | 120 | Phase shift preserves precision better |
 | cosRad | 95 | 490 | 415 | Both conversion and half-angle overhead |
 
-Note: tanRad random results are not shown separately because the random test uses OPTS_TANRAD (small values, exp in [-2, 2]) which produces results embedded within the fixed+round-trip output. asin/acos random tests use OPTS_SQRT (positive, maxExp=50) which generates many values outside the [-1, 1] domain, resulting in domain errors rather than precision data.
+Note: asin/acos random tests use OPTS_SQRT (positive, maxExp=50) which generates many values outside the [-1, 1] domain, resulting in domain errors rather than precision data.
 
 #### Round-Trip Tests
 
@@ -544,8 +542,8 @@ Round-trip tests verify `forward(inverse(x)) = x` (e.g., `tan(atan(x))`):
 
 | Round-Trip | Fixed | Random (1000) | Notes |
 |-----------|-------|---------------|-------|
-| tan(atan(x)) deg | 1 OK, 1 APPROX, 43 FAIL | 845 OK, 11 APPROX, 144 FAIL | Fixed values include asymptotes |
-| tan(atan(x)) rad | 1 OK, 10 APPROX, 17 FAIL | (embedded in fixed) | Large-angle round trips degrade heavily |
+| tan(atan(x)) deg | 1 OK, 1 APPROX, 43 FAIL | 853 OK, 11 APPROX, 136 FAIL | Fixed values include asymptotes |
+| tan(atan(x)) rad | 1 OK, 10 APPROX, 17 FAIL | 834 OK, 13 APPROX, 153 FAIL | Large-angle round trips degrade heavily |
 | sin(asin(x)) deg | 14 OK, 6 APPROX, 7 FAIL | N/A | Domain limits random testing |
 | sin(asin(x)) rad | 9 OK, 2 APPROX, 4 FAIL | N/A | |
 | cos(acos(x)) deg | 13 OK, 7 APPROX, 7 FAIL | N/A | |

@@ -335,45 +335,16 @@ void tanRad(BCD& R, BCD& S0)
     if (FLAG_S0_ZERO)
         return;
 
-    // Store sign and work with positive value (tan is odd function)
     bool inputSign = S0.sign;
     S0.sign = false;
 
-    // ---------- Check for proximity to π/2 (asymptote) ----------
-    // If |input - π/2| < 10^-13, the conversion to degrees will produce a value
-    // very close to but not exactly 90°, causing precision issues.
-    // Mathematically: tan(π/2 - ε) = cot(ε) ≈ 1/ε, but for ε < 10^-13,
-    // the result exceeds 10^13 which is the threshold for "essentially infinity"
-    // in our 16-digit precision model.
-    //
-    // Compute |input - π/2| by subtracting and checking if result is tiny
-    constLoad(S1, CONST_PI_OVER_2);
-
-    regCopy(S2, S0);  // Save input
-    sub(R, S0, S1);   // R = input - π/2
-
-    // If |input - π/2| is effectively zero (exponent <= -13), return overflow
-    // This means tan would exceed 10^13, essentially infinity for our precision
-    if (isMantZero(R.mant.data()) ||
-        (R.esign && ((R.exp[0] >= 2) || ((R.exp[0] == 1) && (R.exp[1] >= 3))))) {
-        FLAG_OF_ERR = true;
-        return;
-    }
-
-    regCopy(S0, S2);  // Restore input
-
-    // ---------- Convert radians to degrees ----------
-    // S1 = 180/PI = 57.29577951308232... = 5.729...e1
+    // Convert radians to degrees: S0 = S0 * (180/PI)
     constLoad(S1, CONST_180_OVER_PI);
-
-    // S0 = S0 * (180/PI)
     mul(R, S0, S1);
-
-    // R now contains the angle in degrees
     regCopy(S0, R);
-    S0.sign = inputSign;  // Restore sign for tanDeg
+    S0.sign = inputSign;
 
-    // ---------- Call tanDeg which does range reduction ----------
+    // tanDeg handles range reduction and asymptote detection
     tanDeg(R, S0);
 }
 
