@@ -25,6 +25,7 @@ The tool operates in two modes:
 - [Range Reduction](docs/tan-range-reduction-research.md) - Techniques for reducing large angles (Cody-Waite, Payne-Hanek)
 - [Degree-Based Trig](docs/tan10-algorithm-research.md) - Why degrees enable exact range reduction vs radians
 - [Sin/Cos/Asin/Acos](docs/sincos-algorithm-research.md) - Half-angle formulas and arctangent identities
+- [Trig Functions Analysis](docs/trig-analysis.md) - Unified analysis of all 12 trig entry points: architecture, CORDIC details, and precision
 
 ## Operations
 
