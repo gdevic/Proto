@@ -228,10 +228,10 @@ This is inherent to 16-digit BCD arithmetic, not a flaw in the algorithm.
 
 ## Sources
 
-- Cody-Waite Extended Range: academia.edu/62418560
-- Payne-Hanek Original Paper: dl.acm.org/doi/pdf/10.1145/1057600.1057602
-- Modular Range Reduction: academia.edu/5021712
-- HP-35 CORDIC Implementation: archived.hpcalc.org/laporte/Inverse_Trigonometric_functions.htm
-- HP-35 Algorithms and Accuracy: hpl.hp.com/hpjournal/72jun/jun72a2.pdf
+- [Cody-Waite Extended Range](https://www.academia.edu/62418560)
+- [Payne-Hanek Original Paper](https://dl.acm.org/doi/pdf/10.1145/1057600.1057602)
+- [Modular Range Reduction](https://www.academia.edu/5021712)
+- [HP-35 CORDIC Implementation](https://archived.hpcalc.org/laporte/Inverse_Trigonometric_functions.htm)
+- [HP-35 Algorithms and Accuracy](https://www.hpl.hp.com/hpjournal/72jun/jun72a2.pdf)
 - Meggitt's Method: Pseudo Division and Pseudo Multiplication Processes (1962)
-- CORDIC Wikipedia: en.wikipedia.org/wiki/CORDIC
+- [CORDIC Wikipedia](https://en.wikipedia.org/wiki/CORDIC)
