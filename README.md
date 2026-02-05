@@ -149,7 +149,22 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 ```
 ADD +1.234567890123456e+50 +9.876543210987654e+10 +1.234567890123456e+50 OK
 SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 APPROX 1e-15 err=2e-16
+DIV +1.000000000000000e+00 +0.000000000000000e+00 DIV0 inf
+SQRT -1.000000000000000e+00 INVALID nan
+EXP +1.000000000000000e+03 OVERFLOW inf
 ```
+
+### Error Flags
+
+| Flag | String | Meaning | IEEE Expected |
+|------|--------|---------|---------------|
+| `FLAG_INV_ERR` | `INVALID` | Input invalid for function (e.g., sqrt(-1), ln(0)) | NaN or Inf |
+| `FLAG_OF_ERR` | `OVERFLOW` | Result exceeds ±9.999999999999999e+99 | Very large or Inf |
+| `FLAG_DIV0_ERR` | `DIV0` | Division by zero | Inf or NaN (0/0) |
+
+**Underflow**: Results smaller than ±1e-99 underflow to zero (flush-to-zero, FTZ). This is not an error condition.
+
+**Result on error**: When any error flag is set, the result register value is UNDETERMINED and should not be checked. For simplicity, we output it as zero in test vectors.
 
 ### Test Summary
 

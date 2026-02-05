@@ -117,7 +117,6 @@ static Real ieeeDiv(Real a, Real b) { return a / b; }
 void testDivision()
 {
     static const std::string val[] = {
-        // Exclude "0" to avoid division by zero in combinatorial tests
         "1",
         "-1",
         "2",
@@ -153,6 +152,14 @@ void testDivision()
         "1e-50",
         // Tiny quotient (many zeros) - normalization stress
         "1e-30",                   // Very small value for quotient tests
+        // === Error cases ===
+        // DIV0: division by zero
+        "0",                           // Divisor zero triggers FLAG_DIV0_ERR
+        // OVERFLOW: exponent overflow (exp_result > 99)
+        "1e99",                        // 99 - (-1) = 100 -> overflow (with 1e-1)
+        "1e-1",                        // For 1e99 / 1e-1 overflow test
+        "9.999999999999999e99",        // 99 - (-99) = 198 -> massive overflow (with 1e-99)
+        "1e-99",                       // For massive overflow test
     };
 
     if (!runTests<Arity::Binary>("DIV", BcdBinaryOp(div), ieeeDiv, val, sizeof(val) / sizeof(val[0])))

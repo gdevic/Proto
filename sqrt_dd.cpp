@@ -118,7 +118,7 @@ void sqrt_dd(BCD& R, BCD& S0)
 
     // Domain error: sqrt(negative) is undefined
     if (S0.sign) {
-        FLAG_DOM_ERR = true;
+        FLAG_INV_ERR = true;
         return;
     }
 
@@ -279,6 +279,15 @@ void testSqrt()
         // Irrational results
         "5",                      // sqrt(5) = 2.236...
         "7",                      // sqrt(7) = 2.646...
+        // === Error cases ===
+        // INVALID: sqrt of negative
+        "-1",                         // Obvious negative
+        "-0.5",                       // Simple negative fraction
+        "-1e-99",                     // Tiniest negative (smallest magnitude)
+        "-9.999999999999999e99",      // Largest negative (biggest magnitude)
+        "-0.0000000000000001",        // 16 zeros: sneaky tiny negative
+        "-1000000000000000",          // Large negative integer (1e15)
+        "-1e50",                      // Mid-range negative
     };
 
     if (!runTests<Arity::Unary>("SQRT", BcdUnaryOp(sqrt), ieeeSqrt, val, sizeof(val) / sizeof(val[0])))

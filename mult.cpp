@@ -158,6 +158,15 @@ void testMultiplication()
         // Near 10 - tests guard digit interaction with near-boundary
         "3.333333333333333",       // 3.33... x 3 = 9.999...
         "3",                       // Pair for near-10 product
+        // === Error cases ===
+        // OVERFLOW: exponent overflow (exp_sum > 99)
+        "1e50",                        // 50 + 50 = 100 -> overflow (with itself)
+        "1e99",                        // 99 + 1 = 100 -> overflow (with 10)
+        "10",                          // For 1e99 * 10 overflow test
+        "5e60",                        // 60 + 60 = 120 -> overflow (with itself)
+        "-1e99",                       // Negative * negative still overflows
+        "-1e1",                        // For -1e99 * -1e1 overflow test
+        "9.999999999999999e49",        // 49+49=98, but product>=10 causes expInc->100 (borderline)
     };
 
     if (!runTests<Arity::Binary>("MUL", mul, ieeeMul, val, sizeof(val) / sizeof(val[0])))

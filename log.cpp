@@ -68,7 +68,7 @@ void ln(BCD& R, BCD& S0)
 
     // Domain error: ln(x) undefined for x <= 0
     if (S0.sign || FLAG_S0_ZERO) {
-        FLAG_DOM_ERR = true;
+        FLAG_INV_ERR = true;
         return;
     }
 
@@ -412,6 +412,15 @@ void testLn()
         "9.999999999999999",      // Maximum mantissa value
         // Powers of e
         "20.08553692318767",      // e^3, should give ln=3
+        // === Error cases ===
+        // INVALID: ln of non-positive
+        "0",                          // ln(0) = undefined (IEEE: -Inf)
+        "-1",                         // Obvious negative
+        "-1e-99",                     // Tiniest negative
+        "-9.999999999999999e99",      // Largest negative
+        "-0.0000000000000001",        // Sneaky tiny negative
+        "-1e50",                      // Mid-range negative
+        "-0.000000000000001",         // 15 zeros: subtle
     };
 
     if (!runTests<Arity::Unary>("LN", ln, ieeeLn, val, sizeof(val) / sizeof(val[0])))
@@ -455,6 +464,14 @@ void testExp()
         // Pseudo-division constants
         "0.095310179804325",      // ln(1.1), matches ln_const[1]
         "3",                      // exp(3) = e^3 ~= 20.09
+        // === Error cases ===
+        // OVERFLOW: result exceeds 10^99 (boundary at ~230.2585)
+        "1000",                       // Obvious: way beyond limit
+        "231",                        // Just over ln(10^100) ~= 230.26
+        "230.3",                      // Barely over boundary
+        "500",                        // Large positive
+        "1e10",                       // Massive exponent
+        "230.2585092994047",          // One ULP over ln(10^100) - ultra precise edge
     };
 
     if (!runTests<Arity::Unary>("EXP", BcdUnaryOp(exp), ieeeExp, val, sizeof(val) / sizeof(val[0])))

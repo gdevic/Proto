@@ -155,8 +155,8 @@ bool expDec(BCD& x)
             x.exp[1] = 0;
             x.exp[0]++;
             if (x.exp[0] > 9) {
-                // Underflow: -99 - 1 = -100
-                regClear(x);  // XXX Clear the whole register?
+                // Underflow: -99 - 1 = -100, result is zero (no error)
+                regClear(x);
                 return true;
             }
         }
@@ -181,7 +181,7 @@ bool expAdd(BCD& r, const BCD& a, const BCD& b)
             if (r.esign == false)
                 FLAG_OF_ERR = true;
 
-            // Negative overflow (underflow): set exponent to zero
+            // Negative overflow (underflow): result is zero (no error)
             r.esign = false;
             r.exp[0] = 0;
             r.exp[1] = 0;

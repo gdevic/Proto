@@ -93,6 +93,15 @@ inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
     }
 }
 
+// Clamp IEEE underflow to zero (BCD underflows to zero for |value| < 1e-99)
+// Returns 0 if |ieee| < 1e-99, otherwise returns ieee unchanged
+inline Real clampUnderflow(Real ieee)
+{
+    if (std::fabs(ieee) < 1e-99L)
+        return 0;
+    return ieee;
+}
+
 // Seed RNG from operation name for reproducible random tests
 // Returns seed value derived from string
 inline unsigned seedFromName(const char* name)
@@ -135,12 +144,34 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
 {
     // Check for error flags - R is undefined, show error instead
     std::string err;
-    if (FLAG_DOM_ERR) err = "DOMAIN";
+    if (FLAG_INV_ERR) err = "INVALID";
     else if (FLAG_OF_ERR) err = "OVERFLOW";
     else if (FLAG_DIV0_ERR) err = "DIV0";
 
-    // In dev mode, skip OK results (only show APPROX/FAIL)
-    if (!g_traceAll && err.empty() && (level == MatchLevel::OK))
+    // Validate IEEE matches BCD error condition
+    // BCD max representable: 9.999999999999999e+99
+    // Notes:
+    // - BCD overflow at exp>99 may produce finite IEEE values (e.g., 1e100)
+    // - tan(90°) in IEEE may produce large finite value due to π/2 approximation
+    // - We accept |IEEE| > 1e13 as "essentially overflow" for functions like tan
+    //   where BCD overflow means the mathematical result is infinity
+    bool ieeeOk = false;
+    if (!err.empty()) {
+        if (FLAG_INV_ERR)
+            ieeeOk = std::isnan(ieee) || std::isinf(ieee);  // Invalid: NaN or Inf (e.g., ln(0)=-Inf)
+        else if (FLAG_OF_ERR)
+            ieeeOk = std::isinf(ieee) || std::fabs(ieee) > 1e13L;  // Overflow: Inf or very large magnitude
+        else if (FLAG_DIV0_ERR)
+            ieeeOk = std::isinf(ieee) || std::isnan(ieee);  // Div0: Inf (x/0) or NaN (0/0)
+
+        if (!ieeeOk) {
+            std::cout << "MISMATCH: BCD=" << err << " but IEEE=" << ieee << "\n";
+            return true;  // Stop on mismatch
+        }
+    }
+
+    // In dev mode, skip OK results and matching error cases (only show APPROX/FAIL/mismatch)
+    if (!g_traceAll && (level == MatchLevel::OK || ieeeOk))
         return false;
 
     // Print op name and input(s)
@@ -150,7 +181,9 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
 
     // HW vectors mode (-t): clean output for hardware parsing
     if (g_traceAll) {
-        std::cout << formatBCD(result) << " " << (err.empty() ? "OK" : err);
+        // On error, result register is undefined - output zeros for consistent formatting
+        std::cout << (err.empty() ? formatBCD(result) : "+0.000000000000000e+00")
+                  << " " << (err.empty() ? "OK" : err);
         if (g_verbose)
             std::cout << " " << std::scientific << std::setprecision(15) << ieee;
         std::cout << "\n";
@@ -203,8 +236,8 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
             for (size_t j = 0; j < count; j++) {
                 S0 = BCD(values[i]);
                 S1 = BCD(values[j]);
-                Real ieee = ieeeOp(S0.value, S1.value);
-                FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+                Real ieee = detail::clampUnderflow(ieeeOp(S0.value, S1.value));
+                FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
                 bcdOp(R, S0, S1);
 
                 // Apply FIX mode rounding if enabled
@@ -218,7 +251,7 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 
                 if (detail::printResult<arity>(opName, BCD(values[i]), BCD(values[j]), R, level, ieee))
                     return false;
-                if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+                if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
                     ok++;
                 else
                     detail::recordResult(level, ok, approx, fail);
@@ -230,8 +263,8 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
         BCD dummy;  // Unused second operand for printResult
         for (size_t i = 0; i < count; i++) {
             S0 = BCD(values[i]);
-            Real ieee = ieeeOp(S0.value);
-            FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+            Real ieee = detail::clampUnderflow(ieeeOp(S0.value));
+            FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
             bcdOp(R, S0);
 
             // Apply FIX mode rounding if enabled
@@ -245,7 +278,7 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 
             if (detail::printResult<arity>(opName, BCD(values[i]), dummy, R, level, ieee))
                 return false;
-            if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+            if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
                 ok++;
             else
                 detail::recordResult(level, ok, approx, fail);
@@ -273,15 +306,15 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         Real ieee;
         BCD inputB;  // For binary ops or dummy for unary
 
-        FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+        FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
         if constexpr (arity == Arity::Binary) {
             std::string strB = generateRandomBCD(rng, opts);
             S1 = BCD(strB);
             inputB = BCD(strB);
-            ieee = ieeeOp(S0.value, S1.value);
+            ieee = detail::clampUnderflow(ieeeOp(S0.value, S1.value));
             bcdOp(R, S0, S1);
         } else {
-            ieee = ieeeOp(S0.value);
+            ieee = detail::clampUnderflow(ieeeOp(S0.value));
             bcdOp(R, S0);
         }
 
@@ -296,7 +329,7 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
 
         if (detail::printResult<arity>(opName, BCD(strA), inputB, R, level, ieee))
             return false;
-        if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+        if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
             ok++;
         else
             detail::recordResult(level, ok, approx, fail);
@@ -338,10 +371,10 @@ bool runRoundTripTests(const char* opName,
             strA = values[i];
 
         S0 = BCD(strA);
-        Real ieee = ieeeForward(ieeeInverse(S0.value));
+        Real ieee = detail::clampUnderflow(ieeeForward(ieeeInverse(S0.value)));
 
         // Compute inverse(x) -> R, then forward(R) -> R
-        FLAG_DOM_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+        FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
         inverseOp(R, S0);
         regCopy(S0, R);
         forwardOp(R, S0);
@@ -357,7 +390,7 @@ bool runRoundTripTests(const char* opName,
 
         if (detail::printResult<Arity::Unary>(opName, BCD(strA), dummy, R, level, ieee))
             return false;
-        if (FLAG_DOM_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+        if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
             ok++;
         else
             detail::recordResult(level, ok, approx, fail);

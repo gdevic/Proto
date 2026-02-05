@@ -48,7 +48,7 @@ void sqrt_nr(BCD& R, BCD& S0)
 
     // Domain error: sqrt(negative) is undefined
     if (S0.sign) {
-        FLAG_DOM_ERR = true;
+        FLAG_INV_ERR = true;
         return;
     }
 

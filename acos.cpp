@@ -42,7 +42,7 @@ void acosDeg(BCD& R, BCD& S0)
     constLoad(S4, CONST_1);
     if (isRegGT(S0, S4)) {
         // |x| > 1: domain error
-        FLAG_DOM_ERR = true;
+        FLAG_INV_ERR = true;
         return;
     }
 
@@ -68,7 +68,7 @@ void acosDeg(BCD& R, BCD& S0)
     asinDeg(R, S0);
 
     // Check for domain error from asin
-    if (FLAG_DOM_ERR)
+    if (FLAG_INV_ERR)
         return;
 
     // Compute 90 - asin(x)
@@ -89,7 +89,7 @@ void acosRad(BCD& R, BCD& S0)
     acosDeg(R, S0);
 
     // If error or zero, return as-is
-    if (FLAG_DOM_ERR || isMantZero(R.mant.data()))
+    if (FLAG_INV_ERR || isMantZero(R.mant.data()))
         return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
@@ -111,7 +111,6 @@ static Real ieeeCosRad(Real x) { return std::cos(x); }
 void testAcosDeg()
 {
     static const std::string val[] = {
-        // Basic values
         "1",                      // acos=0 exactly
         "0.866025403784439",      // sqrt(3)/2: acos=30
         "0.707106781186548",      // sqrt(2)/2: acos=45
@@ -137,6 +136,15 @@ void testAcosDeg()
         // Very small values
         "0.0001",                 // acos near 90
         "0.00001",                // acos very near 90
+        // === Error cases ===
+        // INVALID: |x| > 1
+        "2",                          // Obvious
+        "-2",                         // Negative outside
+        "1.00000000000001",           // Epsilon over 1
+        "-1.00000000000001",          // Epsilon under -1
+        "1.5",                        // Clearly over
+        "100",                        // Way outside
+        "-1e10",                      // Very large negative
     };
 
     if (!runTests<Arity::Unary>("ACOSDEG", acosDeg, ieeeAcosDeg, val, sizeof(val) / sizeof(val[0])))
@@ -160,6 +168,13 @@ void testAcosRad()
         "-1",
         "0.1",
         "0.01",
+        // === Error cases ===
+        // INVALID: |x| > 1
+        "2",                          // Obvious
+        "-2",                         // Negative outside
+        "1.00000000000001",           // Epsilon over 1
+        "-1.00000000000001",          // Epsilon under -1
+        "1.5",                        // Clearly over
     };
 
     if (!runTests<Arity::Unary>("ACOSRAD", acosRad, ieeeAcosRad, val, sizeof(val) / sizeof(val[0])))

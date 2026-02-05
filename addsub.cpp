@@ -152,6 +152,14 @@ void testAddition()
         // === Sign swap path ===
         "2",                       // Subtraction requiring mantSwap: 1-2
         "-2",                      // Different sign tests
+        // === Error cases ===
+        // OVERFLOW: carry causes expInc past 99
+        "9.999999999999999e99",     // With itself: carry -> 1.999...e100 -> overflow
+        "5e99",                     // With itself: 5+5=10 -> carry -> overflow
+        "1e99",                     // 1+9=10 -> overflow (with 9e99)
+        "9e99",                     // For 1e99 + 9e99 overflow test
+        "9.5e99",                   // Sum 10e99 normalizes to 1e100 -> overflow (with 0.5e99)
+        "0.5e99",                   // For 9.5e99 + 0.5e99 overflow test
     };
 
     if (!runTests<Arity::Binary>("ADD", add, ieeeAdd, val, sizeof(val) / sizeof(val[0])))
@@ -176,6 +184,12 @@ void testSubtraction()
         // Borrow cascade
         "1000000000000001",        // Large with trailing 1
         "999999999999999",         // Subtraction triggers borrow cascade
+        // === Error cases ===
+        // OVERFLOW: subtraction of negative triggers addition overflow
+        "-9.999999999999999e99",    // -9.999...e99 - 9.999...e99 = -1.999...e100 -> overflow
+        "9.999999999999999e99",     // For overflow test pair
+        "-5e99",                    // -5e99 - 5e99 = -10e99 = -1e100 -> overflow
+        "5e99",                     // For overflow test pair
     };
 
     if (!runTests<Arity::Binary>("SUB", sub, ieeeSub, val, sizeof(val) / sizeof(val[0])))

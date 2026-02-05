@@ -394,7 +394,6 @@ static Real ieeeAtanRad(Real x) { return std::atan(x); }
 void testTanRad()
 {
     static const std::string val[] = {
-        // Basic values
         "0",                      // tan(0) = 0 exactly
         "0.7853981633974483",     // PI/4: tan = 1.0 exactly
         "0.5235987755982988",     // PI/6: tan = 1/sqrt(3) = 0.5774
@@ -424,6 +423,13 @@ void testTanRad()
         "0.00001",                // Even smaller angle
         // Near asymptote
         "1.5707963267948",        // Just under PI/2
+        // === Error cases ===
+        // OVERFLOW: asymptote at PI/2
+        "1.570796326794897",          // PI/2 to 16 digits
+        "4.712388980384690",          // 3*PI/2 to 16 digits
+        "-1.570796326794897",         // -PI/2
+        "7.853981633974483",          // 5*PI/2
+        "1.5707963267949",            // Rounded PI/2
     };
 
     if (!runTests<Arity::Unary>("TANRAD", tanRad, ieeeTanRad, val, sizeof(val) / sizeof(val[0])))

@@ -215,7 +215,6 @@ static Real ieeeAtanDeg(Real x) { return std::atan(x) * REAL_LITERAL(180.0) / RE
 void testTanDeg()
 {
     static const std::string val[] = {
-        // Basic values
         "0",                      // tan=0 exactly
         "45",                     // tan=1 exactly
         "30",                     // tan=1/sqrt(3) = 0.5774
@@ -265,6 +264,15 @@ void testTanDeg()
         "44.99999999999999",      // Just under 45 (16 sig digits)
         "45.00000000000001",      // Just over 45 (reciprocal path, 16 sig digits)
         "89.99999999999999",      // Near asymptote (16 sig digits)
+        // === Error cases ===
+        // OVERFLOW: asymptotes at 90, 270, etc.
+        "90",                         // tan(90) = infinity
+        "270",                        // tan(270) = infinity
+        "-90",                        // Negative asymptote
+        "450",                        // 360 + 90 = asymptote
+        "-270",                       // Negative wrap
+        "810",                        // 2*360 + 90 = asymptote
+        "90.00000000000000",          // Exactly 90 with trailing zeros
     };
 
     if (!runTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, val, sizeof(val) / sizeof(val[0])))

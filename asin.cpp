@@ -40,7 +40,7 @@ void asinDeg(BCD& R, BCD& S0)
     constLoad(S4, CONST_1);
     if (isRegGT(S0, S4)) {
         // |x| > 1: domain error
-        FLAG_DOM_ERR = true;
+        FLAG_INV_ERR = true;
         return;
     }
 
@@ -74,7 +74,7 @@ void asinDeg(BCD& R, BCD& S0)
     sqrt(R, S0);      // R = sqrt(1/x² - 1)
 
     // Check for sqrt error (shouldn't happen if domain check passed)
-    if (FLAG_DOM_ERR)
+    if (FLAG_INV_ERR)
         return;
 
     // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
@@ -100,7 +100,7 @@ void asinRad(BCD& R, BCD& S0)
     asinDeg(R, S0);
 
     // If error or zero, return as-is
-    if (FLAG_DOM_ERR || isMantZero(R.mant.data()))
+    if (FLAG_INV_ERR || isMantZero(R.mant.data()))
         return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
@@ -128,7 +128,6 @@ static Real ieeeSinRad(Real x) { return std::sin(x); }
 void testAsinDeg()
 {
     static const std::string val[] = {
-        // Basic values
         "0",                      // asin=0 exactly
         "0.5",                    // asin=30 exactly
         "0.707106781186548",      // sqrt(2)/2: asin=45
@@ -153,6 +152,16 @@ void testAsinDeg()
         // Formula stress: asin(x) = atan(1/sqrt(1/x^2-1))
         "0.0001",                 // Very small (1/x^2 very large)
         "0.00001",                // Even smaller
+        // === Error cases ===
+        // INVALID: |x| > 1
+        "2",                          // Obvious: way outside [-1, 1]
+        "-2",                         // Negative outside
+        "1.00000000000001",           // Epsilon over 1
+        "-1.00000000000001",          // Epsilon under -1
+        "1.1",                        // Slightly over
+        "1e50",                       // Way outside domain
+        "1.000000000000001",          // 15 zeros then 1: subtle edge
+        "-1.000000000000001",         // Negative version
     };
 
     if (!runTests<Arity::Unary>("ASINDEG", asinDeg, ieeeAsinDeg, val, sizeof(val) / sizeof(val[0])))
@@ -176,6 +185,14 @@ void testAsinRad()
         "-1",
         "0.1",
         "0.01",
+        // === Error cases ===
+        // INVALID: |x| > 1
+        "2",                          // Obvious: way outside [-1, 1]
+        "-2",                         // Negative outside
+        "1.00000000000001",           // Epsilon over 1
+        "-1.00000000000001",          // Epsilon under -1
+        "1.5",                        // Clearly over
+        "100",                        // Way outside
     };
 
     if (!runTests<Arity::Unary>("ASINRAD", asinRad, ieeeAsinRad, val, sizeof(val) / sizeof(val[0])))

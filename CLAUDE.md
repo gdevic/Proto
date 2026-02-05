@@ -49,6 +49,13 @@ ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 - APPROX: ≤1e-13 (13-14 digits)
 - FAIL: >1e-13
 
+### Error Flags
+- `FLAG_INV_ERR` → "INVALID": Input invalid for function (e.g., sqrt(-1), ln(-1), asin(2))
+- `FLAG_OF_ERR` → "OVERFLOW": Result exceeds ±9.999999999999999e+99 (e.g., 1e50 * 1e50, exp(1000))
+- `FLAG_DIV0_ERR` → "DIV0": Division by zero
+
+When BCD sets an error flag, IEEE validation expects: INVALID→NaN/Inf, OVERFLOW→large/Inf, DIV0→Inf/NaN(0/0)
+
 ### FIX Mode Rounding
 - `roundFix(R, S0, d)` in `register.cpp`: Rounds BCD to d decimal places (HP calculator FIX mode)
 - `-d <0-15>` command line option: Rounds both BCD and IEEE before comparison

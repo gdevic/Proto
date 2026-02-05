@@ -24,7 +24,7 @@ inline BCD S4;
 inline BCD R;
 
 // Global flags (must be explicitly cleared)
-inline bool FLAG_DOM_ERR = false;   // Domain error: input invalid for function
+inline bool FLAG_INV_ERR = false;   // Invalid error: input invalid for function
 inline bool FLAG_OF_ERR = false;    // Overflow error: result too large to represent
 inline bool FLAG_DIV0_ERR = false;  // Division by zero error
 inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
