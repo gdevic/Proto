@@ -113,15 +113,26 @@ inline unsigned seedFromName(const char* name)
 }
 
 // Record result and update counters
-// Returns true if should stop (FAIL with g_stopOnError)
+// Returns true if should stop (MISS with g_stopOnError)
 inline bool recordResult(MatchLevel level, int& ok, int& approx, int& fail)
 {
     switch (level) {
-        case MatchLevel::OK: ok++; break;
-        case MatchLevel::APPROX: approx++; break;
-        case MatchLevel::FAIL: fail++; break;
+        case MatchLevel::PASS: ok++; break;
+        case MatchLevel::NEAR: approx++; break;
+        case MatchLevel::MISS: fail++; break;
     }
-    return (level == MatchLevel::FAIL) && g_stopOnError;
+    return (level == MatchLevel::MISS) && g_stopOnError;
+}
+
+// Return short name for the active tolerance class
+inline const char* toleranceName()
+{
+    switch (g_toleranceClass) {
+        case Tolerance::Strict:   return "Strict";
+        case Tolerance::Standard: return "Standard";
+        case Tolerance::Relaxed:  return "Relaxed";
+    }
+    return "?";
 }
 
 // Print summary line to stderr (skipped in HW vectors mode)
@@ -131,7 +142,7 @@ inline void printSummary(const char* opName, const char* suffix, int ok, int app
         return;
     if (g_useColor)
         std::cerr << YELLOW;
-    std::cerr << "= " << opName << " " << suffix << ": " << ok << " OK, " << approx << " APPROX, " << fail << " FAIL";
+    std::cerr << "= " << opName << " [" << toleranceName() << "] " << suffix << ": " << ok << " PASS, " << approx << " NEAR, " << fail << " MISS";
     if (g_useColor)
         std::cerr << RESET;
     std::cerr << "\n";
@@ -170,8 +181,8 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         }
     }
 
-    // In dev mode, skip OK results and matching error cases (only show APPROX/FAIL/mismatch)
-    if (!g_traceAll && (level == MatchLevel::OK || ieeeOk))
+    // In dev mode, skip PASS results and matching error cases (only show NEAR/MISS/mismatch)
+    if (!g_traceAll && (level == MatchLevel::PASS || ieeeOk))
         return false;
 
     // Print op name and input(s)
@@ -197,26 +208,37 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         return false;  // Never stop on expected errors
     }
 
+    // Compute correct significant digits: floor(-log10(relErr))
+    auto correctDigits = [&]() -> int {
+        Real absErr = std::fabs(result.toReal() - ieee);
+        Real maxAbs = std::max(std::fabs(result.toReal()), std::fabs(ieee));
+        if (absErr == 0 || maxAbs == 0) return 16;
+        Real relErr = absErr / maxAbs;
+        return int(-std::log10(relErr));
+    };
+
     switch (level) {
-        case MatchLevel::OK:
-            std::cout << formatBCD(result) << " OK";
+        case MatchLevel::PASS:
+            std::cout << formatBCD(result) << " PASS";
             if (g_verbose)
                 std::cout << " " << std::scientific << std::setprecision(15) << ieee;
             break;
-        case MatchLevel::APPROX:
+        case MatchLevel::NEAR:
             printWithMismatchHighlight(formatBCD(result), ieee);
-            std::cout << " APPROX " << std::scientific << std::setprecision(15) << ieee
-                      << " err=" << std::fabs(result.toReal() - ieee);
+            std::cout << " NEAR " << std::scientific << std::setprecision(15) << ieee
+                      << " err=" << std::fabs(result.toReal() - ieee)
+                      << " dig=" << correctDigits();
             break;
-        case MatchLevel::FAIL:
+        case MatchLevel::MISS:
             printWithMismatchHighlight(formatBCD(result), ieee);
-            std::cout << " FAIL " << std::scientific << std::setprecision(15) << ieee
-                      << " err=" << std::fabs(result.toReal() - ieee);
+            std::cout << " MISS " << std::scientific << std::setprecision(15) << ieee
+                      << " err=" << std::fabs(result.toReal() - ieee)
+                      << " dig=" << correctDigits();
             break;
     }
     std::cout << "\n";
 
-    return (level == MatchLevel::FAIL) && g_stopOnError;
+    return (level == MatchLevel::MISS) && g_stopOnError;
 }
 
 } // namespace detail

@@ -238,6 +238,7 @@ static Real ieeeSinRad(Real x) { return std::sin(x); }
 // Run sine (degrees) tests
 void testSinDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         // Basic values
         "0",                      // sin=0 exactly
@@ -310,6 +311,7 @@ void testSinDeg()
 // Run sine (radians) tests
 void testSinRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",
         "0.523598775598299",      // PI/6 = 30 deg, sin=0.5

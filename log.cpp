@@ -384,6 +384,7 @@ static Real ieeeLn(Real x) { return std::log(x); }
 // Run natural logarithm tests
 void testLn()
 {
+    setTolerance(Tolerance::Standard);
     static const std::string val[] = {
         "1",                      // ln(1) = 0 exactly
         "2",                      // ln(2) = 0.693147...
@@ -434,6 +435,7 @@ static Real ieeeExp(Real x) { return std::exp(x); }
 // Run exponential tests
 void testExp()
 {
+    setTolerance(Tolerance::Standard);
     static const std::string val[] = {
         "0",                      // exp(0) = 1 exactly
         "1",                      // exp(1) = e

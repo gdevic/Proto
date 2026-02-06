@@ -20,7 +20,7 @@
 // Output control flags (set from command line)
 inline bool g_verbose = false;       // -v: Print IEEE value even on OK
 inline bool g_traceAll = false;      // -t: Print all lines including OK
-inline bool g_stopOnError = false;   // -e: Stop on first error (FAIL)
+inline bool g_stopOnError = false;   // -e: Stop on first error (MISS)
 inline bool g_skipRoundTrip = false; // -T: Skip round-trip tests
 inline bool g_useColor = false;      // -c: Use ANSI colors for output
 inline int g_randomCount = 10;       // -r: Number of random tests to run (default: 10)
@@ -28,11 +28,18 @@ inline int g_roundDigits = -1;       // -d: FIX mode decimal places (-1 = disabl
 inline std::vector<std::string> g_testFilters; // -f: Filters to run only specific tests
 inline int g_vectorCount = 0;        // Count of test vectors printed (for -t mode)
 
-// Tolerance levels for verification (13-14 correct digits required)
-constexpr Real TIGHT_TOL = REAL_LITERAL(1e-14);  // 14 correct digits
-constexpr Real LOOSE_TOL = REAL_LITERAL(1e-13);  // 13 correct digits (acceptable)
+// Tolerance classes for different operation groups
+enum class Tolerance { Strict, Standard, Relaxed };
 
-enum class MatchLevel { OK, APPROX, FAIL };
+// Active tolerance thresholds (set via setTolerance())
+inline Tolerance g_toleranceClass = Tolerance::Standard;
+inline Real g_tightTol = REAL_LITERAL(1e-14);
+inline Real g_looseTol = REAL_LITERAL(1e-13);
+
+// Set tolerance thresholds for an operation class
+void setTolerance(Tolerance t);
+
+enum class MatchLevel { PASS, NEAR, MISS };
 
 // Arity tag for compile-time dispatch (C++17 if constexpr)
 enum class Arity { Unary, Binary };
@@ -54,19 +61,21 @@ struct RandomBCDOptions {
     int maxExp = 50;           // Maximum absolute exponent value
     bool positiveOnly = false; // Force positive values (for sqrt, ln, log)
     bool smallValue = false;   // Keep value small, exp in [-2, 2] (for exp, tan)
+    bool unitRange = false;    // Keep |value| in [0.01, 1) (for asin, acos)
 };
 
-// Presets for different operations (maxExp, positiveOnly, smallValue)
-constexpr RandomBCDOptions OPTS_ADDSUB  = { 50, false, false };
-constexpr RandomBCDOptions OPTS_MUL     = { 49, false, false };
-constexpr RandomBCDOptions OPTS_DIV     = { 49, false, false };
-constexpr RandomBCDOptions OPTS_LN      = { 99, true,  false };
-constexpr RandomBCDOptions OPTS_EXP     = { 2,  false, true  };
-constexpr RandomBCDOptions OPTS_SQRT    = { 50, true,  false };  // positive only
-constexpr RandomBCDOptions OPTS_TANRAD  = { 1,  false, true  };  // small radians
-constexpr RandomBCDOptions OPTS_ATANRAD = { 99, false, false };  // any value
-constexpr RandomBCDOptions OPTS_TANDEG  = { 2,  false, false };  // degrees 0-99
-constexpr RandomBCDOptions OPTS_ATANDEG = { 99, false, false };  // any value
+// Presets for different operations (maxExp, positiveOnly, smallValue, unitRange)
+constexpr RandomBCDOptions OPTS_ADDSUB  = { 50, false, false, false };
+constexpr RandomBCDOptions OPTS_MUL     = { 49, false, false, false };
+constexpr RandomBCDOptions OPTS_DIV     = { 49, false, false, false };
+constexpr RandomBCDOptions OPTS_LN      = { 99, true,  false, false };
+constexpr RandomBCDOptions OPTS_EXP     = { 2,  false, true,  false };
+constexpr RandomBCDOptions OPTS_SQRT    = { 50, true,  false, false };  // positive only
+constexpr RandomBCDOptions OPTS_ASINCOS = { 0,  false, false, true  };  // |x| in [0.01, 1)
+constexpr RandomBCDOptions OPTS_TANRAD  = { 2,  false, true,  false };  // radians up to ~99
+constexpr RandomBCDOptions OPTS_ATANRAD = { 99, false, false, false };  // any value
+constexpr RandomBCDOptions OPTS_TANDEG  = { 3,  false, false, false };  // degrees up to ~999
+constexpr RandomBCDOptions OPTS_ATANDEG = { 99, false, false, false };  // any value
 
 // Generate a random BCD string with configurable domain constraints
 // Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)
@@ -85,17 +94,17 @@ using IeeeUnaryOp = Real (*)(Real);
 // Combinatorial/fixed-value test runner
 // For Binary: tests all pairs from values array
 // For Unary: tests each value from array
-// Returns: false if stopped early (FAIL with -e flag)
+// Returns: false if stopped early (MISS with -e flag)
 template<Arity arity, typename BcdOp, typename IeeeOp>
 bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string* values, size_t count);
 
 // Random test runner
-// Returns: false if stopped early (FAIL with -e flag)
+// Returns: false if stopped early (MISS with -e flag)
 template<Arity arity, typename BcdOp, typename IeeeOp>
 bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const RandomBCDOptions& opts);
 
 // Round-trip test runner - tests forward(inverse(x)) = x
-// Returns: false if stopped early (FAIL with -e flag)
+// Returns: false if stopped early (MISS with -e flag)
 template<bool IsRandom>
 bool runRoundTripTests(const char* opName,
                        BcdUnaryOp forwardOp, BcdUnaryOp inverseOp,

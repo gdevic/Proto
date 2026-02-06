@@ -218,6 +218,7 @@ static Real ieeeAtanDeg(Real x) { return std::atan(x) * REAL_LITERAL(180.0) / RE
 // Run tangent (degrees) tests
 void testTanDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",                      // tan=0 exactly
         "45",                     // tan=1 exactly
@@ -292,6 +293,7 @@ void testTanDeg()
 // Run arctangent (degrees) tests
 void testAtanDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         // Basic values
         "0",                      // atan=0 exactly

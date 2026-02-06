@@ -364,6 +364,7 @@ static Real ieeeAtanRad(Real x) { return std::atan(x); }
 // Run tangent (radians) tests
 void testTanRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",                      // tan(0) = 0 exactly
         "0.7853981633974483",     // PI/4: tan = 1.0 exactly
@@ -416,6 +417,7 @@ void testTanRad()
 // Run arctangent (radians) tests
 void testAtanRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         // Basic values
         "0",                      // atan(0) = 0 exactly

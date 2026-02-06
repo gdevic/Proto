@@ -116,6 +116,7 @@ static Real ieeeSub(Real a, Real b) { return a - b; }
 // Run combinatorial and random addition tests
 void testAddition()
 {
+    setTolerance(Tolerance::Strict);
     static const std::string val[] = {
         // Basic values
         "0",
@@ -171,6 +172,7 @@ void testAddition()
 // Here we only want to test a small "sub" stub that inverts the sign of the subtrahend
 void testSubtraction()
 {
+    setTolerance(Tolerance::Strict);
     static const std::string val[] = {
         "0",
         "1",

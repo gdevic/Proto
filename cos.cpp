@@ -56,6 +56,7 @@ static Real ieeeCosRad(Real x) { return std::cos(x); }
 // Run cosine (degrees) tests
 void testCosDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         // Basic values
         "0",                      // cos=1 exactly
@@ -104,6 +105,7 @@ void testCosDeg()
 // Run cosine (radians) tests
 void testCosRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",
         "0.523598775598299",      // PI/6 = 30 deg

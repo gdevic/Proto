@@ -116,6 +116,7 @@ static Real ieeeDiv(Real a, Real b) { return a / b; }
 // Run combinatorial and random division tests
 void testDivision()
 {
+    setTolerance(Tolerance::Strict);
     static const std::string val[] = {
         "1",
         "-1",

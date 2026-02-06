@@ -114,6 +114,7 @@ static Real ieeeMul(Real a, Real b) { return a * b; }
 // Run combinatorial and random multiplication tests
 void testMultiplication()
 {
+    setTolerance(Tolerance::Strict);
     static const std::string val[] = {
         // Basic values
         "0",

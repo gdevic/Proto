@@ -236,6 +236,7 @@ static Real ieeeSqrt(Real x) { return std::sqrt(x); }
 // Run square root tests
 void testSqrt()
 {
+    setTolerance(Tolerance::Standard);
     static const std::string val[] = {
         "0",
         "1",

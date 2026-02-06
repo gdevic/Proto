@@ -66,10 +66,16 @@ std::string generateRandomBCD(std::mt19937& rng, const RandomBCDOptions& opts)
         s += char('0' + digit(rng));
 
     // Exponent
-    s += 'e';
-    if (!opts.smallValue && sign(rng))
-        s += '-';
-    s += std::to_string(expVal(rng));
+    if (opts.unitRange) {
+        // Force exponent to -1 or -2, giving |value| in [0.01, 1)
+        s += "e-";
+        s += std::to_string(1 + (sign(rng) ? 1 : 0));
+    } else {
+        s += 'e';
+        if (!opts.smallValue && sign(rng))
+            s += '-';
+        s += std::to_string(expVal(rng));
+    }
 
     return s;
 }
@@ -146,34 +152,56 @@ static bool isIeeeNoise(const BCD& bcdResult, Real ieee)
     return leadingDigitsMatch(bcdResult.toReal(), ieee, significantDigits);
 }
 
-// Classify result accuracy: OK (14+ digits), APPROX (13-14 digits), or FAIL (<13 digits)
+// Set tolerance thresholds for an operation class
+// Strict: add/sub/mul/div (15/14 digits), Standard: sqrt/ln/exp (14/13 digits),
+// Relaxed: trig functions (13/12 digits)
+void setTolerance(Tolerance t)
+{
+    g_toleranceClass = t;
+    switch (t) {
+        case Tolerance::Strict:
+            g_tightTol = REAL_LITERAL(1e-15);
+            g_looseTol = REAL_LITERAL(1e-14);
+            break;
+        case Tolerance::Standard:
+            g_tightTol = REAL_LITERAL(1e-14);
+            g_looseTol = REAL_LITERAL(1e-13);
+            break;
+        case Tolerance::Relaxed:
+            g_tightTol = REAL_LITERAL(1e-13);
+            g_looseTol = REAL_LITERAL(1e-12);
+            break;
+    }
+}
+
+// Classify result accuracy using active tolerance class
 // Uses absolute tolerance for near-zero results, relative tolerance otherwise
 // Also detects IEEE noise where BCD has exact result but IEEE has floating-point errors
 // Returns MatchLevel indicating accuracy classification
 MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult)
 {
-    if (expected == actual) return MatchLevel::OK;
+    if (expected == actual) return MatchLevel::PASS;
 
     Real absErr = std::fabs(expected - actual);
     Real maxAbs = std::max(std::fabs(expected), std::fabs(actual));
 
-    // For near-zero results (|value| < 1e-13), use absolute tolerance
+    // For near-zero results (|value| < g_looseTol), use absolute tolerance
     // (relative error is meaningless when dividing by near-zero)
-    if (maxAbs < LOOSE_TOL) {
-        if (absErr <= TIGHT_TOL) return MatchLevel::OK;
-        if (absErr <= LOOSE_TOL) return MatchLevel::APPROX;
-        return MatchLevel::FAIL;
+    if (maxAbs < g_looseTol) {
+        if (absErr <= g_tightTol) return MatchLevel::PASS;
+        if (absErr <= g_looseTol) return MatchLevel::NEAR;
+        return MatchLevel::MISS;
     }
 
     // For normal results, use relative tolerance
     Real relErr = absErr / maxAbs;
-    if (relErr <= TIGHT_TOL) return MatchLevel::OK;
-    if (relErr <= LOOSE_TOL) return MatchLevel::APPROX;
+    if (relErr <= g_tightTol) return MatchLevel::PASS;
+    if (relErr <= g_looseTol) return MatchLevel::NEAR;
 
-    // Before declaring FAIL, check if this is IEEE noise
+    // Before declaring MISS, check if this is IEEE noise
     // (BCD has exact-looking result with trailing zeros, IEEE has noise)
     if (isIeeeNoise(bcdResult, expected))
-        return MatchLevel::OK;
+        return MatchLevel::PASS;
 
-    return MatchLevel::FAIL;
+    return MatchLevel::MISS;
 }

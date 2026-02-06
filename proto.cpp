@@ -79,10 +79,10 @@ static void printHelp(const char* prog)
               << "  -h       Show this help\n"
               << "\n"
               << "Dev mode (default):\n"
-              << "  Compare BCD vs IEEE long double. Only prints APPROX/FAIL. Includes round-trip tests.\n"
+              << "  Compare BCD vs IEEE long double. Only prints NEAR/MISS. Includes round-trip tests.\n"
               << "  -c       Use ANSI colors to highlight mismatched digits\n"
               << "  -d NUM   FIX mode: round to NUM decimal places (0-15)\n"
-              << "  -e       Stop on first error (FAIL)\n"
+              << "  -e       Stop on first error (MISS)\n"
               << "  -T       Skip round-trip tests\n"
               << "\n"
               << "HW vectors mode (-t):\n"
@@ -201,7 +201,6 @@ int main(int argc, char* argv[])
 #else
         std::cerr << "Verification: using double\n";
 #endif
-        std::cerr << "Tolerance: " << TIGHT_TOL << " (tight), " << LOOSE_TOL << " (loose)\n";
         if (g_useColor || g_stopOnError || g_skipRoundTrip || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
             std::cerr << "Flags:";
             if (g_useColor) std::cerr << " -c";

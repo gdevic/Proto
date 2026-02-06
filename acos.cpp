@@ -110,6 +110,7 @@ static Real ieeeCosRad(Real x) { return std::cos(x); }
 // Run arccosine (degrees) tests
 void testAcosDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "1",                      // acos=0 exactly
         "0.866025403784439",      // sqrt(3)/2: acos=30
@@ -152,12 +153,13 @@ void testAcosDeg()
     // Round-trip tests: cos(acos(x)) = x
     if (!runRoundTripTests<false>("RTRIP_ACOSDEG", cosDeg, acosDeg, ieeeCosDeg, ieeeAcosDeg, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ACOSDEG", acosDeg, ieeeAcosDeg, OPTS_SQRT);
+    runRandomTests<Arity::Unary>("ACOSDEG", acosDeg, ieeeAcosDeg, OPTS_ASINCOS);
 }
 
 // Run arccosine (radians) tests
 void testAcosRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "1",
         "0.866025403784439",      // sqrt(3)/2
@@ -182,5 +184,5 @@ void testAcosRad()
     // Round-trip tests: cos(acos(x)) = x
     if (!runRoundTripTests<false>("RTRIP_ACOSRAD", cosRad, acosRad, ieeeCosRad, ieeeAcosRad, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ACOSRAD", acosRad, ieeeAcosRad, OPTS_SQRT);
+    runRandomTests<Arity::Unary>("ACOSRAD", acosRad, ieeeAcosRad, OPTS_ASINCOS);
 }

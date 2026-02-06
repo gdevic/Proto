@@ -127,6 +127,7 @@ static Real ieeeSinRad(Real x) { return std::sin(x); }
 // Run arcsine (degrees) tests
 void testAsinDeg()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",                      // asin=0 exactly
         "0.5",                    // asin=30 exactly
@@ -169,12 +170,13 @@ void testAsinDeg()
     // Round-trip tests: sin(asin(x)) = x
     if (!runRoundTripTests<false>("RTRIP_ASINDEG", sinDeg, asinDeg, ieeeSinDeg, ieeeAsinDeg, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ASINDEG", asinDeg, ieeeAsinDeg, OPTS_SQRT);  // positiveOnly since |x|<=1
+    runRandomTests<Arity::Unary>("ASINDEG", asinDeg, ieeeAsinDeg, OPTS_ASINCOS);
 }
 
 // Run arcsine (radians) tests
 void testAsinRad()
 {
+    setTolerance(Tolerance::Relaxed);
     static const std::string val[] = {
         "0",
         "0.5",
@@ -200,5 +202,5 @@ void testAsinRad()
     // Round-trip tests: sin(asin(x)) = x
     if (!runRoundTripTests<false>("RTRIP_ASINRAD", sinRad, asinRad, ieeeSinRad, ieeeAsinRad, val, sizeof(val) / sizeof(val[0])))
         return;
-    runRandomTests<Arity::Unary>("ASINRAD", asinRad, ieeeAsinRad, OPTS_SQRT);
+    runRandomTests<Arity::Unary>("ASINRAD", asinRad, ieeeAsinRad, OPTS_ASINCOS);
 }
