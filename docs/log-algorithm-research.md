@@ -293,8 +293,8 @@ Both compute the same values but differ in implementation. The division-based me
 
 | Test Type | Repeated Subtraction | Division-Based |
 |-----------|----------------------|----------------|
-| Direct EXP | 478 OK, 454 APPROX, **68 FAIL** | 471 OK, 529 APPROX, **0 FAIL** |
-| Round-Trip | 467 OK, 268 APPROX, 265 FAIL | 471 OK, 131 APPROX, 398 FAIL |
+| Direct EXP | 478 PASS, 454 NEAR, **68 MISS** | 471 PASS, 529 NEAR, **0 MISS** |
+| Round-Trip | 467 PASS, 268 NEAR, 265 MISS | 471 PASS, 131 NEAR, 398 MISS |
 
 ### Error Analysis: Direct exp(x)
 
@@ -302,12 +302,12 @@ Repeated subtraction accumulates ~1 ULP error per subtraction. For k subtraction
 
 | Input x | k | Repeated Sub RelErr | Status | Division RelErr | Status |
 |---------|---|---------------------|--------|-----------------|--------|
-| 50 | 21 | 4.3e-14 | APPROX | 1.7e-14 | APPROX |
-| 70 | 30 | **1.0e-13** | **FAIL** | 6.8e-15 | OK |
-| 100 | 43 | **2.0e-13** | **FAIL** | 1.3e-14 | APPROX |
-| 150 | 65 | **1.3e-12** | **FAIL** | 2.3e-14 | APPROX |
-| 200 | 86 | **2.5e-12** | **FAIL** | 5.2e-14 | APPROX |
-| 226 | 98 | **3.1e-12** | **FAIL** | 5.1e-15 | OK |
+| 50 | 21 | 4.3e-14 | NEAR | 1.7e-14 | NEAR |
+| 70 | 30 | **1.0e-13** | **MISS** | 6.8e-15 | PASS |
+| 100 | 43 | **2.0e-13** | **MISS** | 1.3e-14 | NEAR |
+| 150 | 65 | **1.3e-12** | **MISS** | 2.3e-14 | NEAR |
+| 200 | 86 | **2.5e-12** | **MISS** | 5.2e-14 | NEAR |
+| 226 | 98 | **3.1e-12** | **MISS** | 5.1e-15 | PASS |
 
 Repeated subtraction starts failing around k≈30 (x≈70). By k=98, error is ~600× worse than division-based.
 
@@ -317,16 +317,16 @@ Round-trip tests combine ln() error with exp() error. The ln() step introduces ~
 
 | Input x | Repeated Sub RelErr | Status | Division RelErr | Status |
 |---------|---------------------|--------|-----------------|--------|
-| 1e40 | 3.0e-14 | APPROX | 1.8e-13 | FAIL |
-| 1e50 | **5.9e-13** | **FAIL** | 1.0e-13 | APPROX |
-| 1e80 | **3.6e-12** | **FAIL** | 1.4e-12 | FAIL |
-| 1e99 | **5.5e-12** | **FAIL** | 2.3e-12 | FAIL |
+| 1e40 | 3.0e-14 | NEAR | 1.8e-13 | MISS |
+| 1e50 | **5.9e-13** | **MISS** | 1.0e-13 | NEAR |
+| 1e80 | **3.6e-12** | **MISS** | 1.4e-12 | MISS |
+| 1e99 | **5.5e-12** | **MISS** | 2.3e-12 | MISS |
 
 For large exponents, division-based is ~2× more accurate.
 
-### Why Round-Trip Shows More FAILs for Division-Based?
+### Why Round-Trip Shows More MISSes for Division-Based?
 
-The threshold effect: Division-based has more cases clustered near the 1e-13 FAIL boundary, while repeated subtraction has more cases with gross errors clearly above the threshold. Division-based errors are smaller but more uniformly distributed around the boundary.
+The threshold effect: Division-based has more cases clustered near the 1e-13 MISS boundary, while repeated subtraction has more cases with gross errors clearly above the threshold. Division-based errors are smaller but more uniformly distributed around the boundary.
 
 ### Small Input Analysis (x < 70)
 

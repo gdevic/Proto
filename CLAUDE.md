@@ -27,6 +27,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Subtraction** (`addsub.cpp`): Uses local guard/sticky to generate initial borrow in mantissa subtraction. Prevents false zeros and preserves 16-digit precision.
 - **Multiplication** (`mult.cpp`): Shift-and-add with 32-digit accumulator. Tracks guard digit (17th digit) and sticky (18-32nd digits) for banker's rounding. Full 16-digit precision.
 - **Division** (`div.cpp`): Shift-and-subtract with 17+ digit quotient. Tracks guard digit (17th or 18th digit) and sticky (remainder) for banker's rounding. Full 16-digit precision.
+- **Square Root** (`sqrt_nr.cpp`): Newton-Raphson iteration x_{n+1} = (x_n + n/x_n)/2 with exponent halving for initial guess. ~5 iterations to converge. Post-iteration square-based correction refines to within 1 ULP. See `docs/sqrt-algorithm-research.md`.
 - **Natural Log** (`log.cpp`): CORDIC digit-by-digit method (HP-35 style). 16 iterations with ln(1+10^-j) constants. See `docs/log-algorithm-research.md` for algorithm comparison.
 - **Exponential** (`log.cpp`): CORDIC digit-by-digit method (inverse of ln). Range reduction via division by ln(10), pseudo-division to decompose remainder, pseudo-multiplication to build result. Shares ln constant table with ln().
 - **Tangent** (`tan.cpp`): CORDIC digit-by-digit method using atan constants. Works for small angles (~0 to PI/4); requires range reduction for larger angles. See `docs/tan-algorithm-research.md`.
@@ -45,9 +46,10 @@ ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
 ```
 
 ### Tolerance System
-- OK: ≤1e-14 (14+ correct digits)
-- APPROX: ≤1e-13 (13-14 digits)
-- FAIL: >1e-13
+Per-class tolerances set via `setTolerance()` in each test function:
+- **Strict** (add/sub/mul/div): PASS ≤1e-15, NEAR ≤1e-14, MISS >1e-14
+- **Standard** (sqrt/ln/exp): PASS ≤1e-14, NEAR ≤1e-13, MISS >1e-13
+- **Relaxed** (all 12 trig): PASS ≤1e-13, NEAR ≤1e-12, MISS >1e-12
 
 ### Error Flags
 - `FLAG_INV_ERR` → "INVALID": Input invalid for function (e.g., sqrt(-1), ln(-1), asin(2))
@@ -67,9 +69,11 @@ Domain constraints for different operations:
 - OPTS_MUL, OPTS_DIV (maxExp=49)
 - OPTS_LN (positiveOnly)
 - OPTS_EXP (smallValue for radians)
-- OPTS_TANRAD, OPTS_ATANRAD (radians, small range)
-- OPTS_TANDEG, OPTS_ATANDEG (degrees, full range)
-- OPTS_SQRT (positiveOnly, also used for asin/acos with |x|≤1)
+- OPTS_TANDEG (maxExp=3, ±999°, ~2.8 circles)
+- OPTS_TANRAD (maxExp=2, smallValue, ±99 rad, ~15.8 rotations)
+- OPTS_ATANDEG, OPTS_ATANRAD (maxExp=99, any value)
+- OPTS_SQRT (positiveOnly)
+- OPTS_ASINCOS (unitRange, |x| in [0.01, 1))
 
 ## Build
 ```bash
@@ -79,7 +83,7 @@ make              # Linux, long double
 
 ## Usage Modes
 
-**Dev mode (default)**: Compare BCD vs IEEE, show only APPROX/FAIL, includes round-trip tests.
+**Dev mode (default)**: Compare BCD vs IEEE, show only NEAR/MISS, includes round-trip tests.
 ```bash
 ./proto -a            # Run all tests, show problems
 ./proto -a -c -e      # Colors, stop on first error

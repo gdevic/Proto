@@ -20,7 +20,7 @@ The tool operates in two modes:
 
 ### Algorithm Research
 - [Natural Logarithm](docs/log-algorithm-research.md) - CORDIC digit-by-digit method (HP-35 style) for ln and exp
-- [Square Root](docs/sqrt-algorithm-research.md) - Digit-by-digit method with nibble-safe intermediates
+- [Square Root](docs/sqrt-algorithm-research.md) - Newton-Raphson iteration with exponent halving
 - [Tangent/Arctangent](docs/tan-algorithm-research.md) - CORDIC pseudo-division/multiplication for radians
 - [Range Reduction](docs/tan-range-reduction-research.md) - Techniques for reducing large angles (Cody-Waite, Payne-Hanek)
 - [Degree-Based Trig](docs/tan10-algorithm-research.md) - Why degrees enable exact range reduction vs radians
@@ -41,7 +41,7 @@ The tool operates in two modes:
 | Arctangent (rad) | `atanRad(R, S0)` | CORDIC digit-by-digit (radians, HP-35 style) |
 | Tangent (deg) | `tanDeg(R, S0)` | Range reduction + CORDIC (degrees) |
 | Arctangent (deg) | `atanDeg(R, S0)` | CORDIC + deg conversion (degrees) |
-| Square Root | `sqrt(R, S0)` | Digit-by-digit (like long division) |
+| Square Root | `sqrt(R, S0)` | Newton-Raphson iteration |
 | Exponential | `exp(R, S0)` | CORDIC digit-by-digit (inverse of ln) |
 | Sine (deg) | `sinDeg(R, S0)` | Half-angle formula via tanDeg |
 | Sine (rad) | `sinRad(R, S0)` | Converts to degrees, calls sinDeg |
@@ -58,7 +58,7 @@ The tool operates in two modes:
 
 ```bash
 make        # Build with long double
-./proto     # Run tests (debug mode: show only APPROX/FAIL)
+./proto     # Run tests (dev mode: show only NEAR/MISS)
 ```
 
 ### Windows (Visual Studio 2022)
@@ -91,13 +91,13 @@ The tool operates in two modes: **Dev mode** (default) for debugging and **HW ve
 
 ### Dev Mode (default)
 
-Compare BCD results against IEEE long double. Only prints APPROX/FAIL lines. Includes round-trip tests.
+Compare BCD results against IEEE long double. Only prints NEAR/MISS lines. Includes round-trip tests.
 
 | Flag | Description |
 |------|-------------|
 | `-c` | Use ANSI colors to highlight mismatched digits |
 | `-d NUM` | FIX mode: round to NUM decimal places (0-15) |
-| `-e` | Stop on first error (FAIL) |
+| `-e` | Stop on first error (MISS) |
 | `-T` | Skip round-trip tests |
 
 ```bash
@@ -133,7 +133,7 @@ The following combinations are rejected with an error:
 One test per line, fixed columns for HW parsing:
 
 ```
-OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE STATUS [IEEE err=N]
+OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE STATUS [IEEE err=N dig=D]
 ```
 
 | Field | Width | Description |
@@ -142,14 +142,14 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 | Operand A | 22 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE (16 digits) |
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |
-| Status | 2-6 | OK, APPROX, or FAIL |
-| IEEE/err | var | Only on APPROX/FAIL (or OK with -v) |
+| Status | 2-4 | Dev: PASS, NEAR, or MISS. HW: OK |
+| IEEE/err/dig | var | Only on NEAR/MISS (or PASS with -v). err=absolute error, dig=correct significant digits |
 
 ### Example Output
 
 ```
-ADD +1.234567890123456e+50 +9.876543210987654e+10 +1.234567890123456e+50 OK
-SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 APPROX 1e-15 err=2e-16
+ADD +1.234567890123456e+50 +9.876543210987654e+10 +1.234567890123456e+50 PASS
+SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 NEAR 1e-15 err=2e-16 dig=15
 DIV +1.000000000000000e+00 +0.000000000000000e+00 DIV0 inf
 SQRT -1.000000000000000e+00 INVALID nan
 EXP +1.000000000000000e+03 OVERFLOW inf
@@ -169,22 +169,22 @@ EXP +1.000000000000000e+03 OVERFLOW inf
 
 ### Test Summary
 
-Summary is printed to stderr (doesn't interfere with stdout redirection):
+Summary is printed to stderr (doesn't interfere with stdout redirection). Each line shows the active tolerance class:
 ```
-ADD comb: 361 OK, 0 APPROX, 0 FAIL
-ADD rand: 10 OK, 0 APPROX, 0 FAIL
-SUB comb: 36 OK, 0 APPROX, 0 FAIL
-SUB rand: 10 OK, 0 APPROX, 0 FAIL
-MUL comb: 529 OK, 0 APPROX, 0 FAIL
-MUL rand: 10 OK, 0 APPROX, 0 FAIL
-DIV comb: 729 OK, 0 APPROX, 0 FAIL
-DIV rand: 10 OK, 0 APPROX, 0 FAIL
-LN tests: 6 OK, 12 APPROX, 3 FAIL
-LN rand: 6 OK, 4 APPROX, 0 FAIL
-TAN tests: 1 OK, 2 APPROX, 7 FAIL
-TAN rand: 0 OK, 0 APPROX, 10 FAIL
-ATAN tests: 8 OK, 0 APPROX, 2 FAIL
-ATAN rand: 10 OK, 0 APPROX, 0 FAIL
+ADD [Strict] comb: 961 PASS, 0 NEAR, 0 MISS
+ADD [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+SUB [Strict] comb: 196 PASS, 0 NEAR, 0 MISS
+SUB [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+MUL [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
+MUL [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+DIV [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
+DIV [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+LN [Standard] tests: 16 PASS, 12 NEAR, 3 MISS
+LN [Standard] rand: 10 PASS, 0 NEAR, 0 MISS
+TANDEG [Relaxed] tests: 32 PASS, 2 NEAR, 11 MISS
+TANDEG [Relaxed] rand: 1 PASS, 7 NEAR, 2 MISS
+ATANDEG [Relaxed] tests: 22 PASS, 0 NEAR, 2 MISS
+ATANDEG [Relaxed] rand: 10 PASS, 0 NEAR, 0 MISS
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).

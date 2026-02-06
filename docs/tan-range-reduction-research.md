@@ -213,7 +213,7 @@ HP calculators support GRAD mode for compatibility, not performance.
 
 | Input Range | Expected Precision |
 |-------------|-------------------|
-| 0° to 10,000° | ~14 digits (APPROX) |
+| 0° to 10,000° | ~14 digits (NEAR) |
 | 10,000° to 1,000,000° | ~12-14 digits |
 | > 1,000,000° | Degraded (accumulated error in mod calculation) |
 

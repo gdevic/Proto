@@ -203,10 +203,10 @@ Special cases for exact values:
 
 ### Test Results Summary
 
-**sinDeg**: 20 OK, 11 APPROX, 12 FAIL (errors ~6-9 × 10⁻¹⁴)
-**cosDeg**: 11 OK, 11 APPROX, 4 FAIL (errors ~3-8 × 10⁻¹⁴)
-**asinDeg**: 12 OK, 0 APPROX, 3 FAIL (errors ~5-7 × 10⁻¹³ for small inputs)
-**acosDeg**: 14 OK, 2 APPROX, 0 FAIL
+**sinDeg**: 20 PASS, 11 NEAR, 12 MISS (errors ~6-9 × 10⁻¹⁴)
+**cosDeg**: 11 PASS, 11 NEAR, 4 MISS (errors ~3-8 × 10⁻¹⁴)
+**asinDeg**: 12 PASS, 0 NEAR, 3 MISS (errors ~5-7 × 10⁻¹³ for small inputs)
+**acosDeg**: 14 PASS, 2 NEAR, 0 MISS
 
 Note: sinDeg test suite expanded with corner cases for 90°, 180°, 270° boundaries.
 

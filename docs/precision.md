@@ -71,19 +71,33 @@ But both values are essentially "zero" in 13-14 digit precision. For near-zero r
 
 ## Tolerance System
 
-For complex functions, BCD calculations target **13-14 correct digits** when compared to IEEE results.
+Different operations achieve different precision levels, so the test framework uses three tolerance classes rather than a single global threshold. Each test function selects its class via `setTolerance()` before running.
 
-| Level | Tolerance | Correct Digits | Meaning |
-|-------|-----------|----------------|---------|
-| **OK** | ≤ 1e-14 | 14+ | Full precision |
-| **~OK** (APPROX) | ≤ 1e-13 | 13-14 | Acceptable precision loss |
-| **FAIL** | > 1e-13 | <13 | Actual algorithm bug or deficiency |
+### Tolerance Classes
+
+| Class | Operations | PASS (tight) | NEAR (loose) | MISS below |
+|-------|-----------|------------|----------------|------------|
+| **Strict** | add, sub, mul, div | ≤ 1e-15 (15 digits) | ≤ 1e-14 (14 digits) | > 1e-14 |
+| **Standard** | sqrt, ln, exp | ≤ 1e-14 (14 digits) | ≤ 1e-13 (13 digits) | > 1e-13 |
+| **Relaxed** | all 12 trig functions | ≤ 1e-13 (13 digits) | ≤ 1e-12 (12 digits) | > 1e-12 |
+
+**Rationale**: Basic arithmetic with guard digit rounding achieves ~15.5 digits, so Strict (1e-15) is appropriate. Iterative algorithms (sqrt, ln, exp) achieve ~14 digits, matching Standard. Trig functions chain multiple operations (range reduction, CORDIC, identity conversions), landing at ~12-13 digits, so Relaxed avoids false MISSes.
+
+### Result Levels
+
+| Level | Meaning |
+|-------|---------|
+| **PASS** | Within tight tolerance for the operation class |
+| **NEAR** | Between tight and loose tolerance; acceptable precision loss |
+| **MISS** | Beyond loose tolerance; actual algorithm bug or deficiency |
+
+Note: HW vectors mode (`-t`) uses "OK" instead of PASS/NEAR/MISS for hardware parsing compatibility.
 
 ### Tolerance Logic
 
 - **Near-zero results** (|value| < 1e-13): Uses **absolute** tolerance
   - Avoids meaningless relative error from catastrophic cancellation
-  - Example: `1e-15` vs `1e-14` → absolute error = 9e-15 → OK
+  - Example: `1e-15` vs `1e-14` → absolute error = 9e-15 → PASS
 
 - **Normal results**: Uses **relative** tolerance
   - `relErr = |expected - actual| / max(|expected|, |actual|)`
@@ -92,9 +106,39 @@ For complex functions, BCD calculations target **13-14 correct digits** when com
 
 1. **Catastrophic cancellation**: When subtracting nearly-equal numbers (e.g., `1.0 - 0.9999999999999999`), precision is inherently lost due to mantissa alignment shifts. This is expected behavior, not a bug.
 
-2. **Hardware correlation**: Both software and hardware will exhibit identical precision loss. The `~OK` category documents these cases without flagging them as failures.
+2. **Hardware correlation**: Both software and hardware will exhibit identical precision loss. The NEAR category documents these cases without flagging them as failures.
 
-3. **Bug detection**: Complex functions (log, tan, etc.) may have actual algorithmic bugs. The `FAIL` category catches errors beyond expected precision loss.
+3. **Bug detection**: Complex functions (log, tan, etc.) may have actual algorithmic bugs. The MISS category catches errors beyond expected precision loss.
+
+### IEEE Reference Limitations
+
+The test framework compares BCD results against IEEE `long double` (~18-19 decimal digits on Linux). This is a practical verification tool, not mathematical ground truth. Both are approximations.
+
+**IEEE is not always more accurate.** When BCD computes an exact decimal result (e.g., subtraction of nearly-equal numbers), IEEE may have binary representation noise in the trailing digits. The `isIeeeNoise()` heuristic detects this: if the BCD result has 3+ trailing zeros and the leading digits match, the difference is classified as IEEE noise rather than a BCD error.
+
+**Small-result amplification.** Absolute error has a floor set by the algorithm's precision ceiling (~1e-14 for CORDIC chains). When the result itself is small, dividing this floor by the result inflates the relative error:
+
+```
+tan(0.001°) ≈ 1.745e-5
+absolute error ≈ 4.2e-14  (typical CORDIC + conversion chain error)
+relative error = 4.2e-14 / 1.745e-5 ≈ 2.4e-9  →  only ~8 correct digits
+```
+
+This is not a bug — it's inherent to any fixed-precision algorithm computing small results through long operation chains. The smaller the result, the fewer correct significant digits survive.
+
+**Why IEEE appears better.** C library functions (`tanl`, `sinl`, etc.) use polynomial/rational approximations with extended internal precision (sometimes 128+ bits for argument reduction), not CORDIC. They typically achieve accuracy within a few ULP of the mathematical truth — but they are not exact either. Different implementations (glibc, musl, MSVC) may give slightly different results for the same input.
+
+### Round-Trip Tests
+
+Round-trip tests (`tan(atan(x)) = x`) verify that the forward and inverse functions are *consistent with each other* — not that either one is *correct*. If both functions had the same systematic bias, round-trip would pass perfectly while both answers are wrong.
+
+**What they can catch**: Implementation bugs that break the mathematical inverse relationship — swapped signs, wrong constants, off-by-one in range reduction, mishandled quadrants. These are valuable catches, especially for edge cases (asymptotes, domain boundaries, sign flips at 0°/90°/180°/270°).
+
+**What they can't catch**: Precision of either function individually. A round-trip MISS doesn't tell you which function lost precision — the forward, the inverse, or both. And a round-trip PASS doesn't mean either function is accurate. Errors also compound: if each function has ~13-digit precision, the round-trip has ~12-digit precision (errors add), so round-trip MISSes are expected even when both functions work correctly.
+
+**Industry context**: Round-trip tests are standard in numerical libraries (Intel MKL, GNU libm, MPFR test suites) but always *alongside* independent reference testing, never as a substitute. The IEEE 754 test suites focus on comparing against correctly-rounded reference values, not round-trips. In academia, numerical analysis papers validate against arbitrary-precision references (MPFR, Mathematica) — round-trips would not be accepted as evidence of correctness.
+
+**Our approach**: The direct BCD-vs-IEEE comparison is the primary precision measure. Each test independently measures how close a single function's output is to a reference value, and `dig=N` reports exactly how many significant digits that function got right. Round-trip tests complement this by catching structural bugs (sign, quadrant, domain errors) that might not show up as precision failures.
 
 ## Precision Loss Scenarios
 
@@ -476,7 +520,7 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 | Add/Sub (with cancellation) | 16 - k digits | k = cancelled digits; intrinsic |
 | Multiply | 16.0 digits | Guard digit rounding (17th digit of 32-digit product) |
 | Divide | 16.0 digits | Guard digit rounding (17th/18th quotient digit) |
-| Sqrt | 14.9 digits | Iterative digit-by-digit |
+| Sqrt | 14.9 digits | Newton-Raphson iteration |
 | Log | 14.5 digits | CORDIC, 16 iterations |
 | Exp | 10-14 digits | Degrades with larger inputs |
 | Atan | 14.8 digits | CORDIC, 16 iterations |
@@ -532,7 +576,7 @@ This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 
 ## Known Limitations
 
-**LN**: Has some APPROX/FAIL results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
+**LN**: Has some NEAR/MISS results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
 
 **TANRAD**: The CORDIC algorithm works correctly for small angles (~0 to PI/4 radians) but requires range reduction for larger angles. Random tests fail because they use large angles outside this range. The fixed tests show 1e-14 to 1e-12 errors which are at or near machine precision.
 

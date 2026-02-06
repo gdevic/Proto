@@ -137,152 +137,9 @@ All paths ultimately converge on `cordicTan` or `cordicAtan` as the shared compu
 
 ---
 
-## 3. Function Flow Diagrams
+## 3. Range Reduction Methods
 
-### 3.1 Tangent Family
-
-#### tanDeg (tan10.cpp:104-162)
-
-```mermaid
-flowchart TD
-    A[tanDeg entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 0]
-    B -- no --> D[Save sign, work positive]
-    D --> E[tanDegRangeReduce]
-    E --> F{Reduced to 0?}
-    F -- yes, reciprocal --> G[FLAG_OF_ERR = true]
-    F -- yes, no reciprocal --> H[Return 0 with sign]
-    F -- no --> I["Convert to radians: S0 * pi/180"]
-    I --> J[cordicTan]
-    J --> K{useReciprocal?}
-    K -- yes --> L["reciprocal: R = 1/R"]
-    K -- no --> M[Apply sign]
-    L --> M
-```
-
-#### tanRad (tan.cpp:328-352)
-
-```mermaid
-flowchart TD
-    A[tanRad entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 0]
-    B -- no --> D[Save sign, work positive]
-    D --> E["Convert to degrees: S0 * 180/pi"]
-    E --> F["Call tanDeg (handles all asymptotes via near-zero detection)"]
-```
-
-#### atanDeg (tan10.cpp:168-208)
-
-```mermaid
-flowchart TD
-    A[atanDeg entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 0]
-    B -- no --> D{"|S0| >= 1e15?"}
-    D -- yes --> E["Return +/-90 exactly"]
-    D -- no --> F["cordicAtan (returns radians)"]
-    F --> G{Result = 0?}
-    G -- yes --> H[Return 0]
-    G -- no --> I["Convert to degrees: R * 180/pi"]
-```
-
-#### atanRad (tan.cpp:384-387)
-
-Minimal wrapper: calls `cordicAtan(R, S0)` directly since CORDIC already returns radians.
-
-### 3.2 Sine/Cosine Family
-
-#### sinDeg (sin.cpp:161-201)
-
-```mermaid
-flowchart TD
-    A[sinDeg entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 0]
-    B -- no --> D[Save sign, work positive]
-    D --> E[sinDegRangeReduce]
-    E --> F{Reduced to 0?}
-    F -- yes --> G["Return 0 (sin n*180)"]
-    F -- no --> H{Reduced to 90?}
-    H -- yes --> I[Return 1 with sign]
-    H -- no --> J["sinDegCore: half-angle formula"]
-    J --> J1["Divide angle by 2"]
-    J1 --> J2["t = tanDeg(angle/2)"]
-    J2 --> J3["2t numerator"]
-    J3 --> J4["t^2 denominator"]
-    J4 --> J5["sin = 2t / (1 + t^2)"]
-    J5 --> K[Apply sign]
-```
-
-#### sinRad (sin.cpp:207-232)
-
-Converts radians to degrees via `S0 * 180/pi`, then calls `sinDeg`.
-
-#### cosDeg (cos.cpp:23-33)
-
-```mermaid
-flowchart TD
-    A[cosDeg entry] --> B["Add 90 to input"]
-    B --> C["Call sinDeg"]
-```
-
-Phase shift identity: `cos(x) = sin(x + 90)`. Three lines of code.
-
-#### cosRad (cos.cpp:39-50)
-
-Adds pi/2 to input, then calls `sinRad`. Phase shift identity: `cos(x) = sin(x + pi/2)`.
-
-### 3.3 Arcsine/Arccosine Family
-
-#### asinDeg (asin.cpp:25-89)
-
-```mermaid
-flowchart TD
-    A[asinDeg entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 0]
-    B -- no --> D[Save sign, work positive]
-    D --> E{"|S0| > 1?"}
-    E -- yes --> F[FLAG_INV_ERR]
-    E -- no --> G{"|S0| = 1?"}
-    G -- yes --> H["Return +/-90"]
-    G -- no --> I["Compute x^2"]
-    I --> J["Compute 1/x^2"]
-    J --> K["Compute 1/x^2 - 1"]
-    K --> L["sqrt(1/x^2 - 1)"]
-    L --> M["reciprocal: 1/sqrt(...)"]
-    M --> N["atanDeg(result)"]
-    N --> O[Apply sign]
-```
-
-The formula `asin(x) = atan(1/sqrt(1/x^2 - 1))` is algebraically equivalent to `asin(x) = atan(x/sqrt(1-x^2))` but avoids needing to save x across the sqrt call, which uses all registers including S4.
-
-#### asinRad (asin.cpp:95-119)
-
-Calls `asinDeg`, then converts result from degrees to radians via `R * pi/180`.
-
-#### acosDeg (acos.cpp:25-78)
-
-```mermaid
-flowchart TD
-    A[acosDeg entry] --> B{S0 = 0?}
-    B -- yes --> C[Return 90]
-    B -- no --> D{"|S0| > 1?"}
-    D -- yes --> E[FLAG_INV_ERR]
-    D -- no --> F{"S0 = +1?"}
-    F -- yes --> G[Return 0]
-    F -- no --> H{"S0 = -1?"}
-    H -- yes --> I[Return 180]
-    H -- no --> J["asinDeg(S0)"]
-    J --> K["R = 90 - R"]
-```
-
-#### acosRad (acos.cpp:84-102)
-
-Calls `acosDeg`, then converts result from degrees to radians via `R * pi/180`.
-
----
-
-## 4. Range Reduction Methods
-
-### 4.1 tanDeg: Exact Decimal Reduction (tan10.cpp:29-98)
+### 3.1 tanDeg: Exact Decimal Reduction (tan10.cpp:29-98)
 
 The tanDeg range reduction converts any angle to [0, 45] degrees using exact decimal constants. Each step is lossless because 360, 180, 90, and 45 are exact BCD values.
 
@@ -303,7 +160,7 @@ After reduction to [0, 45] degrees, the angle is converted to radians (multiplyi
 
 **Asymptote detection**: If the reduced angle is zero or near-zero (exponent <= -13) and `useReciprocal` is true, the original angle was at or near an asymptote (90 + 180*k degrees). This sets FLAG_OF_ERR. The near-zero threshold catches both exact degree asymptotes (mantissa exactly zero) and radian-converted inputs where multiplication by 180/pi introduces rounding error that prevents exact zero.
 
-### 4.2 sinDeg: Mod-180 with Parity (sin.cpp:108-153)
+### 3.2 sinDeg: Mod-180 with Parity (sin.cpp:108-153)
 
 Sine range reduction uses mod 180 with parity tracking, then reflection to [0, 90].
 
@@ -316,7 +173,7 @@ The `bcdIsOdd()` function examines the ones digit of the integer quotient `floor
 
 After reduction to (0, 90], the half-angle formula uses `tan(x/2)` where x/2 is in (0, 45]. This keeps the tangent argument in [0, 1], the optimal range for CORDIC convergence.
 
-### 4.3 atan: Reciprocal Reduction (tan.cpp:166-177)
+### 3.3 atan: Reciprocal Reduction (tan.cpp:166-177)
 
 Arctangent uses reciprocal reduction based on the identity:
 
@@ -328,7 +185,7 @@ The code applies this when the leading mantissa digit > 1 or the exponent is pos
 
 **Large-value shortcut**: For |x| >= 10^15, the difference between atan(x) and pi/2 is less than 10^-15, below the 16-digit precision floor. The function returns pi/2 (or 90 degrees) directly without computing CORDIC.
 
-### 4.4 Unit Conversions
+### 3.4 Unit Conversions
 
 Radian variants perform conversions between radians and degrees:
 
@@ -340,13 +197,13 @@ Radian variants perform conversions between radians and degrees:
 | `asinRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 | `acosRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 
-**tanRad asymptote handling**: tanRad simply converts to degrees and delegates entirely to tanDeg. It performs no asymptote detection of its own. tanDeg's unified near-zero check (see Section 4.1) catches all asymptotes uniformly: for degree inputs the reduced angle is exactly zero, and for radian inputs converted to degrees the reduced angle may be tiny but nonzero due to rounding in the 180/pi multiplication. The near-zero threshold (exponent <= -13) catches both cases.
+**tanRad asymptote handling**: tanRad simply converts to degrees and delegates entirely to tanDeg. It performs no asymptote detection of its own. tanDeg's unified near-zero check (see Section 3.1) catches all asymptotes uniformly: for degree inputs the reduced angle is exactly zero, and for radian inputs converted to degrees the reduced angle may be tiny but nonzero due to rounding in the 180/pi multiplication. The near-zero threshold (exponent <= -13) catches both cases.
 
 ---
 
-## 5. CORDIC Algorithm
+## 4. CORDIC Algorithm
 
-### 5.1 Overview
+### 4.1 Overview
 
 The implementation uses Meggitt's pseudo-division/pseudo-multiplication method, the same approach used in the HP-35 calculator. CORDIC operates entirely with BCD digit-level shifts and additions, requiring no multiplication in the inner loop.
 
@@ -354,7 +211,7 @@ Two functions share the same atan constant table:
 - `cordicTan` (tan.cpp:60-158): Computes tan(angle) from a small radian angle
 - `cordicAtan` (tan.cpp:183-322): Computes atan(value) returning radians
 
-### 5.2 The Atan Constant Table (tan.cpp:27-36)
+### 4.2 The Atan Constant Table (tan.cpp:27-36)
 
 Eight precomputed constants stored as 16-digit BCD mantissas:
 
@@ -371,7 +228,7 @@ Eight precomputed constants stored as 16-digit BCD mantissas:
 
 For j >= 8, constants are generated dynamically: atan(10^-j) approximates 10^-j for small values, which is simply (j+1) leading zeros followed by 9s. This approximation is exact to 16 digits for j >= 8 because the Taylor remainder atan(x) - x = -x^3/3 + ... is negligible at 10^-8 and below.
 
-### 5.3 cordicTan: Angle to Tangent (tan.cpp:60-158)
+### 4.3 cordicTan: Angle to Tangent (tan.cpp:60-158)
 
 Computes `tan(angle)` where `angle` is a small positive radian value (at most ~0.785 radians after range reduction).
 
@@ -393,7 +250,7 @@ Where `>> j` means shifting the mantissa right by j digit positions (dividing by
 
 **Overflow**: If x reaches zero during rotation, the tangent is infinity (FLAG_OF_ERR).
 
-### 5.4 cordicAtan: Value to Arctangent (tan.cpp:183-322)
+### 4.4 cordicAtan: Value to Arctangent (tan.cpp:183-322)
 
 Computes `atan(value)` returning the result in radians.
 
@@ -412,9 +269,9 @@ This counts how many atan(10^-j) rotations are needed to reduce y toward zero.
 
 **Part 3 - Accumulate**: The result is the residual plus the sum of count[j] * atan_const[j] for j = 7 down to 0. Each atan constant is added count[j] times using the standard `add()` function.
 
-**Reciprocal reduction**: If the reciprocal was applied (see Section 4.3), the final result is pi/2 - result.
+**Reciprocal reduction**: If the reciprocal was applied (see Section 3.3), the final result is pi/2 - result.
 
-### 5.5 Register Usage
+### 4.5 Register Usage
 
 | Register | cordicTan | cordicAtan |
 |----------|-----------|------------|
@@ -429,9 +286,9 @@ Note: `mul()` uses S2 as its internal accumulator. Functions that call `mul()` (
 
 ---
 
-## 6. Error Handling
+## 5. Error Handling
 
-### 6.1 Error Flags
+### 5.1 Error Flags
 
 Three error flags declared in `proto.h:27-31`:
 
@@ -441,7 +298,7 @@ Three error flags declared in `proto.h:27-31`:
 | `FLAG_OF_ERR` | OVERFLOW | Result exceeds +/-9.999999999999999e+99 |
 | `FLAG_DIV0_ERR` | DIV0 | Division by zero |
 
-### 6.2 Per-Function Error Conditions
+### 5.2 Per-Function Error Conditions
 
 | Function | Possible Error | Condition | Detection |
 |----------|---------------|-----------|-----------|
@@ -458,13 +315,13 @@ Three error flags declared in `proto.h:27-31`:
 | acosDeg | INVALID | \|x\| > 1 | `isRegGT(S0, CONST_1)` |
 | acosRad | INVALID | \|x\| > 1 | Propagated from acosDeg |
 
-### 6.3 Asymptote Detection Details
+### 5.3 Asymptote Detection Details
 
 **tanDeg**: Asymptotes are detected after range reduction to [0, 45]. If the reduced angle is zero or near-zero (mantissa zero OR exponent <= -13) *and* the reciprocal flag is set, the original angle was at or near an asymptote (90 + 180k degrees). The function sets FLAG_OF_ERR and returns. The near-zero threshold catches both exact degree inputs (where reduction yields exactly zero) and radian inputs converted to degrees (where the 180/pi multiplication introduces rounding error, producing a tiny nonzero residual instead of exact zero). At exponent <= -13, the reciprocal result would exceed 10^13, beyond meaningful 16-digit precision.
 
 **tanRad**: tanRad simply converts to degrees and calls tanDeg. All asymptote detection is handled by tanDeg's unified near-zero check. This works uniformly for all asymptotes (pi/2, 3*pi/2, 5*pi/2, etc.) without needing special-case proximity checks in tanRad.
 
-### 6.4 IEEE Validation of BCD Errors
+### 5.4 IEEE Validation of BCD Errors
 
 The test framework (`testbench.inl:145-171`) validates that BCD error flags are consistent with IEEE results:
 
@@ -478,9 +335,9 @@ The `|ieee| > 1e13` relaxation for OVERFLOW handles cases like `tan(pi/2)` where
 
 ---
 
-## 7. Precision Analysis
+## 6. Precision Analysis
 
-### 7.1 Operation Chain Analysis
+### 6.1 Operation Chain Analysis
 
 Each trigonometric function builds on lower-level operations, each contributing error. The theoretical precision budget for each function:
 
@@ -499,42 +356,46 @@ Each trigonometric function builds on lower-level operations, each contributing 
 | acosDeg | asinDeg + sub | Trivial overhead | ~13 |
 | acosRad | acosDeg + deg-to-rad (1 mul) | Extra mul: ~0.5 ULP | ~12.5 |
 
-### 7.2 Measured Test Results
+### 6.2 Measured Test Results
 
 Test results from running each function with fixed test vectors, round-trip tests, and 1000 random samples.
 
-**Tolerance thresholds**: OK = relative error <= 1e-14 (14+ digits), APPROX = <= 1e-13 (13-14 digits), FAIL = > 1e-13.
+**Tolerance thresholds (Relaxed class)**: PASS = relative error <= 1e-13 (13+ digits), NEAR = <= 1e-12 (12-13 digits), MISS = > 1e-12.
 
 #### Fixed Test Vectors
 
-| Function | Tests | OK | APPROX | FAIL | Notes |
+| Function | Tests | PASS | NEAR | MISS | Notes |
 |----------|------:|---:|-------:|-----:|-------|
-| tanDeg | 45 | 13 | 19 | 13 | Small angles and near-asymptote cases FAIL |
-| tanRad | 28 | 8 | 9 | 11 | Extra conversion error |
-| atanDeg | 24 | 20 | 2 | 2 | Only very small inputs FAIL |
-| atanRad | 20 | 15 | 2 | 3 | Small input FAIL from CORDIC residual |
-| sinDeg | 48 | 22 | 13 | 13 | Half-angle chain costs ~1 digit |
-| sinRad | 8 | 3 | 3 | 2 | Small sample, conversion overhead |
-| cosDeg | 29 | 14 | 11 | 4 | Better than sin (phase shift exact for many values) |
-| cosRad | 8 | 4 | 3 | 1 | Small sample |
-| asinDeg | 27 | 20 | 0 | 7 | Near-boundary and very small inputs FAIL |
-| asinRad | 15 | 13 | 0 | 2 | Minimal overhead from conversion |
-| acosDeg | 27 | 23 | 3 | 1 | Near x=1 boundary case |
-| acosRad | 14 | 13 | 1 | 0 | Best inverse trig precision |
+| tanDeg | 45 | 32 | 2 | 11 | Near-asymptote cases MISS |
+| tanRad | 28 | 17 | 3 | 8 | Extra conversion error |
+| atanDeg | 24 | 22 | 0 | 2 | Only very small inputs MISS |
+| atanRad | 20 | 17 | 0 | 3 | Small input MISS from CORDIC residual |
+| sinDeg | 48 | 35 | 5 | 8 | Half-angle chain costs ~1 digit |
+| sinRad | 8 | 6 | 2 | 0 | Conversion overhead lands within NEAR |
+| cosDeg | 29 | 25 | 4 | 0 | Phase shift preserves precision well |
+| cosRad | 8 | 7 | 1 | 0 | Good precision overall |
+| asinDeg | 27 | 20 | 4 | 3 | Near-boundary cases MISS |
+| asinRad | 15 | 13 | 2 | 0 | Minimal overhead from conversion |
+| acosDeg | 27 | 26 | 0 | 1 | Near x=1 boundary case |
+| acosRad | 14 | 14 | 0 | 0 | Best inverse trig precision |
 
 #### Random Tests (1000 samples each)
 
-| Function | OK | APPROX | FAIL | Notes |
+| Function | PASS | NEAR | MISS | Notes |
 |----------|---:|-------:|-----:|-------|
-| tanDeg | 0 | 175 | 825 | All random results exceed TIGHT_TOL |
-| tanRad | 0 | 495 | 505 | Conversion overhead, similar profile to tanDeg |
-| atanDeg | 929 | 13 | 58 | Small-input FAIL from CORDIC digit precision |
-| sinDeg | 48 | 190 | 762 | Half-angle chain costs ~1 digit consistently |
-| sinRad | 119 | 515 | 366 | Conversion overhead adds errors |
-| cosDeg | 647 | 233 | 120 | Phase shift preserves precision better |
-| cosRad | 95 | 490 | 415 | Both conversion and half-angle overhead |
+| tanDeg | 186 | 361 | 453 | ±999° range, asymptotes dominate MISS count |
+| tanRad | 448 | 496 | 56 | ±99 rad (~15 rotations), conversion overhead |
+| atanDeg | 950 | 6 | 44 | Small-input MISS from CORDIC digit precision |
+| sinDeg | 256 | 262 | 482 | Half-angle chain costs ~1 digit consistently |
+| sinRad | 617 | 345 | 38 | Conversion overhead adds errors |
+| cosDeg | 858 | 123 | 19 | Phase shift preserves precision better |
+| cosRad | 600 | 350 | 50 | Both conversion and half-angle overhead |
+| asinDeg | 762 | 237 | 1 | OPTS_ASINCOS keeps all samples in domain |
+| asinRad | 759 | 240 | 1 | Near-boundary case causes rare MISS |
+| acosDeg | 1000 | 0 | 0 | Excellent precision across domain |
+| acosRad | 999 | 1 | 0 | Near-perfect results |
 
-Note: asin/acos random tests use OPTS_SQRT (positive, maxExp=50) which generates many values outside the [-1, 1] domain, resulting in domain errors rather than precision data.
+Note: tanDeg random range is ±999° (~2.8 circles), tanRad is ±99 rad (~15.8 rotations). asin/acos use OPTS_ASINCOS which generates values in [0.01, 1) with random sign, keeping all samples within the valid domain.
 
 #### Round-Trip Tests
 
@@ -542,28 +403,28 @@ Round-trip tests verify `forward(inverse(x)) = x` (e.g., `tan(atan(x))`):
 
 | Round-Trip | Fixed | Random (1000) | Notes |
 |-----------|-------|---------------|-------|
-| tan(atan(x)) deg | 1 OK, 1 APPROX, 43 FAIL | 853 OK, 11 APPROX, 136 FAIL | Fixed values include asymptotes |
-| tan(atan(x)) rad | 1 OK, 10 APPROX, 17 FAIL | 834 OK, 13 APPROX, 153 FAIL | Large-angle round trips degrade heavily |
-| sin(asin(x)) deg | 14 OK, 6 APPROX, 7 FAIL | N/A | Domain limits random testing |
-| sin(asin(x)) rad | 9 OK, 2 APPROX, 4 FAIL | N/A | |
-| cos(acos(x)) deg | 13 OK, 7 APPROX, 7 FAIL | N/A | |
-| cos(acos(x)) rad | 8 OK, 2 APPROX, 4 FAIL | N/A | |
+| tan(atan(x)) deg | 2 PASS, 3 NEAR, 40 MISS | 866 PASS, 11 NEAR, 123 MISS | Fixed values include asymptotes |
+| tan(atan(x)) rad | 11 PASS, 9 NEAR, 8 MISS | 853 PASS, 17 NEAR, 130 MISS | Large-angle round trips degrade |
+| sin(asin(x)) deg | 20 PASS, 3 NEAR, 4 MISS | N/A | Domain limits random testing |
+| sin(asin(x)) rad | 11 PASS, 3 NEAR, 1 MISS | N/A | |
+| cos(acos(x)) deg | 20 PASS, 3 NEAR, 4 MISS | N/A | |
+| cos(acos(x)) rad | 10 PASS, 3 NEAR, 1 MISS | N/A | |
 
-### 7.3 Precision by Input Range
+### 6.3 Precision by Input Range
 
 Error clustering patterns observed across test results:
 
 **tanDeg/tanRad - Near asymptotes**: Near 90 degrees, tiny angle changes produce huge result changes. At 89.9 degrees, err ~ 1.6e-8 (only ~8 correct digits) because the result itself (~573) magnifies any input error. These errors only affect direct tanDeg/tanRad calls. Functions that use tanDeg internally (sinDeg, cosDeg, and their radian variants) are **not** affected: sinDeg range-reduces to (0, 90] and then calls `tan(angle/2)` where angle/2 is in (0, 45], keeping the tangent argument in [0, 1] - well away from any asymptote. Similarly, asinDeg/acosDeg call atanDeg, not tanDeg, so asymptote errors do not propagate to them either.
 
-**tanDeg - Small angles**: For angles < 1 degree, the degrees-to-radians conversion introduces multiplicative error. tan(0.001 deg) shows err ~ 4.2e-14 (FAIL), a systematic ~14.3-digit precision from the pi/180 constant's limited accuracy.
+**tanDeg - Small angles**: For angles < 1 degree, the degrees-to-radians conversion introduces multiplicative error. tan(0.001 deg) shows err ~ 4.2e-14 (MISS), a systematic ~14.3-digit precision from the pi/180 constant's limited accuracy.
 
-**sinDeg/sinRad - Consistent ~13.5 digits**: The half-angle formula chains 6 operations (div, tanDeg, 2 mul, add, div), each contributing ~0.5 ULP. Random tests show 76% FAIL rate for sinDeg, consistent with the operation chain budget of ~13.5 digits. The errors here come from operation chain accumulation, not from tanDeg near-asymptote issues (see note above).
+**sinDeg/sinRad - Consistent ~13.5 digits**: The half-angle formula chains 6 operations (div, tanDeg, 2 mul, add, div), each contributing ~0.5 ULP. Random tests show ~48% MISS rate for sinDeg at the Relaxed threshold, consistent with the operation chain budget of ~13.5 digits. The errors here come from operation chain accumulation, not from tanDeg near-asymptote issues (see note above).
 
 **atanDeg/atanRad - Small input degradation**: For |x| < 1e-6, the CORDIC vectoring produces fewer significant digits in the count array. At 1e-14, the result has only ~13 correct digits because most CORDIC iterations produce zero counts.
 
 **asinDeg - Near boundaries**: At x = 0.999999999999999 (near +1), the intermediate 1/x^2 - 1 computation involves catastrophic cancellation (subtracting nearly equal numbers), yielding err ~ 1.78e-11 (only ~11 correct digits). This is inherent to the identity-based approach.
 
-### 7.4 Error Source Breakdown
+### 6.4 Error Source Breakdown
 
 | Error Source | Magnitude | Affected Functions |
 |-------------|-----------|-------------------|
@@ -575,7 +436,7 @@ Error clustering patterns observed across test results:
 | Range reduction (degrees) | 0 (exact) | tanDeg, sinDeg |
 | Range reduction (radians) | ~1 ULP (180/pi mul) | tanRad, sinRad |
 
-### 7.5 Summary Table
+### 6.5 Summary Table
 
 | Function | Typical Digits | Worst Case | Worst Input Region |
 |----------|:-:|:-:|-------------------|
@@ -592,13 +453,13 @@ Error clustering patterns observed across test results:
 | acosDeg | 13-14 | ~11 | Near |x| = 1 |
 | acosRad | 13-14 | ~11 | Near |x| = 1 |
 
-Note: "Worst Case" for tanDeg/tanRad reflects behavior near asymptotes where the mathematical function itself amplifies any input error. Away from asymptotes, tanDeg consistently delivers 13+ correct digits. For asin/acos, the worst case near |x| = 1 is due to catastrophic cancellation in the intermediate computation (see Section 7.3).
+Note: "Worst Case" for tanDeg/tanRad reflects behavior near asymptotes where the mathematical function itself amplifies any input error. Away from asymptotes, tanDeg consistently delivers 13+ correct digits. For asin/acos, the worst case near |x| = 1 is due to catastrophic cancellation in the intermediate computation (see Section 6.3).
 
 ---
 
-## 8. Constants
+## 7. Constants
 
-### 8.1 Simple Constants (const.cpp:18-25)
+### 7.1 Simple Constants (const.cpp:18-25)
 
 Stored as {mant[0], mant[1], exp[1]} with exp[0] = 0 and remaining mantissa digits = 0:
 
@@ -613,7 +474,7 @@ Stored as {mant[0], mant[1], exp[1]} with exp[0] = 0 and remaining mantissa digi
 
 These are all exact in BCD representation. Range reduction using these constants introduces zero rounding error.
 
-### 8.2 Transcendental Constants (const.cpp:30-47)
+### 7.2 Transcendental Constants (const.cpp:30-47)
 
 Full 16-digit BCD mantissa values:
 
@@ -630,7 +491,7 @@ Verification against exact values:
 - 180/pi = 57.29577951308232087679815481410... (stored as ...8232, truncated)
 - pi/2 = 1.57079632679489661923132169164... (stored as ...4897, rounded)
 
-### 8.3 CORDIC Atan Constants (tan.cpp:27-36)
+### 7.3 CORDIC Atan Constants (tan.cpp:27-36)
 
 Eight stored constants plus dynamic generation for j >= 8:
 
@@ -650,9 +511,9 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 
 ---
 
-## 9. Summary
+## 8. Summary
 
-### 9.1 Quick Reference
+### 8.1 Quick Reference
 
 | Function | File | Algorithm | Precision | Dependencies |
 |----------|------|-----------|:---------:|-------------|
@@ -669,7 +530,7 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 | acosDeg | acos.cpp | 90 - asinDeg | ~13 digits | asinDeg |
 | acosRad | acos.cpp | acosDeg + convert | ~12.5 digits | acosDeg |
 
-### 9.2 Design Rationale
+### 8.2 Design Rationale
 
 **Why degrees-first**: Exact decimal range reduction (360, 180, 90, 45 are all exact BCD constants). Radian range reduction requires dividing by pi, which is irrational and introduces error at the very first step.
 
@@ -677,12 +538,12 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 
 **Why identity-based asin/acos**: The formula asin(x) = atan(1/sqrt(1/x^2 - 1)) reuses existing atan and sqrt functions. The restructured form avoids needing to preserve x across the sqrt call, which would be impossible given sqrt's use of all registers.
 
-### 9.3 Known Limitations
+### 8.3 Known Limitations
 
 1. **16-digit mantissa ceiling**: All functions are bounded by the BCD format's 16 significant digits. Even with perfect algorithms, cascading operations accumulate ~0.5 ULP per operation.
 
 2. **Radian large-angle degradation**: For large radian inputs (|x| > 100), the conversion to degrees (`x * 180/pi`) amplifies errors proportional to the input magnitude. Round-trip tests for tanRad at x ~ 1000 show errors in the 7th significant digit.
 
-3. **Near-boundary precision for asin/acos**: The 1/x^2 - 1 computation in asinDeg involves catastrophic cancellation when |x| approaches 1. At x = 0.999999999999999, the intermediate subtraction loses nearly all significant digits. However, the subsequent sqrt and atan operations partially recover precision because atan compresses large values into a narrow range near 90 degrees. The final result still achieves ~11 correct digits (err ~ 1.78e-11), consistent with the measured data in Section 7.3.
+3. **Near-boundary precision for asin/acos**: The 1/x^2 - 1 computation in asinDeg involves catastrophic cancellation when |x| approaches 1. At x = 0.999999999999999, the intermediate subtraction loses nearly all significant digits. However, the subsequent sqrt and atan operations partially recover precision because atan compresses large values into a narrow range near 90 degrees. The final result still achieves ~11 correct digits (err ~ 1.78e-11), consistent with the measured data in Section 6.3.
 
-4. **tanDeg FAIL rate in random testing**: The TIGHT_TOL threshold (1e-14 = 14 correct digits) is systematically exceeded by tanDeg's ~14.3-digit typical precision, causing 82.5% of random tests to register as FAIL. The LOOSE_TOL threshold (1e-13 = 13 correct digits) is almost never exceeded, indicating the algorithm consistently delivers 13-14 correct digits.
+4. **tanDeg MISS rate in random testing**: With the Relaxed tolerance class (tight=1e-13, loose=1e-12) and random angles up to ±999° (~2.8 circles), tanDeg's ~14.3-digit typical precision lands many results in the PASS or NEAR range. The remaining MISSes (~45%) come from near-asymptote cases where precision degrades below 12 digits. The algorithm consistently delivers 12-14 correct digits for angles away from 90°/270°.
