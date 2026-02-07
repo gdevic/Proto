@@ -95,8 +95,8 @@ All 12 trigonometric entry points, their source files, input/output units, and c
 | `atanRad` | `tan.cpp` | value | radians | CORDIC (direct) | `cordicAtan` |
 | `sinDeg` | `sin.cpp` | degrees | value | Half-angle + CORDIC | `sinDegRangeReduce`, `tanDeg` |
 | `sinRad` | `sin.cpp` | radians | value | Convert to deg, delegate | `sinDeg` |
-| `cosDeg` | `cos.cpp` | degrees | value | Phase shift | `sinDeg` |
-| `cosRad` | `cos.cpp` | radians | value | Phase shift | `sinRad` |
+| `cosDeg` | `cos.cpp` | degrees | value | Postponed +90° offset | `sinDegRangeReduce`, `cosDegApplyOffset`, `tanDeg` |
+| `cosRad` | `cos.cpp` | radians | value | Convert to deg, delegate | `cosDeg` |
 | `asinDeg` | `asin.cpp` | value | degrees | Identity via atan | `atanDeg`, `sqrt`, `div`, `mul` |
 | `asinRad` | `asin.cpp` | value | radians | asinDeg + convert | `asinDeg` |
 | `acosDeg` | `acos.cpp` | value | degrees | Complement of asin | `asinDeg` |
@@ -114,8 +114,8 @@ graph TD
 
     sinDeg["sinDeg()"] --> tanDeg
     sinRad["sinRad()"] --> sinDeg
-    cosDeg["cosDeg()"] --> sinDeg
-    cosRad["cosRad()"] --> sinRad
+    cosDeg["cosDeg()"] --> tanDeg
+    cosRad["cosRad()"] --> cosDeg
 
     asinDeg["asinDeg()"] --> atanDeg
     asinDeg --> sqrt["sqrt()"]
@@ -160,16 +160,16 @@ After reduction to [0, 45] degrees, the angle is converted to radians (multiplyi
 
 **Asymptote detection**: If the reduced angle is zero or near-zero (exponent <= -13) and `useReciprocal` is true, the original angle was at or near an asymptote (90 + 180*k degrees). This sets FLAG_OF_ERR. The near-zero threshold catches both exact degree asymptotes (mantissa exactly zero) and radian-converted inputs where multiplication by 180/pi introduces rounding error that prevents exact zero.
 
-### 3.2 sinDeg: Mod-180 with Parity (sin.cpp:108-153)
+### 3.2 sinDeg: Mod-180 with Parity (sin.cpp:75-136)
 
 Sine range reduction uses mod 180 with parity tracking, then reflection to [0, 90].
 
 | Step | Identity | Reduction | Method |
 |------|----------|-----------|--------|
-| 1 | sin(x + 180) = -sin(x) | [0, 180) | O(1): mod 180, track odd/even via `bcdIsOdd()` |
+| 1 | sin(x + 180) = -sin(x) | [0, 180) | O(1): mod 180, track odd/even via `truncate()` |
 | 2 | sin(180 - x) = sin(x) | [0, 90] | Reflect at 90 |
 
-The `bcdIsOdd()` function examines the ones digit of the integer quotient `floor(x/180)` to determine parity. If the quotient is odd, the result must be negated.
+The `truncate()` function truncates the quotient `floor(x/180)` to an integer and returns true if the result is odd (by examining the ones digit of the BCD mantissa). If the quotient is odd, the result must be negated.
 
 After reduction to (0, 90], the half-angle formula uses `tan(x/2)` where x/2 is in (0, 45]. This keeps the tangent argument in [0, 1], the optimal range for CORDIC convergence.
 
@@ -193,7 +193,7 @@ Radian variants perform conversions between radians and degrees:
 |----------|-----------|----------|
 | `tanRad` | `deg = rad * 180/pi` | CONST_180_OVER_PI |
 | `sinRad` | `deg = rad * 180/pi` | CONST_180_OVER_PI |
-| `cosRad` | `rad += pi/2`, then `sinRad` | CONST_PI_OVER_2 |
+| `cosRad` | `deg = rad * 180/pi`, then `cosDeg` | CONST_180_OVER_PI |
 | `asinRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 | `acosRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 |
 
@@ -349,8 +349,8 @@ Each trigonometric function builds on lower-level operations, each contributing 
 | atanRad | cordicAtan (direct) | CORDIC: ~1-2 digits | ~14.5 |
 | sinDeg | range reduce (exact) + div by 2 + tanDeg + 2 mul + add + div | 6 operations | ~13.5 |
 | sinRad | deg convert (1 mul) + sinDeg | Extra mul: ~0.5 ULP | ~13 |
-| cosDeg | add 90 + sinDeg | Trivial overhead | ~13.5 |
-| cosRad | add pi/2 + sinRad | Pi/2 imprecision + sinRad | ~13 |
+| cosDeg | mod 180 + sub(±90) + half-angle | Same as sinDeg (postponed offset is exact) | ~13.5 |
+| cosRad | deg convert (1 mul) + cosDeg | Extra mul: ~0.5 ULP (no pi/2 constant) | ~13 |
 | asinDeg | mul + div + sub + sqrt + reciprocal + atanDeg | 6 operations | ~13 |
 | asinRad | asinDeg + deg-to-rad (1 mul) | Extra mul: ~0.5 ULP | ~12.5 |
 | acosDeg | asinDeg + sub | Trivial overhead | ~13 |
@@ -372,8 +372,8 @@ Test results from running each function with fixed test vectors, round-trip test
 | atanRad | 20 | 17 | 0 | 3 | Small input MISS from CORDIC residual |
 | sinDeg | 48 | 35 | 5 | 8 | Half-angle chain costs ~1 digit |
 | sinRad | 8 | 6 | 2 | 0 | Conversion overhead lands within NEAR |
-| cosDeg | 29 | 25 | 4 | 0 | Phase shift preserves precision well |
-| cosRad | 8 | 7 | 1 | 0 | Good precision overall |
+| cosDeg | 29 | 25 | 4 | 0 | Postponed +90° offset, same core as sinDeg |
+| cosRad | 8 | 7 | 1 | 0 | Converts to deg, calls cosDeg (no π/2) |
 | asinDeg | 27 | 20 | 4 | 3 | Near-boundary cases MISS |
 | asinRad | 15 | 13 | 2 | 0 | Minimal overhead from conversion |
 | acosDeg | 27 | 26 | 0 | 1 | Near x=1 boundary case |
@@ -388,8 +388,8 @@ Test results from running each function with fixed test vectors, round-trip test
 | atanDeg | 950 | 6 | 44 | Small-input MISS from CORDIC digit precision |
 | sinDeg | 256 | 262 | 482 | Half-angle chain costs ~1 digit consistently |
 | sinRad | 617 | 345 | 38 | Conversion overhead adds errors |
-| cosDeg | 858 | 123 | 19 | Phase shift preserves precision better |
-| cosRad | 600 | 350 | 50 | Both conversion and half-angle overhead |
+| cosDeg | 858 | 123 | 19 | Postponed offset avoids large-input precision loss |
+| cosRad | 601 | 349 | 50 | deg convert + cosDeg (no π/2 constant error) |
 | asinDeg | 762 | 237 | 1 | OPTS_ASINCOS keeps all samples in domain |
 | asinRad | 759 | 240 | 1 | Near-boundary case causes rare MISS |
 | acosDeg | 1000 | 0 | 0 | Excellent precision across domain |
@@ -523,8 +523,8 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 | atanRad | tan.cpp | CORDIC direct | ~14.5 digits | cordicAtan |
 | sinDeg | sin.cpp | Half-angle + CORDIC | ~13.5 digits | tanDeg |
 | sinRad | sin.cpp | Convert + sinDeg | ~13 digits | sinDeg |
-| cosDeg | cos.cpp | sin(x+90) | ~13.5 digits | sinDeg |
-| cosRad | cos.cpp | sin(x+pi/2) | ~13 digits | sinRad |
+| cosDeg | cos.cpp | mod 180 + offset(±90) + half-angle | ~13.5 digits | tanDeg |
+| cosRad | cos.cpp | Convert + cosDeg | ~13 digits | cosDeg |
 | asinDeg | asin.cpp | atan(1/sqrt(1/x^2-1)) | ~13 digits | atanDeg, sqrt |
 | asinRad | asin.cpp | asinDeg + convert | ~12.5 digits | asinDeg |
 | acosDeg | acos.cpp | 90 - asinDeg | ~13 digits | asinDeg |
@@ -535,6 +535,8 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 **Why degrees-first**: Exact decimal range reduction (360, 180, 90, 45 are all exact BCD constants). Radian range reduction requires dividing by pi, which is irrational and introduces error at the very first step.
 
 **Why half-angle for sine**: The identity sin(x) = 2t/(1+t^2) reuses the existing tanDeg CORDIC pipeline. Alternative approaches (separate CORDIC for sin/cos, Taylor series) would require additional constant tables or more complex iteration loops with no significant precision advantage.
+
+**Why postponed offset for cosine**: The identity `cos(x) = sin(x + 90)` is applied by doing mod 180 on the original angle, then applying the ±90 offset to the small reduced angle (always exact). Adding 90 directly to the input would cause precision loss for very large inputs (at exp >= 17, the +90 is completely lost in the mantissa alignment). For cosRad, converting to degrees first also eliminates the irrational π/2 constant, saving ~0.5 ULP.
 
 **Why identity-based asin/acos**: The formula asin(x) = atan(1/sqrt(1/x^2 - 1)) reuses existing atan and sqrt functions. The restructured form avoids needing to preserve x across the sqrt call, which would be impossible given sqrt's use of all registers.
 

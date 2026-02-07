@@ -45,7 +45,7 @@ The tool operates in two modes:
 | Exponential | `exp(R, S0)` | CORDIC digit-by-digit (inverse of ln) |
 | Sine (deg) | `sinDeg(R, S0)` | Half-angle formula via tanDeg |
 | Sine (rad) | `sinRad(R, S0)` | Converts to degrees, calls sinDeg |
-| Cosine (deg) | `cosDeg(R, S0)` | Phase shift: sin(x + 90) |
+| Cosine (deg) | `cosDeg(R, S0)` | Postponed +90° offset via sinDeg core |
 | Cosine (rad) | `cosRad(R, S0)` | Converts to degrees, calls cosDeg |
 | Arcsine (deg) | `asinDeg(R, S0)` | atan(1/sqrt(1/x²-1)) identity |
 | Arcsine (rad) | `asinRad(R, S0)` | Calls asinDeg, converts |

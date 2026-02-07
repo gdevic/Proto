@@ -8,8 +8,8 @@ Eight trigonometric functions implemented using half-angle formulas and arctange
 |----------|-------|--------|---------|
 | `sinDeg` | degrees | sine value | Half-angle |
 | `sinRad` | radians | sine value | Converts to degrees, calls `sinDeg` |
-| `cosDeg` | degrees | cosine value | Phase shift: `sin(x + 90°)` |
-| `cosRad` | radians | cosine value | Phase shift: `sin(x + π/2)` |
+| `cosDeg` | degrees | cosine value | Postponed +90° offset via sinDeg core |
+| `cosRad` | radians | cosine value | Converts to degrees, calls `cosDeg` |
 | `asinDeg` | value [-1,1] | degrees [-90,90] | Arctangent identity |
 | `asinRad` | value [-1,1] | radians [-π/2,π/2] | Calls `asinDeg`, converts |
 | `acosDeg` | value [-1,1] | degrees [0,180] | 90 - asin |
@@ -64,17 +64,9 @@ This keeps `tan(x/2)` in the range [0, 45°], where tan values are in [0, 1] —
 12. Apply negateResult and inputSign
 ```
 
-### Parity Check in BCD
+### Parity Check via truncate()
 
-To check if a BCD integer is odd, examine the ones digit. For a normalized BCD number with exponent `e`, the ones digit is at mantissa position `e`:
-
-```cpp
-static bool bcdIsOdd(const BCD& x) {
-    int exp = x.exp[0] * 10 + x.exp[1];
-    if (x.esign || exp >= MAX_MANT) return false;
-    return (x.mant[exp] % 2) == 1;
-}
-```
+The `truncate()` function (register.cpp) truncates a BCD number to its integer part and returns `true` if the resulting integer is odd. It examines the ones digit at mantissa position `exp` before zeroing fractional digits. This matches the assembly `truncate` which sets FLAG_TEST for the same purpose.
 
 ### Register Usage
 
@@ -87,7 +79,7 @@ Destroyed by mul: S0, S1, S2, R
 
 Solution: Save `t` to S4, save `2t` to S3 before computing `t²`.
 
-## Cosine via Phase Shift
+## Cosine via Postponed +90° Offset
 
 ### Mathematical Basis
 
@@ -95,44 +87,30 @@ Solution: Save `t` to S4, save `2t` to S3 before computing `t²`.
 cos(x) = sin(x + 90°)
 ```
 
-### Implementation
+Adding 90° directly to the input would cause precision loss for very large inputs (at exp >= 17, the +90 is lost entirely in the mantissa alignment). Instead, mod 180 runs on the original angle, then the ±90 offset is applied to the small reduced angle — always exact.
 
-```cpp
-void cosDeg(BCD& S0, BCD& R) {
-    setBCD90(S1);
-    add(S0, S1, R);
-    regCopy(S0, R);
-    sinDeg(S0, R);
-}
+### Offset Transformation
+
+After mod 180, the reduced angle r ∈ [0, 180). Adding 90 conceptually gives [90, 270):
+
+```
+r < 90:  final_angle = 90 - r,  parity unchanged   (reflection)
+r >= 90: final_angle = r - 90,  parity flipped      (wrap past 180)
 ```
 
-This is ~10 lines vs ~150 lines for a separate half-angle implementation.
+Both branches use a single exact subtraction with 90. The final angle is in [0, 90], ready for sinDegCore's half-angle computation.
 
-### Why This Works
+### Why Postponed Offset
 
-The `sinDeg` function already handles all quadrants and special cases:
-- cos(0) = sin(90) = 1 ✓
-- cos(90) = sin(180) = 0 ✓
-- cos(180) = sin(270) = -1 ✓
-- cos(270) = sin(360→0) = 0 ✓
+| Input exponent | Naive add(x, 90) | Postponed offset (after mod 180) |
+|:-:|---|---|
+| < 16 | 90 survives in mantissa | Same result |
+| 16 | Partial loss (~1° error) | Exact (offset on small angle) |
+| **17+** | **90 completely lost** | **Always exact** |
 
 ### Radians Version
 
-Same approach for `cosRad`:
-
-```cpp
-void cosRad(BCD& S0, BCD& R) {
-    // cos(x) = sin(x + PI/2)
-    mantCopy(S1.mant.data(), pi_over_2);  // PI/2 constant
-    S1.exp[0] = 0; S1.exp[1] = 0;
-    S1.esign = false; S1.sign = false;
-    add(S0, S1, R);
-    regCopy(S0, R);
-    sinRad(S0, R);
-}
-```
-
-This avoids degree conversion entirely - both functions work natively in their respective units.
+`cosRad` converts to degrees then calls `cosDeg`, eliminating the irrational π/2 constant entirely and saving ~0.5 ULP.
 
 ## Arctangent Identity (asin)
 
@@ -203,10 +181,10 @@ Special cases for exact values:
 
 ### Test Results Summary
 
-**sinDeg**: 20 PASS, 11 NEAR, 12 MISS (errors ~6-9 × 10⁻¹⁴)
-**cosDeg**: 11 PASS, 11 NEAR, 4 MISS (errors ~3-8 × 10⁻¹⁴)
-**asinDeg**: 12 PASS, 0 NEAR, 3 MISS (errors ~5-7 × 10⁻¹³ for small inputs)
-**acosDeg**: 14 PASS, 2 NEAR, 0 MISS
+**sinDeg**: 35 PASS, 5 NEAR, 8 MISS (errors ~6-9 × 10⁻¹⁴)
+**cosDeg**: 25 PASS, 4 NEAR, 0 MISS (errors ~3-8 × 10⁻¹⁴)
+**asinDeg**: 20 PASS, 4 NEAR, 3 MISS (errors ~5-7 × 10⁻¹³ for small inputs)
+**acosDeg**: 26 PASS, 0 NEAR, 1 MISS
 
 Note: sinDeg test suite expanded with corner cases for 90°, 180°, 270° boundaries.
 
@@ -226,15 +204,6 @@ Testing `sin(asin(x)) = x` and `cos(acos(x)) = x`:
 2. **Near-boundary precision**: For `|x| ≈ 1` in asin/acos, `sqrt(1 - x²) ≈ 0` causes precision loss in the original formula. The alternate formula `sqrt(1/x² - 1)` behaves better here.
 
 3. **Accumulated error**: Each operation (mul, div, sqrt, atan) contributes ~1 ULP error. Chain of 6-8 operations yields ~6-8 × 10⁻¹⁴ total error.
-
-## Files
-
-| File | Functions | Lines |
-|------|-----------|-------|
-| sin.cpp | sinDeg, sinRad, testSinDeg, testSinRad | ~360 |
-| cos.cpp | cosDeg, cosRad, testCosDeg, testCosRad | ~130 |
-| asin.cpp | asinDeg, asinRad, testAsinDeg, testAsinRad | ~220 |
-| acos.cpp | acosDeg, acosRad, testAcosDeg, testAcosRad | ~215 |
 
 ## Future Improvements
 

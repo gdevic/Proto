@@ -75,6 +75,10 @@ void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
 void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
 
+// Internal helpers shared between sin.cpp and cos.cpp
+bool sinDegRangeReduce();          // Mod-180 range reduce, returns true if odd parity
+void sinDegCore(bool negateResult, bool inputSign); // Half-angle core for angle in (0, 90)
+
 // Test functions
 void testAddition();
 void testSubtraction();

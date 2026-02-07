@@ -35,7 +35,7 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Tangent (degrees)** (`tan10.cpp`): Exact range reduction using 360°/180°/90°/45°, then converts to radians and applies CORDIC. Works for all angles. See `docs/tan10-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
 - **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Reuses tanDeg for core computation. Precision ~4-8e-14. See `docs/sincos-algorithm-research.md`.
-- **Cosine** (`cos.cpp`): Phase shift identity cos(x) = sin(x + 90°). Reuses sinDeg for all computation. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
+- **Cosine** (`cos.cpp`): Postponed +90° offset: mod 180 on original angle, then ±90 on reduced angle. Uses sinDegRangeReduce() and sinDegCore() from sin.cpp. cosRad converts to degrees then calls cosDeg, eliminating the irrational π/2 constant. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
 - **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 - **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 

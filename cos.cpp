@@ -1,10 +1,12 @@
 /******************************************************************************
- * cos.cpp - Cosine functions via phase shift identity
+ * cos.cpp - Cosine functions using postponed +90° offset
  *
- * Implements cosDeg() and cosRad() using:
- *   cos(x) = sin(x + 90°)
+ * Implements cosDeg(), cosRad() using the identity cos(x) = sin(x + 90).
+ * The +90° offset is applied after mod-180 range reduction (not before),
+ * ensuring the offset is always exact even for very large inputs.
+ * cosRad converts to degrees first, eliminating the irrational π/2 constant.
  *
- * Delegates all computation to sinDeg/sinRad.
+ * Shares sinDegRangeReduce() and sinDegCore() from sin.cpp.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -12,44 +14,116 @@
 
 #include "proto.h"
 #include "testbench.h"
+#include "mantissa.h"
 #include "register.h"
 #include <cassert>
 #include <cmath>
 
+// Apply +90° offset to angle in [0, 180) for cosine computation
+// Transforms to [0, 90] suitable for sinDegCore, adjusting parity
+// Input: S0 = angle in [0, 180), negateResult = current parity
+// Output: S0 = angle in [0, 90], negateResult updated
+// Uses registers: S0, S1, S4, R
+static void cosDegApplyOffset(bool& negateResult)
+{
+    // cos(x) = sin(x + 90). After mod 180, S0 = r ∈ [0, 180).
+    // We need sin(r + 90):
+    //   r < 90:  sin(r+90) = sin(180-(r+90)) = sin(90-r). Parity unchanged.
+    //   r >= 90: sin(r+90) = sin(r+90-180) × (-1) = sin(r-90), flip parity.
+    //   r == 90: sin(180) = 0 (handled by caller's zero check)
+    constLoad(S4, CONST_90);
+
+    if (isRegGE(S0, S4)) {
+        // r >= 90: angle = r - 90, flip parity
+        regCopy(S1, S4);
+        negateResult = !negateResult;
+    } else {
+        // r < 90: angle = 90 - r, keep parity
+        regCopy(S1, S0);
+        regCopy(S0, S4);
+    }
+    sub(R, S0, S1);
+    regCopy(S0, R);
+    // Now S0 is in [0, 90]
+}
+
 // Compute cosine in degrees: R = cosDeg(S0)
 // Input in degrees, output is the cosine value
-// Uses identity: cos(x) = sin(x + 90)
+// Uses postponed offset: mod 180 on original angle, then ±90 on reduced angle
+// This ensures the offset is always exact even for very large inputs
 // Reads from S0, stores result in R
-void cosDeg(BCD& R, BCD& S0)
+void cosDeg(BCD& _R, BCD& _S0)
 {
-    assert((&R == &::R) && (&S0 == &::S0));
+    assert((&_R == &::R) && (&_S0 == &::S0));
 
-    // cos(x) = sin(x + 90)
-    // Add 90 to input, then call sinDeg
-    constLoad(S1, CONST_90);
-    add(R, S0, S1);
-    regCopy(S0, R);
-    sinDeg(R, S0);
+    preCalc1(R, S0);
+
+    // Special case: cosDeg(0) = 1 exactly
+    if (FLAG_S0_ZERO) {
+        R.mant[0] = 1;
+        return;
+    }
+
+    // cos is an even function: cos(-x) = cos(x), so discard sign
+    S0.sign = false;
+
+    // ---------- Range Reduction ----------
+    // Mod 180 on the original angle (NOT angle+90)
+    bool negateResult = sinDegRangeReduce();
+
+    // Apply +90° offset to the small reduced angle [0, 180)
+    // This transforms to [0, 90] with adjusted parity
+    cosDegApplyOffset(negateResult);
+
+    // Special case: cos = 0 after reduction (i.e., cos(90+n*180) = 0)
+    if (isMantZero(S0.mant.data())) {
+        regClear(R);
+        return;
+    }
+
+    // Now S0 is in (0, 90]
+
+    // Special case: sin(90) = 1 exactly (reduced angle = 90 means cos(n*180) = ±1)
+    constLoad(S4, CONST_90);
+    if (isRegEQ(S0, S4)) {
+        regClear(R);
+        R.mant[0] = 1;
+        R.sign = negateResult;
+        return;
+    }
+
+    // Now S0 is in (0, 90) - compute sin using half-angle formula
+    // inputSign=false because cos is even (sign comes from parity only)
+    sinDegCore(negateResult, false);
 }
 
 // Compute cosine in radians: R = cosRad(S0)
 // Input in radians, output is the cosine value
-// Uses identity: cos(x) = sin(x + PI/2)
+// Converts to degrees, then calls cosDeg
 // Reads from S0, stores result in R
 void cosRad(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    // cos(x) = sin(x + PI/2)
-    // Add PI/2 to input, then call sinRad
-    constLoad(S1, CONST_PI_OVER_2);
+    preCalc1(R, S0);
 
-    add(R, S0, S1);
+    // Special case: cosRad(0) = 1 exactly
+    if (FLAG_S0_ZERO) {
+        R.mant[0] = 1;
+        return;
+    }
+
+    // Convert radians to degrees: degrees = radians * (180/PI)
+    constLoad(S1, CONST_180_OVER_PI);
+    mul(R, S0, S1);
+
+    // R now contains degrees, move to S0 (cosDeg discards sign)
     regCopy(S0, R);
-    sinRad(R, S0);
+
+    cosDeg(R, S0);
 }
 
-// IEEE operations for test runner
+// IEEE operations for cos test runner
 static Real ieeeCosDeg(Real x) { return std::cos(x * REAL_LITERAL(3.14159265358979323846) / REAL_LITERAL(180.0)); }
 static Real ieeeCosRad(Real x) { return std::cos(x); }
 
@@ -91,7 +165,7 @@ void testCosDeg()
         "-30",
         "-90",
         "-180",
-        // Boundary transitions (identity: cos(x) = sin(x+90))
+        // Boundary transitions
         "89.99999999999999",      // Near 90 (16 sig digits)
         "90.00000000000001",      // Just past 90 (16 sig digits)
         "179.9999999999999",      // Near 180 (16 sig digits)

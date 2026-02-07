@@ -1,8 +1,11 @@
 /******************************************************************************
  * sin.cpp - Sine functions using half-angle formula
  *
- * Implements sinDeg() and sinRad() using the identity:
+ * Implements sinDeg(), sinRad() using the identity:
  *   sin(x) = 2t / (1 + t²)  where t = tan(x/2)
+ *
+ * Also provides sinDegRangeReduce() and sinDegCore() as shared helpers
+ * used by cos.cpp for the postponed +90° offset technique.
  *
  * Range reduction uses mod 180 with parity tracking, then
  * reflection to [0, 90] to keep tan(x/2) in optimal range [0, 1].
@@ -24,7 +27,7 @@
 // Uses: all registers
 // Note: mul uses S2 as accumulator, so only S3, S4 are safe across mul calls
 // Since angle is in (0, 90), tan(angle/2) is in (0, 1) - optimal CORDIC range
-static void sinDegCore(bool negateResult, bool inputSign)
+void sinDegCore(bool negateResult, bool inputSign)
 {
     // ---------- Compute tan(x/2) ----------
     // First divide angle by 2: S0 = S0 / 2
@@ -74,14 +77,12 @@ static void sinDegCore(bool negateResult, bool inputSign)
         R.sign = inputSign;
 }
 
-// Range reduction for sinDeg: reduces angle to (0, 90] degrees
-// Uses mod 180 with parity tracking, then reflection to [0, 90]
+// Mod-180 range reduction: reduces positive angle to [0, 180) with parity
 // Input: S0 = positive angle in degrees
-// Output: S0 = reduced angle in (0, 90], negateResult flag
+// Output: S0 = angle mod 180 in [0, 180)
 // Returns: true if result should be negated (odd number of 180° periods)
-// Note: Caller must check for sin(0) after reduction (sin(n*180) = 0)
 // Uses registers: S0, S1, S3, S4, R
-static bool sinDegRangeReduce()
+bool sinDegRangeReduce()
 {
     // sin(x + 180) = -sin(x), so we reduce mod 180 and track parity
     bool negateResult = false;
@@ -111,8 +112,15 @@ static bool sinDegRangeReduce()
     }
 
     // Now S0 is in [0, 180)
-    // Caller should check for sin(0) after this point
+    return negateResult;
+}
 
+// Reflect angle from [0, 180) to [0, 90] for sin computation
+// Input: S0 = angle in [0, 180)
+// Output: S0 = angle in [0, 90]
+// Uses registers: S0, S1, S4, R
+static void sinDegReflect()
+{
     // Reflect to [0, 90] using sin(180-x) = sin(x)
     constLoad(S4, CONST_90);
     if (isRegGT(S0, S4)) {
@@ -122,9 +130,6 @@ static bool sinDegRangeReduce()
         sub(R, S0, S1);
         regCopy(S0, R);
     }
-
-    // Now S0 is in (0, 90]
-    return negateResult;
 }
 
 // Compute sine in degrees: R = sinDeg(S0)
@@ -149,6 +154,7 @@ void sinDeg(BCD& _R, BCD& _S0)
 
     // ---------- Range Reduction ----------
     bool negateResult = sinDegRangeReduce();
+    sinDegReflect();
 
     // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
     if (isMantZero(S0.mant.data())) {
@@ -189,13 +195,11 @@ void sinRad(BCD& R, BCD& S0)
     if (FLAG_S0_ZERO)
         return;
 
-    // Convert radians to degrees: degrees = radians * (180/PI)
     bool inputSign = S0.sign;
     S0.sign = false;
 
-    // S1 = 180/PI = 57.29577951308232... = 5.729...e1
+    // Convert radians to degrees: degrees = radians * (180/PI)
     constLoad(S1, CONST_180_OVER_PI);
-
     mul(R, S0, S1);
 
     // R now contains degrees, move to S0
@@ -206,7 +210,7 @@ void sinRad(BCD& R, BCD& S0)
     sinDeg(R, S0);
 }
 
-// IEEE operation for test runner
+// IEEE operations for test runner
 static Real ieeeSinDeg(Real x) { return std::sin(x * REAL_LITERAL(3.14159265358979323846) / REAL_LITERAL(180.0)); }
 static Real ieeeSinRad(Real x) { return std::sin(x); }
 
@@ -302,3 +306,4 @@ void testSinRad()
         return;
     runRandomTests<Arity::Unary>("SINRAD", sinRad, ieeeSinRad, OPTS_TANRAD);
 }
+
