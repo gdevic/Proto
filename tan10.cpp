@@ -16,19 +16,14 @@
 #include <cassert>
 #include <cmath>
 
-// Range reduction result flags for tanDeg
-struct TanDegReduceResult {
-    bool negateResult;   // True if result should be negated
-    bool useReciprocal;  // True if result should be reciprocated (cot = 1/tan)
-};
-
 // Range reduction for tanDeg: reduces angle to [0, 45] degrees
 // Input: S0 = positive angle in degrees
-// Output: S0 = reduced angle in [0, 45], flags indicating transformations needed
+// Output: S0 = reduced angle in [0, 45], g_negateResult and g_useReciprocal set
 // Uses registers: S0, S1, S2, S3, S4, R
-static TanDegReduceResult tanDegRangeReduce()
+static void tanDegRangeReduce()
 {
-    TanDegReduceResult result = {false, false};
+    g_negateResult = false;
+    g_useReciprocal = false;
 
     // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
     constLoad(S4, CONST_360);
@@ -76,15 +71,15 @@ static TanDegReduceResult tanDegRangeReduce()
         regCopy(S0, S2);
         sub(R, S0, S1);
         regCopy(S0, R);
-        result.negateResult = true;
+        g_negateResult = true;
     }
 
     // Now S0 is in [0, 90)
     // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
     constLoad(S4, CONST_45);
-    result.useReciprocal = isRegGT(S0, S4);
+    g_useReciprocal = isRegGT(S0, S4);
 
-    if (result.useReciprocal) {
+    if (g_useReciprocal) {
         // S0 = 90 - S0
         regCopy(S1, S0);
         constLoad(S0, CONST_90);
@@ -93,7 +88,6 @@ static TanDegReduceResult tanDegRangeReduce()
     }
 
     // Now S0 is in [0, 45] degrees
-    return result;
 }
 
 // Compute tangent in degrees: R = tanDeg(S0)
@@ -111,15 +105,15 @@ void tanDeg(BCD& R, BCD& S0)
         return;
 
     // Store sign and work with positive value (tan is odd function)
-    bool inputSign = S0.sign;
+    g_inputSign = S0.sign;
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    TanDegReduceResult reduction = tanDegRangeReduce();
+    tanDegRangeReduce();
 
     // Near-zero with reciprocal = asymptote (reduced angle ≈ 0 at 90+180k degrees)
     // Threshold: exponent <= -13 means result would exceed 10^13, beyond 16-digit precision
-    if (reduction.useReciprocal) {
+    if (g_useReciprocal) {
         if (isMantZero(S0.mant.data()) ||
             (S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 3))))) {
             FLAG_OF_ERR = true;
@@ -130,10 +124,10 @@ void tanDeg(BCD& R, BCD& S0)
     // Handle tan(0) = 0 after reduction (non-reciprocal case)
     if (isMantZero(S0.mant.data())) {
         regClear(R);
-        if (reduction.negateResult)
-            R.sign = !inputSign;
+        if (g_negateResult)
+            R.sign = !g_inputSign;
         else
-            R.sign = inputSign;
+            R.sign = g_inputSign;
         return;
     }
 
@@ -154,14 +148,14 @@ void tanDeg(BCD& R, BCD& S0)
     cordicTan(R, S0);
 
     // ---------- Apply reciprocal if needed ----------
-    if (reduction.useReciprocal)
+    if (g_useReciprocal)
         reciprocal(R, R);  // R = 1 / R (cot = 1/tan)
 
     // ---------- Apply sign ----------
-    if (reduction.negateResult)
-        R.sign = !inputSign;
+    if (g_negateResult)
+        R.sign = !g_inputSign;
     else
-        R.sign = inputSign;
+        R.sign = g_inputSign;
 }
 
 // Compute arctangent in degrees: R = atanDeg(S0)

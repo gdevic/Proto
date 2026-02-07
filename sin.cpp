@@ -22,13 +22,17 @@
 #include <cmath>
 
 // Internal helper: compute sin from angle in (0, 90) degrees
-// Input: angle in S0 (will be modified), negateResult and inputSign for final sign
+// Input: angle in S0 (will be modified), g_negateResult and g_inputSign for final sign
 // Output: result in R
 // Uses: all registers
 // Note: mul uses S2 as accumulator, so only S3, S4 are safe across mul calls
 // Since angle is in (0, 90), tan(angle/2) is in (0, 1) - optimal CORDIC range
-void sinDegCore(bool negateResult, bool inputSign)
+void sinDegCore()
 {
+    // Save globals before tanDeg clobbers them (push in microcode)
+    bool savedInputSign = g_inputSign;
+    bool savedNegate = g_negateResult;
+
     // ---------- Compute tan(x/2) ----------
     // First divide angle by 2: S0 = S0 / 2
     // S0 already has angle, S1 = 2 (divisor)
@@ -38,10 +42,6 @@ void sinDegCore(bool negateResult, bool inputSign)
 
     // Compute tan(x/2) using existing tanDeg
     tanDeg(R, S0);
-
-    // Check for overflow (shouldn't happen for valid inputs)
-    if (FLAG_OF_ERR)
-        return;
 
     // t = tan(x/2) is now in R
     // sin(x) = 2*t / (1 + t²)
@@ -70,22 +70,24 @@ void sinDegCore(bool negateResult, bool inputSign)
     regCopy(S0, S3);  // S0 = 2*t (from S3)
     div(R, S0, S1);   // R = sin(x)
 
+    // Restore globals after tanDeg (pop in microcode)
+    g_inputSign = savedInputSign;
+    g_negateResult = savedNegate;
+
     // Apply final sign
-    if (negateResult)
-        R.sign = !inputSign;
+    if (g_negateResult)
+        R.sign = !g_inputSign;
     else
-        R.sign = inputSign;
+        R.sign = g_inputSign;
 }
 
 // Mod-180 range reduction: reduces positive angle to [0, 180) with parity
-// Input: S0 = positive angle in degrees
-// Output: S0 = angle mod 180 in [0, 180)
-// Returns: true if result should be negated (odd number of 180° periods)
+// Input: S0 = positive angle in degrees, g_negateResult initialized by caller
+// Output: S0 = angle mod 180 in [0, 180), g_negateResult set if odd parity
 // Uses registers: S0, S1, S3, S4, R
-bool sinDegRangeReduce()
+void sinDegRangeReduce()
 {
     // sin(x + 180) = -sin(x), so we reduce mod 180 and track parity
-    bool negateResult = false;
     constLoad(S4, CONST_180);
 
     if (isRegGE(S0, S4)) {
@@ -97,7 +99,7 @@ bool sinDegRangeReduce()
         div(R, S0, S1);
 
         // Truncate to integer and check if q is odd (determines sign)
-        negateResult = truncate(R);
+        g_negateResult = truncate(R);
 
         // Compute product: R = q * 180
         regCopy(S0, R);
@@ -112,7 +114,6 @@ bool sinDegRangeReduce()
     }
 
     // Now S0 is in [0, 180)
-    return negateResult;
 }
 
 // Reflect angle from [0, 180) to [0, 90] for sin computation
@@ -149,11 +150,12 @@ void sinDeg(BCD& _R, BCD& _S0)
         return;
 
     // Store sign and work with positive value (sin is odd function)
-    bool inputSign = S0.sign;
+    g_inputSign = S0.sign;
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    bool negateResult = sinDegRangeReduce();
+    g_negateResult = false;
+    sinDegRangeReduce();
     sinDegReflect();
 
     // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
@@ -169,16 +171,16 @@ void sinDeg(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        if (negateResult)
-            R.sign = !inputSign;
+        if (g_negateResult)
+            R.sign = !g_inputSign;
         else
-            R.sign = inputSign;
+            R.sign = g_inputSign;
         return;
     }
 
     // Now S0 is in (0, 90) - compute sin using half-angle formula
     // tan(S0/2) will be in (0, 1) - optimal range for CORDIC
-    sinDegCore(negateResult, inputSign);
+    sinDegCore();
 }
 
 // Compute sine in radians: R = sinRad(S0)

@@ -51,6 +51,20 @@ Per-class tolerances set via `setTolerance()` in each test function:
 - **Standard** (sqrt/ln/exp): PASS ≤1e-14, NEAR ≤1e-13, MISS >1e-13
 - **Relaxed** (all 12 trig): PASS ≤1e-13, NEAR ≤1e-12, MISS >1e-12
 
+### Trig Globals (Microcode Nibble Mapping)
+Three global bools map to microcode nibble-sized RAM variables:
+- `g_inputSign` → ARG_SIGN (0x135): Original input sign, set at entry of tanDeg/cordicAtan/sinDeg/cosDeg
+- `g_negateResult` → new nibble (0x13C): Negate flag from range reduction, set by sinDegRangeReduce/tanDegRangeReduce
+- `g_useReciprocal` → new nibble (0x13D): Reciprocal flag, set by tanDegRangeReduce/atanReciprocalReduce
+
+**Save/restore pattern** (maps to push/pop in microcode):
+- `sinDegCore()` saves/restores `g_inputSign` and `g_negateResult` around its `tanDeg()` call
+- `asinDeg()` saves/restores `g_inputSign` around its `atanDeg()` call
+
+Two disjoint call chains (never simultaneously active):
+- Chain S: sinDeg/cosDeg → sinDegCore → tanDeg → cordicTan
+- Chain A: asinDeg → atanDeg → cordicAtan
+
 ### Error Flags
 - `FLAG_INV_ERR` → "INVALID": Input invalid for function (e.g., sqrt(-1), ln(-1), asin(2))
 - `FLAG_OF_ERR` → "OVERFLOW": Result exceeds ±9.999999999999999e+99 (e.g., 1e50 * 1e50, exp(1000))

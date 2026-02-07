@@ -21,10 +21,10 @@
 
 // Apply +90° offset to angle in [0, 180) for cosine computation
 // Transforms to [0, 90] suitable for sinDegCore, adjusting parity
-// Input: S0 = angle in [0, 180), negateResult = current parity
-// Output: S0 = angle in [0, 90], negateResult updated
+// Input: S0 = angle in [0, 180), g_negateResult = current parity
+// Output: S0 = angle in [0, 90], g_negateResult updated
 // Uses registers: S0, S1, S4, R
-static void cosDegApplyOffset(bool& negateResult)
+static void cosDegApplyOffset()
 {
     // cos(x) = sin(x + 90). After mod 180, S0 = r ∈ [0, 180).
     // We need sin(r + 90):
@@ -36,7 +36,7 @@ static void cosDegApplyOffset(bool& negateResult)
     if (isRegGE(S0, S4)) {
         // r >= 90: angle = r - 90, flip parity
         regCopy(S1, S4);
-        negateResult = !negateResult;
+        g_negateResult = !g_negateResult;
     } else {
         // r < 90: angle = 90 - r, keep parity
         regCopy(S1, S0);
@@ -69,11 +69,13 @@ void cosDeg(BCD& _R, BCD& _S0)
 
     // ---------- Range Reduction ----------
     // Mod 180 on the original angle (NOT angle+90)
-    bool negateResult = sinDegRangeReduce();
+    g_inputSign = false;   // cos is even
+    g_negateResult = false;
+    sinDegRangeReduce();
 
     // Apply +90° offset to the small reduced angle [0, 180)
     // This transforms to [0, 90] with adjusted parity
-    cosDegApplyOffset(negateResult);
+    cosDegApplyOffset();
 
     // Special case: cos = 0 after reduction (i.e., cos(90+n*180) = 0)
     if (isMantZero(S0.mant.data())) {
@@ -88,13 +90,13 @@ void cosDeg(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = negateResult;
+        R.sign = g_negateResult;
         return;
     }
 
     // Now S0 is in (0, 90) - compute sin using half-angle formula
-    // inputSign=false because cos is even (sign comes from parity only)
-    sinDegCore(negateResult, false);
+    // g_inputSign=false because cos is even (sign comes from parity only)
+    sinDegCore();
 }
 
 // Compute cosine in radians: R = cosRad(S0)

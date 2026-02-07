@@ -160,20 +160,19 @@ void cordicTan(BCD& R, BCD& S0)
 // Reciprocal reduction for atan: reduces |input| > 1 to |input| < 1
 // Uses identity: atan(x) = π/2 - atan(1/x) for |x| > 1
 // Input: S0 = positive value
-// Output: S0 = reduced value (either original or 1/original)
-// Returns: true if reciprocal was applied (caller must subtract result from π/2)
+// Output: S0 = reduced value (either original or 1/original), g_useReciprocal set
 // Uses registers: S0, R
-static bool atanReciprocalReduce()
+static void atanReciprocalReduce()
 {
     // Check if |input| > 1: positive exponent, or exp=0 and mant[0] > 1
-    if (!S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1))) {
+    g_useReciprocal = !S0.esign && (S0.exp[0] || S0.exp[1] || (S0.mant[0] > 1));
+
+    if (g_useReciprocal) {
         // Compute 1/input: R = 1/S0
         reciprocal(R, S0);
         regCopy(S0, R);
         S0.sign = false;  // Work with positive value
-        return true;
     }
-    return false;
 }
 
 // Core CORDIC arctangent algorithm (Meggitt's digit-by-digit method)
@@ -191,7 +190,7 @@ void cordicAtan(BCD& R, BCD& S0)
         return;
 
     // Store sign and work with positive value (atan is odd function)
-    bool inputSign = S0.sign;
+    g_inputSign = S0.sign;
     S0.sign = false;
 
     // Special case: very large |input| (exponent >= 15)
@@ -199,13 +198,13 @@ void cordicAtan(BCD& R, BCD& S0)
     // Return π/2 directly to avoid mantissa underflow during alignment
     if (!S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 5)))) {
         constLoad(R, CONST_PI_OVER_2);
-        R.sign = inputSign;
+        R.sign = g_inputSign;
         return;
     }
 
     // Reciprocal reduction for |input| > 1: atan(x) = π/2 - atan(1/x)
     // This ensures CORDIC works with input ratio y/x <= 1 for faster convergence
-    bool useReciprocal = atanReciprocalReduce();
+    atanReciprocalReduce();
 
     // Initialize: y = input (S0), x = 1.0 (S1)
     // Align mantissas so their ratio reflects the true input value
@@ -308,7 +307,7 @@ void cordicAtan(BCD& R, BCD& S0)
     }
 
     // Apply reciprocal reduction: atan(x) = π/2 - atan(1/x) for |x| > 1
-    if (useReciprocal) {
+    if (g_useReciprocal) {
         // S0 = π/2
         constLoad(S0, CONST_PI_OVER_2);
 
@@ -318,7 +317,7 @@ void cordicAtan(BCD& R, BCD& S0)
     }
 
     // Restore sign (atan is odd function)
-    R.sign = inputSign;
+    R.sign = g_inputSign;
 }
 
 // Compute tangent in radians: R = tanRad(S0)

@@ -82,10 +82,13 @@ void asinDeg(BCD& R, BCD& S0)
 
     // Compute atan in degrees
     regCopy(S0, R);
-    atanDeg(R, S0);
+    g_inputSign = inputSign;
+    bool savedInputSign = g_inputSign;   // save before atanDeg (push in microcode)
+    atanDeg(R, S0);                      // clobbers g_inputSign
+    g_inputSign = savedInputSign;        // restore after atanDeg (pop in microcode)
 
     // Apply sign (asin is odd function)
-    R.sign = inputSign;
+    R.sign = g_inputSign;
 }
 
 // Compute arcsine in radians: R = asinRad(S0)

@@ -30,6 +30,11 @@ inline bool FLAG_DIV0_ERR = false;  // Division by zero error
 inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
 inline bool FLAG_S1_ZERO = false;   // S1 is zero (set by preCalc)
 
+// Trig globals (map to microcode nibbles)
+inline bool g_inputSign = false;      // Original input sign      → ARG_SIGN (0x135)
+inline bool g_negateResult = false;   // Negate from range reduce → new nibble (0x13C)
+inline bool g_useReciprocal = false;  // Reciprocal flag          → new nibble (0x13D)
+
 // Constant identifiers for constLoad()
 inline constexpr uint8_t CONST_1   = 0;   // Value 1.0
 inline constexpr uint8_t CONST_2   = 1;   // Value 2.0
@@ -76,8 +81,8 @@ void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
 
 // Internal helpers shared between sin.cpp and cos.cpp
-bool sinDegRangeReduce();          // Mod-180 range reduce, returns true if odd parity
-void sinDegCore(bool negateResult, bool inputSign); // Half-angle core for angle in (0, 90)
+void sinDegRangeReduce();          // Mod-180 range reduce, sets g_negateResult
+void sinDegCore();                 // Half-angle core for angle in (0, 90), uses globals
 
 // Test functions
 void testAddition();

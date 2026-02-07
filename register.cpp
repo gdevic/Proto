@@ -320,8 +320,7 @@ void reciprocal(BCD& R, const BCD& x)
     assert(&R == &::R);
 
     regCopy(S1, x);
-    regClear(S0);
-    S0.mant[0] = 1;  // S0 = 1.0
+    constLoad(S0, CONST_1);
     div(R, S0, S1);
 }
 
