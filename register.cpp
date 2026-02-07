@@ -63,16 +63,10 @@ bool isRegGT(const BCD& a, const BCD& b)
     return a.sign ? isRegGTMag(b, a) : isRegGTMag(a, b);
 }
 
-// Returns true if a < b
-bool isRegLT(const BCD& a, const BCD& b)
-{
-    return isRegGT(b, a);
-}
-
 // Returns true if a >= b
 bool isRegGE(const BCD& a, const BCD& b)
 {
-    return !isRegLT(a, b);
+    return !isRegGT(b, a);
 }
 
 // Clear a register to zero

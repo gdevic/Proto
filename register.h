@@ -20,7 +20,6 @@ bool isRegOne(const BCD& x);  // Returns true if register value is one
 // Full signed register comparisons
 bool isRegEQ(const BCD& a, const BCD& b);  // a == b
 bool isRegGT(const BCD& a, const BCD& b);  // a > b
-bool isRegLT(const BCD& a, const BCD& b);  // a < b
 bool isRegGE(const BCD& a, const BCD& b);  // a >= b
 
 // Clear a register to zero
