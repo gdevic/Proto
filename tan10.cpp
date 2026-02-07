@@ -31,7 +31,6 @@ static TanDegReduceResult tanDegRangeReduce()
     TanDegReduceResult result = {false, false};
 
     // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
-    // This is O(1) instead of O(n) for large angles
     constLoad(S4, CONST_360);
 
     if (isRegGE(S0, S4)) {

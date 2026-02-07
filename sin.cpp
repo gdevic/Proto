@@ -18,30 +18,6 @@
 #include <cassert>
 #include <cmath>
 
-// Check if a BCD integer is odd by examining the ones digit
-// The ones digit position depends on the exponent
-// For exp=0: ones digit is mant[0]
-// For exp=1: ones digit is mant[1]
-// For exp=2: ones digit is mant[2], etc.
-// Returns true if the number is odd
-static bool bcdIsOdd(const BCD& x)
-{
-    // For negative exponent or zero, the number has no integer part
-    if (x.esign || isMantZero(x.mant.data()))
-        return false;
-
-    // Get exponent value
-    int exp = int(x.exp[0]) * 10 + int(x.exp[1]);
-
-    // If exponent >= MAX_MANT, ones digit is beyond mantissa (effectively 0)
-    if (exp >= int(MAX_MANT))
-        return false;
-
-    // The ones digit is at position 'exp' in the mantissa
-    uint8_t onesDigit = x.mant[exp];
-    return (onesDigit % 2) == 1;
-}
-
 // Internal helper: compute sin from angle in (0, 90) degrees
 // Input: angle in S0 (will be modified), negateResult and inputSign for final sign
 // Output: result in R
@@ -118,10 +94,9 @@ static bool sinDegRangeReduce()
         // Compute quotient: q = floor(S0 / 180)
         regCopy(S1, S4);
         div(R, S0, S1);
-        truncate(R);
 
-        // Check if q is odd (determines sign)
-        negateResult = bcdIsOdd(R);
+        // Truncate to integer and check if q is odd (determines sign)
+        negateResult = truncate(R);
 
         // Compute product: R = q * 180
         regCopy(S0, R);
