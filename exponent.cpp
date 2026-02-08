@@ -56,15 +56,15 @@ static bool isExpGTMag(const uint8_t* a, const uint8_t* b)
     return a[1] > b[1];
 }
 
-// Returns true if 2-digit BCD exponent is zero
-static bool isExpZeroMag(const uint8_t* e)
-{
-    return (e[0] == 0) && (e[1] == 0);
-}
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+// Returns true if exponent is zero
+bool isExpZero(const BCD &x)
+{
+    return (x.exp[0] == 0) && (x.exp[1] == 0);
+}
 
 // Returns true if exponent of a == exponent of b
 bool isExpEQ(const BCD &a, const BCD &b)
@@ -101,7 +101,7 @@ void expInc(BCD& x)
 {
     if (x.esign) {
         // Negative exponent: incrementing moves toward zero
-        if (isExpZeroMag(x.exp.data())) {
+        if (isExpZero(x)) {
             // -0 + 1 = +1 (edge case)
             x.esign = false;
             x.exp[1] = 1;
@@ -114,7 +114,7 @@ void expInc(BCD& x)
             x.exp[1] = 9;
         }
         // Normalize -0 to +0
-        if (isExpZeroMag(x.exp.data()))
+        if (isExpZero(x))
             x.esign = false;
     }
     else {
@@ -134,7 +134,7 @@ bool expDec(BCD& x)
 {
     if (!x.esign) {
         // Positive exponent: decrementing moves toward zero
-        if (isExpZeroMag(x.exp.data())) {
+        if (isExpZero(x)) {
             // 0 - 1 = -1
             x.esign = true;
             x.exp[1] = 1;
@@ -210,7 +210,7 @@ bool expAdd(BCD& r, const BCD& a, const BCD& b)
     }
 
     // Normalize exponent -0 to +0
-    if (isExpZeroMag(r.exp.data()))
+    if (isExpZero(r))
         r.esign = false;
 
     return false;
@@ -223,7 +223,7 @@ bool expAdd(BCD& r, const BCD& a, const BCD& b)
 bool expSub(BCD& r, const BCD& a, BCD& b)
 {
     // Special case: a - 0 = a
-    if (isExpZeroMag(b.exp.data())) {
+    if (isExpZero(b)) {
         expCopyS(r, a);
         return false;
     }

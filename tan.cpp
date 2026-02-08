@@ -222,7 +222,7 @@ void cordicAtan(BCD& R, BCD& S0)
     }
     else {
         // Positive exponent: shift x (S1) right
-        while (S0.exp[0] || S0.exp[1]) {
+        while (!isExpZero(S0)) {
             mantShr(S1.mant.data());
             expDec(S0);
         }

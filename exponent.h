@@ -12,6 +12,9 @@
 
 #include "bcd.h"
 
+// Returns true if exponent is zero
+bool isExpZero(const BCD& x);
+
 // Returns true if exponent of a == exponent of b
 bool isExpEQ(const BCD &a, const BCD &b);
 
