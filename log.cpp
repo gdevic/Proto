@@ -170,7 +170,7 @@ void ln(BCD& R, BCD& S0)
     // ln(m * 10^e) = ln(m) + e * ln(10)
     // Add or subtract e copies of ln(10)
     // Note: S0's exponent is still intact from input
-    if (S0.exp[0] | S0.exp[1]) { // If the exponent is non-zero
+    if (!isExpZero(S0)) { // If the exponent is non-zero
         // Save S0's exponent to S4 before the loop overwrites S0
         regCopy(S4, S0);
 
@@ -180,7 +180,7 @@ void ln(BCD& R, BCD& S0)
 
         // Use S4's exponent magnitude as loop counter (force positive for expDec)
         S4.esign = false;
-        while (S4.exp[0] | S4.exp[1]) {
+        while (!isExpZero(S4)) {
             regCopy(S0, R);   // Current result to S0
             regCopy(S1, S3);  // ln(10) template to S1
             add(R, S0, S1);

@@ -29,7 +29,7 @@ void expCopyS(BCD& dst, const BCD& src);
 void expInc(BCD& x);
 
 // Decrement exponent by 1
-// Returns true if underflow (sets x to zero)
+// Returns true if underflow
 bool expDec(BCD& x);
 
 // Add exponents: r.exp = a.exp + b.exp

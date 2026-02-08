@@ -89,8 +89,11 @@ void div(BCD& R, BCD& S0, BCD& S1)
 
     if (R.mant[0] == 0) {
         // Need normalization: shift R left, q17 becomes R[15], compute q18 as guard
-        if (expDec(R))
-            return;  // Underflow
+        if (expDec(R)) // Underflow
+        {
+            regClear(R); // Return 0
+            return;
+        }
         mantShl(R.mant.data());
         R.mant[MAX_MANT - 1] = q17;
 

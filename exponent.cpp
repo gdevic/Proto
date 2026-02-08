@@ -129,7 +129,7 @@ void expInc(BCD& x)
     }
 }
 
-// Decrement exponent by 1. Returns true if underflow (sets x to zero).
+// Decrement exponent by 1. Returns true if underflow.
 bool expDec(BCD& x)
 {
     if (!x.esign) {
@@ -155,8 +155,8 @@ bool expDec(BCD& x)
             x.exp[1] = 0;
             x.exp[0]++;
             if (x.exp[0] > 9) {
-                // Underflow: -99 - 1 = -100, result is zero (no error)
-                regClear(x);
+                // Underflow: -99 - 1 = -100 (no error)
+                x.exp[0] = x.exp[1] = 0; // Wrap around
                 return true;
             }
         }
