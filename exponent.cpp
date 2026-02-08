@@ -88,7 +88,7 @@ bool isExpGT(const BCD& a, const BCD& b)
 }
 
 // Copy exponent from src to dst
-void expCopy(BCD& dst, const BCD& src)
+void expCopyS(BCD& dst, const BCD& src)
 {
     dst.esign = src.esign;
     dst.exp[0] = src.exp[0];
@@ -224,7 +224,7 @@ bool expSub(BCD& r, const BCD& a, BCD& b)
 {
     // Special case: a - 0 = a
     if (isExpZeroMag(b.exp.data())) {
-        expCopy(r, a);
+        expCopyS(r, a);
         return false;
     }
 

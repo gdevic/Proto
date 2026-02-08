@@ -64,7 +64,7 @@ void add(BCD& R, BCD& S0, BCD& S1)
         expInc(S1);  // Should never overflow!
     }
 
-    expCopy(R, S0);
+    expCopyS(R, S0);
 
     // Same signs: add magnitudes
     if (S0.sign == S1.sign) {

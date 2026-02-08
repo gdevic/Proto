@@ -19,7 +19,7 @@ bool isExpEQ(const BCD &a, const BCD &b);
 bool isExpGT(const BCD& a, const BCD& b);
 
 // Copy exponent from src to dst (copies esign, exp[0], exp[1])
-void expCopy(BCD& dst, const BCD& src);
+void expCopyS(BCD& dst, const BCD& src);
 
 // Increment exponent by 1
 // Sets FLAG_OF_ERR on overflow, with register state undefined
