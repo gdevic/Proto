@@ -183,11 +183,13 @@ void cordicAtan(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: atan(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Store sign and work with positive value (atan is odd function)
     g_inputSign = S0.sign;
@@ -199,6 +201,7 @@ void cordicAtan(BCD& R, BCD& S0)
     if (!S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 5)))) {
         constLoad(R, CONST_PI_OVER_2);
         R.sign = g_inputSign;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -318,6 +321,7 @@ void cordicAtan(BCD& R, BCD& S0)
 
     // Restore sign (atan is odd function)
     R.sign = g_inputSign;
+    postCalc(R, S0, S1);
 }
 
 // Compute tangent in radians: R = tanRad(S0)
@@ -328,11 +332,13 @@ void tanRad(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: tanRad(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     bool inputSign = S0.sign;
     S0.sign = false;
@@ -345,6 +351,7 @@ void tanRad(BCD& R, BCD& S0)
 
     // tanDeg handles range reduction and asymptote detection
     tanDeg(R, S0);
+    // postCalc: handled by tanDeg()
 }
 
 // Compute arctangent in radians: R = atanRad(S0)

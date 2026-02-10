@@ -14,21 +14,25 @@
 #include "register.h"
 #include <cassert>
 
-// Pre-calculation setup for unary operations: set zero flag and clear R
-void preCalc1(BCD& R, const BCD& S0)
-{
-    assert((&R == &::R) && (&S0 == &::S0));
-
-    FLAG_S0_ZERO = isMantZero(S0.mant.data());
-    regClear(R);
-}
-
-// Pre-calculation setup for binary operations: set zero flags and clear R
-void preCalc2(BCD& R, const BCD& S0, const BCD& S1)
+// Pre-calculation setup: set zero flags and clear R
+void preCalc(BCD& R, const BCD& S0, const BCD& S1)
 {
     assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
     FLAG_S0_ZERO = isMantZero(S0.mant.data());
     FLAG_S1_ZERO = isMantZero(S1.mant.data());
     regClear(R);
+}
+
+// Post-calculation cleanup: canonicalize zero result, copy R back to S0 and S1
+// If the result mantissa is zero, clears R to a true zero (canonical form).
+// Then copies R back to S0 and S1 for successive chained operations.
+void postCalc(BCD& R, BCD& S0, BCD& S1)
+{
+    assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
+
+    if (isMantZero(R.mant.data()))
+        regClear(R);
+    regCopy(S0, R);
+    regCopy(S1, R);
 }

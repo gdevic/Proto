@@ -48,21 +48,25 @@ void div(BCD& R, BCD& S0, BCD& S1)
 {
     assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(R, S0, S1);
+    preCalc(R, S0, S1);
 
     // Division by zero error
     if (FLAG_S1_ZERO) {
         FLAG_DIV0_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // Zero dividend
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Exponent: difference of exponents
-    if (expSub(R, S0, S1))
+    if (expSub(R, S0, S1)) {
+        postCalc(R, S0, S1);
         return;  // Overflow or underflow
+    }
 
     // Sign: XOR of input signs
     R.sign = S0.sign ^ S1.sign;
@@ -91,7 +95,8 @@ void div(BCD& R, BCD& S0, BCD& S1)
         // Need normalization: shift R left, q17 becomes R[15], compute q18 as guard
         if (expDec(R)) // Underflow
         {
-            regClear(R); // Return 0
+            regClear(R); // R.mant has quotient digits, must zero for underflow
+            postCalc(R, S0, S1);
             return;
         }
         mantShl(R.mant.data());
@@ -111,6 +116,7 @@ void div(BCD& R, BCD& S0, BCD& S1)
     sticky = (dig17 != 0) || !isMantZero(S0.mant.data());
 
     applyBankersRounding(R, guard, sticky);
+    postCalc(R, S0, S1);
 }
 
 // IEEE division for test runner

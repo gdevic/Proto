@@ -98,11 +98,13 @@ void tanDeg(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: tanDeg(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Store sign and work with positive value (tan is odd function)
     g_inputSign = S0.sign;
@@ -117,17 +119,13 @@ void tanDeg(BCD& R, BCD& S0)
         if (isMantZero(S0.mant.data()) ||
             (S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 3))))) {
             FLAG_OF_ERR = true;
-            return;
+            return;  // No postCalc on error path
         }
     }
 
     // Handle tan(0) = 0 after reduction (non-reciprocal case)
     if (isMantZero(S0.mant.data())) {
-        regClear(R);
-        if (g_negateResult)
-            R.sign = !g_inputSign;
-        else
-            R.sign = g_inputSign;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -156,6 +154,7 @@ void tanDeg(BCD& R, BCD& S0)
         R.sign = !g_inputSign;
     else
         R.sign = g_inputSign;
+    postCalc(R, S0, S1);
 }
 
 // Compute arctangent in degrees: R = atanDeg(S0)
@@ -166,11 +165,13 @@ void atanDeg(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: atan(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // For very large |input| (exponent >= 15), atan approaches ±90°
     // Return exactly 90° to avoid precision loss from π/2 × (180/π) conversion
@@ -181,6 +182,7 @@ void atanDeg(BCD& R, BCD& S0)
         // Return exactly ±90 degrees
         constLoad(R, CONST_90);
         R.sign = inputSign;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -189,7 +191,7 @@ void atanDeg(BCD& R, BCD& S0)
 
     // If zero result, no conversion needed (0 rad = 0 deg)
     if (isMantZero(R.mant.data()))
-        return;
+        return;  // postCalc: handled by cordicAtan()
 
     // Convert to degrees: R = R * (180/PI)
     bool resultSign = R.sign;
@@ -202,6 +204,7 @@ void atanDeg(BCD& R, BCD& S0)
 
     // Preserve sign through multiplication
     R.sign = resultSign;
+    postCalc(R, S0, S1);
 }
 
 // IEEE operations for test runner (degrees)

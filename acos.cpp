@@ -26,11 +26,12 @@ void acosDeg(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: acos(0) = 90 exactly
     if (FLAG_S0_ZERO) {
         constLoad(R, CONST_90);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -43,13 +44,13 @@ void acosDeg(BCD& R, BCD& S0)
     if (isRegGT(S0, S4)) {
         // |x| > 1: domain error
         FLAG_INV_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // Special case: x = 1 exactly
     if (isRegEQ(S0, S4) && !inputSign) {
         // acos(1) = 0
-        regClear(R);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -57,6 +58,7 @@ void acosDeg(BCD& R, BCD& S0)
     if (isRegEQ(S0, S4) && inputSign) {
         // acos(-1) = 180
         constLoad(R, CONST_180);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -69,12 +71,12 @@ void acosDeg(BCD& R, BCD& S0)
 
     // Check for domain error from asin
     if (FLAG_INV_ERR)
-        return;
+        return;  // postCalc: handled by asinDeg()
 
-    // Compute 90 - asin(x)
-    regCopy(S1, R);
+    // Compute 90 - asin(x): S1 = R via postCalc
     constLoad(S0, CONST_90);
     sub(R, S0, S1);  // R = 90 - asin(x)
+    // postCalc: handled by sub()
 }
 
 // Compute arccosine in radians: R = acosRad(S0)
@@ -93,7 +95,7 @@ void acosRad(BCD& R, BCD& S0)
         return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
-    regCopy(S0, R);
+    // S0 = R via postCalc
 
     // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);

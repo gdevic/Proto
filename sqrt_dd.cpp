@@ -114,17 +114,19 @@ void sqrt_dd(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Domain error: sqrt(negative) is undefined
     if (S0.sign) {
         FLAG_INV_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // Zero check: sqrt(0) = 0
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Compute result exponent using nibble-safe operations
     // sqrt(M * 10^e) = sqrt(M) * 10^(e/2) for even e
@@ -228,6 +230,7 @@ void sqrt_dd(BCD& R, BCD& S0)
     // Rounding (banker's rounding: round half to even)
     bool sticky = !ext32IsZero(S3.mant.data(), S1.mant.data());
     applyBankersRounding(R, guard, sticky);
+    postCalc(R, S0, S1);
 }
 
 // IEEE sqrt for test runner

@@ -26,11 +26,13 @@ void asinDeg(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: asin(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Save input sign (asin is odd function)
     bool inputSign = S0.sign;
@@ -41,7 +43,7 @@ void asinDeg(BCD& R, BCD& S0)
     if (isRegGT(S0, S4)) {
         // |x| > 1: domain error
         FLAG_INV_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // Special case: |x| = 1 exactly
@@ -49,6 +51,7 @@ void asinDeg(BCD& R, BCD& S0)
         // asin(1) = 90, asin(-1) = -90
         constLoad(R, CONST_90);
         R.sign = inputSign;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -57,31 +60,27 @@ void asinDeg(BCD& R, BCD& S0)
 
     // Compute x²: S0 = x, result in R
     regCopy(S1, S0);
-    mul(R, S0, S1);  // R = x², S0 still = x (mul preserves inputs)
+    mul(R, S0, S1);  // R = x²; S1 = R via postCalc
 
-    // Compute 1/x²: S0 = 1, S1 = x², result in R
-    regCopy(S1, R);   // S1 = x²
-    constLoad(S0, CONST_1);      // S0 = 1
-    div(R, S0, S1);   // R = 1/x²
+    // Compute 1/x²
+    constLoad(S0, CONST_1);      // S0 = 1, S1 = x² via postCalc
+    div(R, S0, S1);   // R = 1/x²; S0 = R via postCalc
 
-    // Compute 1/x² - 1: S0 = 1/x², S1 = 1, result in R
-    regCopy(S0, R);   // S0 = 1/x²
-    constLoad(S1, CONST_1);      // S1 = 1
-    sub(R, S0, S1);   // R = 1/x² - 1
-    regCopy(S0, R);   // S0 = 1/x² - 1
+    // Compute 1/x² - 1
+    constLoad(S1, CONST_1);      // S0 = 1/x² via postCalc, S1 = 1
+    sub(R, S0, S1);   // R = 1/x² - 1; S0 = R via postCalc
 
     // Compute sqrt(1/x² - 1): input S0, result in R
     sqrt(R, S0);      // R = sqrt(1/x² - 1)
 
     // Check for sqrt error (shouldn't happen if domain check passed)
     if (FLAG_INV_ERR)
-        return;
+        return;  // postCalc: handled by sqrt()
 
     // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
-    reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1)
+    reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
 
     // Compute atan in degrees
-    regCopy(S0, R);
     g_inputSign = inputSign;
     bool savedInputSign = g_inputSign;   // save before atanDeg (push in microcode)
     atanDeg(R, S0);                      // clobbers g_inputSign
@@ -89,6 +88,7 @@ void asinDeg(BCD& R, BCD& S0)
 
     // Apply sign (asin is odd function)
     R.sign = g_inputSign;
+    postCalc(R, S0, S1);
 }
 
 // Compute arcsine in radians: R = asinRad(S0)

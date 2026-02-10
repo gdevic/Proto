@@ -23,15 +23,17 @@ void sub(BCD &R, BCD &S0, BCD &S1)
 {
     assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(R, S0, S1);
+    preCalc(R, S0, S1);
 
     if (FLAG_S1_ZERO)
     {
         regCopy(R, S0);
+        postCalc(R, S0, S1);
         return;
     }
     S1.sign = !S1.sign;
     add(R, S0, S1);  // Could jump to add() skipping its preCalc()
+    // postCalc: handled by add()
 }
 
 // Add two BCD numbers, handling sign, exponent alignment, and normalization
@@ -41,11 +43,11 @@ void add(BCD& R, BCD& S0, BCD& S1)
 {
     assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(R, S0, S1);
+    preCalc(R, S0, S1);
 
     // Handle zero cases
-    if (FLAG_S0_ZERO) { regCopy(R, S1); return; }
-    if (FLAG_S1_ZERO) { regCopy(R, S0); return; }
+    if (FLAG_S0_ZERO) { regCopy(R, S1); postCalc(R, S0, S1); return; }
+    if (FLAG_S1_ZERO) { regCopy(R, S0); postCalc(R, S0, S1); return; }
 
     // Ensure S0 has larger or equal exponent (swap if needed)
     // This means only S1 ever needs shifting
@@ -91,7 +93,7 @@ void add(BCD& R, BCD& S0, BCD& S1)
 
         // Check for exact zero (magnitudes equal and nothing shifted out)
         if (isMantEQ(S0.mant.data(), S1.mant.data()) && !anyShifted) {
-            regClear(R);
+            postCalc(R, S0, S1);
             return;
         }
 
@@ -107,6 +109,7 @@ void add(BCD& R, BCD& S0, BCD& S1)
     }
 
     normalize(R);
+    postCalc(R, S0, S1);
 }
 
 // IEEE operations for test runner

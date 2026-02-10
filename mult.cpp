@@ -24,15 +24,19 @@ void mul(BCD& R, BCD& S0, BCD& S1)
 {
     assert((&R == &::R) && (&S0 == &::S0) && (&S1 == &::S1));
 
-    preCalc2(R, S0, S1);
+    preCalc(R, S0, S1);
 
     // Handle zero cases
-    if (FLAG_S0_ZERO || FLAG_S1_ZERO)
+    if (FLAG_S0_ZERO || FLAG_S1_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Exponent: sum of exponents (direct BCD addition)
-    if (expAdd(R, S0, S1))
+    if (expAdd(R, S0, S1)) {
+        postCalc(R, S0, S1);
         return;  // Overflow or underflow
+    }
 
     // Sign: XOR of input signs
     R.sign = S0.sign ^ S1.sign;
@@ -106,6 +110,7 @@ void mul(BCD& R, BCD& S0, BCD& S1)
     }
 
     applyBankersRounding(R, guard, sticky);
+    postCalc(R, S0, S1);
 }
 
 // IEEE multiplication for test runner

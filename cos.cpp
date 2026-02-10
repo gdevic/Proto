@@ -56,11 +56,12 @@ void cosDeg(BCD& _R, BCD& _S0)
 {
     assert((&_R == &::R) && (&_S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: cosDeg(0) = 1 exactly
     if (FLAG_S0_ZERO) {
         R.mant[0] = 1;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -79,7 +80,7 @@ void cosDeg(BCD& _R, BCD& _S0)
 
     // Special case: cos = 0 after reduction (i.e., cos(90+n*180) = 0)
     if (isMantZero(S0.mant.data())) {
-        regClear(R);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -91,12 +92,14 @@ void cosDeg(BCD& _R, BCD& _S0)
         regClear(R);
         R.mant[0] = 1;
         R.sign = g_negateResult;
+        postCalc(R, S0, S1);
         return;
     }
 
     // Now S0 is in (0, 90) - compute sin using half-angle formula
     // g_inputSign=false because cos is even (sign comes from parity only)
     sinDegCore();
+    postCalc(R, S0, S1);
 }
 
 // Compute cosine in radians: R = cosRad(S0)
@@ -107,11 +110,12 @@ void cosRad(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: cosRad(0) = 1 exactly
     if (FLAG_S0_ZERO) {
         R.mant[0] = 1;
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -123,6 +127,7 @@ void cosRad(BCD& R, BCD& S0)
     regCopy(S0, R);
 
     cosDeg(R, S0);
+    // postCalc: handled by cosDeg()
 }
 
 // IEEE operations for cos test runner

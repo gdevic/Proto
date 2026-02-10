@@ -143,11 +143,13 @@ void sinDeg(BCD& _R, BCD& _S0)
 {
     assert((&_R == &::R) && (&_S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: sinDeg(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Store sign and work with positive value (sin is odd function)
     g_inputSign = S0.sign;
@@ -160,7 +162,7 @@ void sinDeg(BCD& _R, BCD& _S0)
 
     // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
     if (isMantZero(S0.mant.data())) {
-        regClear(R);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -175,12 +177,14 @@ void sinDeg(BCD& _R, BCD& _S0)
             R.sign = !g_inputSign;
         else
             R.sign = g_inputSign;
+        postCalc(R, S0, S1);
         return;
     }
 
     // Now S0 is in (0, 90) - compute sin using half-angle formula
     // tan(S0/2) will be in (0, 1) - optimal range for CORDIC
     sinDegCore();
+    postCalc(R, S0, S1);
 }
 
 // Compute sine in radians: R = sinRad(S0)
@@ -191,11 +195,13 @@ void sinRad(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: sinRad(0) = 0 exactly
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     bool inputSign = S0.sign;
     S0.sign = false;
@@ -210,6 +216,7 @@ void sinRad(BCD& R, BCD& S0)
 
     // Call sinDeg (but we need to set up properly since sinDeg expects S0)
     sinDeg(R, S0);
+    // postCalc: handled by sinDeg()
 }
 
 // IEEE operations for test runner

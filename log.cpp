@@ -64,18 +64,20 @@ void ln(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Domain error: ln(x) undefined for x <= 0
     if (S0.sign || FLAG_S0_ZERO) {
         FLAG_INV_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // Special case: ln(1.0) = 0 exactly
     // Without this, algorithm produces ~3.4e-14 due to CORDIC precision loss
-    if (isRegOne(S0))
+    if (isRegOne(S0)) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // We are keeping S0's exponent for later in part 5
 
@@ -187,6 +189,7 @@ void ln(BCD& R, BCD& S0)
             expDec(S4);
         }
     }
+    postCalc(R, S0, S1);
 }
 
 // Range reduction for exp: computes k and r where x = k*ln(10) + r
@@ -243,11 +246,12 @@ void exp(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Special case: exp(0) = 1 exactly
     if (FLAG_S0_ZERO) {
         constLoad(R, CONST_1);
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -262,6 +266,7 @@ void exp(BCD& R, BCD& S0)
         if (inputSign == false)  // Large *positive* values cause overflow
             FLAG_OF_ERR = true;
         regClear(R);             // Large *negative* values result in 0 (not underflow!)
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -270,7 +275,7 @@ void exp(BCD& R, BCD& S0)
 
     // ---------- Part 2: Normalize remainder ----------
     // For small r (negative exponent), shift mantissa right until exponent is zero
-    regCopy(S0, R);
+    // S0 = R via postCalc from expRangeReduce
     normalizeToZeroExp(S0);
 
     // Copy working mantissa to S1
@@ -360,6 +365,7 @@ void exp(BCD& R, BCD& S0)
             FLAG_OF_ERR = false;  // Clear flag, handle as underflow
             regClear(R);
         }
+        postCalc(R, S0, S1);
         return;
     }
 
@@ -376,6 +382,7 @@ void exp(BCD& R, BCD& S0)
     // Note: Large negative inputs cause underflow; reciprocal returns ~0
     if (inputSign)
         reciprocal(R, R);  // R = 1/exp(|x|)
+    postCalc(R, S0, S1);
 }
 
 // IEEE ln for test runner

@@ -40,16 +40,18 @@ void sqrt_nr(BCD& R, BCD& S0)
 {
     assert((&R == &::R) && (&S0 == &::S0));
 
-    preCalc1(R, S0);
+    preCalc(R, S0, S1);
 
     // Check if input is zero - result is also zero
-    if (FLAG_S0_ZERO)
+    if (FLAG_S0_ZERO) {
+        postCalc(R, S0, S1);
         return;
+    }
 
     // Domain error: sqrt(negative) is undefined
     if (S0.sign) {
         FLAG_INV_ERR = true;
-        return;
+        return;  // No postCalc on error path
     }
 
     // S4 holds the original 'n' (preserved across multiply/divide which use S2)
@@ -68,15 +70,13 @@ void sqrt_nr(BCD& R, BCD& S0)
         // Compute n / guess
         regCopy(S0, S4);    // S0 = n
         regCopy(S1, S3);    // S1 = guess
-        div(R, S0, S1);     // R = n / guess
+        div(R, S0, S1);     // R = n / guess; S0 = R via postCalc
 
         // Compute guess + (n / guess)
-        regCopy(S0, R);     // S0 = n/guess
-        regCopy(S1, S3);    // S1 = guess
-        add(R, S0, S1);     // R = guess + n/guess
+        regCopy(S1, S3);    // S0 = n/guess via postCalc, S1 = guess
+        add(R, S0, S1);     // R = guess + n/guess; S0 = R via postCalc
 
         // Compute (guess + n/guess) / 2
-        regCopy(S0, R);
         constLoad(S1, CONST_2);
         div(R, S0, S1);     // R = (guess + n/guess) / 2
 
@@ -120,4 +120,5 @@ void sqrt_nr(BCD& R, BCD& S0)
 
     // Copy corrected result to R
     regCopy(R, S3);
+    postCalc(R, S0, S1);
 }
