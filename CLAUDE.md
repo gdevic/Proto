@@ -32,12 +32,20 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Exponential** (`log.cpp`): CORDIC digit-by-digit method (inverse of ln). Range reduction via division by ln(10), pseudo-division to decompose remainder, pseudo-multiplication to build result. Shares ln constant table with ln().
 - **Tangent** (`tan.cpp`): CORDIC digit-by-digit method using atan constants. Works for small angles (~0 to PI/4); requires range reduction for larger angles. See `docs/tan-algorithm-research.md`.
 - **Arctangent** (`tan.cpp`): CORDIC digit-by-digit method with reciprocal reduction for |x|>1: atan(x) = π/2 - atan(1/x). Works across full range. See `docs/tan-algorithm-research.md`.
-- **Tangent (degrees)** (`tan10.cpp`): Exact range reduction using 360°/180°/90°/45°, then converts to radians and applies CORDIC. Works for all angles. See `docs/tan10-algorithm-research.md`.
+- **Tangent (degrees)** (`tan10.cpp`): Unified range reduction via `trigRangeReduce(45)` with `truncate()` mod 4 quadrant encoding. Converts to radians for final CORDIC. For tan, actual reciprocal = `g_negateResult XOR g_useReciprocal`. See `docs/tan10-algorithm-research.md`.
+- **Tangent (radians)** (`tan.cpp`): Stays in radians using `trigRangeReduce(π/4)` then calls `cordicTan` directly. No rad→deg→rad round trip. See `docs/tan-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
-- **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Reuses tanDeg for core computation. Precision ~4-8e-14. See `docs/sincos-algorithm-research.md`.
-- **Cosine** (`cos.cpp`): Postponed +90° offset: mod 180 on original angle, then ±90 on reduced angle. Uses sinDegRangeReduce() and sinDegCore() from sin.cpp. cosRad converts to degrees then calls cosDeg, eliminating the irrational π/2 constant. Precision ~4-5e-14. See `docs/sincos-algorithm-research.md`.
+- **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Unified range reduction via `trigRangeReduce(90)` for degrees, `trigRangeReduce(π/2)` for radians. `sinDegCore` calls tanDeg; `sinRadCore` calls tanRad (stays in radians). See `docs/sincos-algorithm-research.md`.
+- **Cosine** (`cos.cpp`): Postponed offset: cosDeg uses mod 360 + add 90° + sinDeg; cosRad uses mod 2π + add π/2 + sinRad. Both stay in their native unit system. See `docs/sincos-algorithm-research.md`.
 - **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 - **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
+
+### Calculator Lifecycle (`calculator.cpp`)
+- Every top-level function follows `preCalc` → compute → `postCalc` pattern (mirrors microcode)
+- `preCalc(R, S0, S1)`: Sets zero flags, clears R
+- `postCalc(R, S0, S1)`: Canonicalizes zero (regClear when mantissa zero), copies R to S0 and S1
+- `postCalc` is called before every `return` in all 18 functions that call `preCalc`
+- Functions that delegate (e.g., `asinRad` → `asinDeg`, `acosRad` → `acosDeg`, `atanRad` → `cordicAtan`) do NOT independently call preCalc/postCalc
 
 ### Output Format
 One test per line, fixed columns for HW parsing:
@@ -53,17 +61,26 @@ Per-class tolerances set via `setTolerance()` in each test function:
 
 ### Trig Globals (Microcode Nibble Mapping)
 Three global bools map to microcode nibble-sized RAM variables:
-- `g_inputSign` → ARG_SIGN (0x135): Original input sign, set at entry of tanDeg/cordicAtan/sinDeg/cosDeg
-- `g_negateResult` → new nibble (0x13C): Negate flag from range reduction, set by sinDegRangeReduce/tanDegRangeReduce
-- `g_useReciprocal` → new nibble (0x13D): Reciprocal flag, set by tanDegRangeReduce/atanReciprocalReduce
+- `g_inputSign` → ARG_SIGN (0x135): Original input sign, set at entry of tanDeg/tanRad/cordicAtan/sinDeg/sinRad
+- `g_negateResult` → new nibble (0x13C): Negate flag from `trigRangeReduce()` (bit 1 of q mod 4)
+- `g_useReciprocal` → new nibble (0x13D): Reciprocal flag from `trigRangeReduce()` (bit 0 of q mod 4) or atanReciprocalReduce
+
+**Unified range reduction** (`trigRangeReduce(constId)` in sin.cpp):
+- Divides by boundary constant, uses `truncate()` mod 4 to encode quadrant
+- Bit 1 (q ≥ 2): sets `g_negateResult`
+- Bit 0 (q odd): complements angle (boundary - angle), sets `g_useReciprocal`
+- For tan: actual reciprocal = `g_negateResult XOR g_useReciprocal`
+- For sin: `g_useReciprocal` is set but ignored
 
 **Save/restore pattern** (maps to push/pop in microcode):
 - `sinDegCore()` saves/restores `g_inputSign` and `g_negateResult` around its `tanDeg()` call
+- `sinRadCore()` saves/restores `g_inputSign` and `g_negateResult` around its `tanRad()` call
 - `asinDeg()` saves/restores `g_inputSign` around its `atanDeg()` call
 
-Two disjoint call chains (never simultaneously active):
-- Chain S: sinDeg/cosDeg → sinDegCore → tanDeg → cordicTan
-- Chain A: asinDeg → atanDeg → cordicAtan
+**Call chains** (degree and radian paths are independent):
+- Degree: sinDeg/cosDeg → sinDegCore → tanDeg → cordicTan
+- Radian: sinRad/cosRad → sinRadCore → tanRad → cordicTan (no deg conversion!)
+- Atan: asinDeg → atanDeg → cordicAtan
 
 ### Error Flags
 - `FLAG_INV_ERR` → "INVALID": Input invalid for function (e.g., sqrt(-1), ln(-1), asin(2))

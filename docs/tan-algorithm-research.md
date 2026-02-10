@@ -214,7 +214,8 @@ atan(x) = x / (1 + x²/(3 + 4x²/(5 + 9x²/(7 + ...))))
 
 ### Range Reduction
 For tan() with large angles:
-- Implemented via degree conversion: tan(rad) → tanDeg(deg) → cordicTan()
+- Both tanDeg and tanRad use unified `trigRangeReduce(boundary)` to reduce to [0, boundary)
+- tanDeg uses exact decimal boundary (45°), tanRad uses π/4 (stays in radians, no degree conversion)
 - See `docs/tan-range-reduction-research.md` for details
 
 For atan(), reciprocal reduction is REQUIRED for |x| > 1:

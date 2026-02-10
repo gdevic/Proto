@@ -37,20 +37,30 @@ The tool operates in two modes:
 | Division | `div(R, S0, S1)` | Shift-and-subtract with 17-digit quotient |
 | Rounding | `round(R, S0, digits)` | Banker's rounding (round half to even) |
 | Natural Log | `ln(R, S0)` | CORDIC digit-by-digit (HP-35 style) |
-| Tangent (rad) | `tanRad(R, S0)` | CORDIC digit-by-digit (radians, HP-35 style) |
+| Tangent (rad) | `tanRad(R, S0)` | Unified range reduction + direct CORDIC |
 | Arctangent (rad) | `atanRad(R, S0)` | CORDIC digit-by-digit (radians, HP-35 style) |
-| Tangent (deg) | `tanDeg(R, S0)` | Range reduction + CORDIC (degrees) |
+| Tangent (deg) | `tanDeg(R, S0)` | Unified range reduction + deg→rad + CORDIC |
 | Arctangent (deg) | `atanDeg(R, S0)` | CORDIC + deg conversion (degrees) |
 | Square Root | `sqrt(R, S0)` | Newton-Raphson iteration |
 | Exponential | `exp(R, S0)` | CORDIC digit-by-digit (inverse of ln) |
 | Sine (deg) | `sinDeg(R, S0)` | Half-angle formula via tanDeg |
-| Sine (rad) | `sinRad(R, S0)` | Converts to degrees, calls sinDeg |
-| Cosine (deg) | `cosDeg(R, S0)` | Postponed +90° offset via sinDeg core |
-| Cosine (rad) | `cosRad(R, S0)` | Converts to degrees, calls cosDeg |
+| Sine (rad) | `sinRad(R, S0)` | Half-angle formula via tanRad |
+| Cosine (deg) | `cosDeg(R, S0)` | Postponed +90° offset via sinDeg |
+| Cosine (rad) | `cosRad(R, S0)` | Postponed +π/2 offset via sinRad |
 | Arcsine (deg) | `asinDeg(R, S0)` | atan(1/sqrt(1/x²-1)) identity |
 | Arcsine (rad) | `asinRad(R, S0)` | Calls asinDeg, converts |
 | Arccosine (deg) | `acosDeg(R, S0)` | 90 - asin(x) identity |
 | Arccosine (rad) | `acosRad(R, S0)` | Calls acosDeg, converts |
+
+### Calculator Lifecycle
+
+Every top-level arithmetic function follows a `preCalc` / compute / `postCalc` pattern:
+
+1. **`preCalc`**: Sets zero flags (FLAG_S0_ZERO, FLAG_S1_ZERO), clears result register R
+2. **Computation**: Algorithm body with early returns for special cases (zero, domain error, overflow)
+3. **`postCalc`**: Canonicalizes zero results (`regClear(R)` when mantissa is zero), copies R to S0 and S1 for chained operations
+
+`postCalc(R, S0, S1)` is called before every `return` in all top-level functions.
 
 ## Building
 

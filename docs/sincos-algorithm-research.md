@@ -7,9 +7,9 @@ Eight trigonometric functions implemented using half-angle formulas and arctange
 | Function | Input | Output | Formula |
 |----------|-------|--------|---------|
 | `sinDeg` | degrees | sine value | Half-angle |
-| `sinRad` | radians | sine value | Converts to degrees, calls `sinDeg` |
-| `cosDeg` | degrees | cosine value | Postponed +90° offset via sinDeg core |
-| `cosRad` | radians | cosine value | Converts to degrees, calls `cosDeg` |
+| `sinRad` | radians | sine value | Half-angle via `tanRad` |
+| `cosDeg` | degrees | cosine value | Postponed +90° offset via `sinDeg` |
+| `cosRad` | radians | cosine value | Postponed +π/2 offset via `sinRad` |
 | `asinDeg` | value [-1,1] | degrees [-90,90] | Arctangent identity |
 | `asinRad` | value [-1,1] | radians [-π/2,π/2] | Calls `asinDeg`, converts |
 | `acosDeg` | value [-1,1] | degrees [0,180] | 90 - asin |
@@ -33,40 +33,43 @@ sin(x) = 2t / (1 + t²)
 
 ### Range Reduction Strategy
 
-Since `sin(x + 180°) = -sin(x)`, we reduce to [0, 180) using **mod 180 with parity tracking**, then further reduce to [0, 90] using the reflection `sin(180° - x) = sin(x)`.
+Unified range reduction via `trigRangeReduce(CONST_90)`: divides |x| by 90 and calls `truncate()` which returns the integer part mod 4 as a `uint8_t`. The 2-bit quadrant encoding directly determines the flags:
 
-This keeps `tan(x/2)` in the range [0, 45°], where tan values are in [0, 1] — the optimal range for CORDIC precision.
+- **bit 1** → `g_negateResult` (negate the final result)
+- **bit 0** → complement the reduced angle (subtract from 90) and set `g_useReciprocal`
 
-| Input | Reduced to | tan(x/2) |
-|-------|------------|----------|
-| sin(179°) | sin(1°) | tan(0.5°) ≈ 0.009 |
-| sin(170°) | sin(10°) | tan(5°) ≈ 0.087 |
-| sin(135°) | sin(45°) | tan(22.5°) ≈ 0.414 |
+Sin ignores `g_useReciprocal`. This directly reduces to [0, 90) without separate mod 180 and reflect steps.
+
+| Input | Quadrant (mod 4) | g_negateResult | Complement | Reduced to | tan(x/2) |
+|-------|:-:|:-:|:-:|------------|----------|
+| sin(45°) | 0 | false | no | 45° | tan(22.5°) ≈ 0.414 |
+| sin(135°) | 1 | false | yes → 90-45=45° | 45° | tan(22.5°) ≈ 0.414 |
+| sin(225°) | 2 | true | no | 45° | tan(22.5°) ≈ 0.414 |
+| sin(315°) | 3 | true | yes → 90-45=45° | 45° | tan(22.5°) ≈ 0.414 |
 
 ### Algorithm (sinDeg)
 
 ```
 1. Handle special case: sin(0) = 0
 2. Store input sign (sin is odd function)
-3. Range reduction using mod 180 with parity:
-   a. q = floor(|x| / 180)
-   b. r = |x| - q * 180  → r in [0, 180)
-   c. negateResult = (q is odd)  // check ones digit: 1,3,5,7,9
+3. Unified range reduction:
+   g_negateResult = false, g_useReciprocal = false
+   trigRangeReduce(CONST_90)
+   // Reduces angle to [0, 90), sets quadrant flags
+   // g_useReciprocal is set but ignored for sin
 4. Handle special case: r = 0 means sin = 0 (e.g., sin(540°))
-5. Reflect to [0, 90] using sin(180-x) = sin(x):
-   a. if r > 90: r = 180 - r
-6. Handle special case: r = 90 means sin = ±1
-7. Compute t = tanDeg(r/2)  // t is in (0, 1) - optimal range!
-8. Compute 2t (save to S3, safe across mul)
-9. Compute t²
-10. Compute 1 + t² (denominator)
-11. Compute (2t) / (1 + t²)
-12. Apply negateResult and inputSign
+5. Handle special case: r = 90 means sin = ±1
+6. Compute t = tanDeg(r/2)  // t is in (0, 1) - optimal range!
+7. Compute 2t (save to S3, safe across mul)
+8. Compute t²
+9. Compute 1 + t² (denominator)
+10. Compute (2t) / (1 + t²)
+11. Apply negateResult and inputSign
 ```
 
-### Parity Check via truncate()
+### Quadrant Encoding via truncate()
 
-The `truncate()` function (register.cpp) truncates a BCD number to its integer part and returns `true` if the resulting integer is odd. It examines the ones digit at mantissa position `exp` before zeroing fractional digits. This matches the assembly `truncate` which sets FLAG_TEST for the same purpose.
+The `truncate()` function (register.cpp) truncates a BCD number to its integer part and returns a `uint8_t` with the value mod 4. In BCD, mod 4 is computed as `(2 * tens_digit + ones_digit) % 4`. The 2-bit result directly encodes the quadrant: bit 1 = negate, bit 0 = complement. This matches the assembly `truncate` which stores the mod-4 value for the same purpose.
 
 ### Register Usage
 
@@ -87,22 +90,16 @@ Solution: Save `t` to S4, save `2t` to S3 before computing `t²`.
 cos(x) = sin(x + 90°)
 ```
 
-Adding 90° directly to the input would cause precision loss for very large inputs (at exp >= 17, the +90 is lost entirely in the mantissa alignment). Instead, mod 180 runs on the original angle, then the ±90 offset is applied to the small reduced angle — always exact.
+Adding 90° directly to the input would cause precision loss for very large inputs (at exp >= 17, the +90 is lost entirely in the mantissa alignment). Instead, the offset is applied after modular reduction to a small angle — always exact.
 
 ### Offset Transformation
 
-After mod 180, the reduced angle r ∈ [0, 180). Adding 90 conceptually gives [90, 270):
+`cosDeg` performs mod 360 on the original angle, adds 90°, and wraps if the result is >= 360°. The result is then passed to `sinDeg`, which handles its own range reduction internally via `trigRangeReduce(CONST_90)`.
 
-```
-r < 90:  final_angle = 90 - r,  parity unchanged   (reflection)
-r >= 90: final_angle = r - 90,  parity flipped      (wrap past 180)
-```
-
-Both branches use a single exact subtraction with 90. The final angle is in [0, 90], ready for sinDegCore's half-angle computation.
 
 ### Why Postponed Offset
 
-| Input exponent | Naive add(x, 90) | Postponed offset (after mod 180) |
+| Input exponent | Naive add(x, 90) | Postponed offset (after mod 360) |
 |:-:|---|---|
 | < 16 | 90 survives in mantissa | Same result |
 | 16 | Partial loss (~1° error) | Exact (offset on small angle) |
@@ -110,7 +107,7 @@ Both branches use a single exact subtraction with 90. The final angle is in [0, 
 
 ### Radians Version
 
-`cosRad` converts to degrees then calls `cosDeg`, eliminating the irrational π/2 constant entirely and saving ~0.5 ULP.
+`cosRad` now stays in radians: mod 2π, add π/2, wrap if >= 2π, then call `sinRad`. This uses the irrational π/2 constant (~0.5-1 ULP cost) but eliminates the ~2 ULP rad->deg->rad round trip.
 
 ## Arctangent Identity (asin)
 
@@ -181,10 +178,14 @@ Special cases for exact values:
 
 ### Test Results Summary
 
-**sinDeg**: 35 PASS, 5 NEAR, 8 MISS (errors ~6-9 × 10⁻¹⁴)
-**cosDeg**: 25 PASS, 4 NEAR, 0 MISS (errors ~3-8 × 10⁻¹⁴)
-**asinDeg**: 20 PASS, 4 NEAR, 3 MISS (errors ~5-7 × 10⁻¹³ for small inputs)
+500 random samples per function:
+
+**sinDeg**: 40 PASS, 3 NEAR, 5 MISS (errors ~6-9 × 10⁻¹⁴)
+**cosDeg**: 29 PASS, 0 NEAR, 0 MISS (no NEAR or MISS)
+**asinDeg**: 20 PASS, 5 NEAR, 2 MISS (errors ~5-7 × 10⁻¹³ for small inputs)
 **acosDeg**: 26 PASS, 0 NEAR, 1 MISS
+**sinRad**: 8 PASS, 0 NEAR, 0 MISS (all PASS)
+**cosRad**: 8 PASS, 0 NEAR, 0 MISS (all PASS)
 
 Note: sinDeg test suite expanded with corner cases for 90°, 180°, 270° boundaries.
 
@@ -207,7 +208,7 @@ Testing `sin(asin(x)) = x` and `cos(acos(x)) = x`:
 
 ## Future Improvements
 
-1. **Degree-native CORDIC**: Could implement sin/cos directly in CORDIC rotation mode with degree-based constants, avoiding rad/deg conversions.
+1. **Degree-native CORDIC**: Could implement sin/cos directly in CORDIC rotation mode with degree-based constants. Less relevant now that the radian path stays in radians (avoiding rad/deg conversions entirely), but could still reduce operation count for the degree path.
 
 2. **Small angle optimization**: For `|x| < ε`, use Taylor series `sin(x) ≈ x`, `cos(x) ≈ 1 - x²/2`.
 

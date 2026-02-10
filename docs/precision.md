@@ -524,7 +524,8 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 | Log | 14.5 digits | CORDIC, 16 iterations |
 | Exp | 10-14 digits | Degrades with larger inputs |
 | Atan | 14.8 digits | CORDIC, 16 iterations |
-| Sin/Cos/Tan | 14.3-14.5 digits | Via atan + identities |
+| Tan (deg/rad) | ~14-14.5 digits | CORDIC + range reduction |
+| Sin/Cos (deg/rad) | ~13.5-14 digits | Half-angle formula via tan |
 
 All figures assume guard digit rounding is applied at each operation (Strategy A).
 
@@ -578,10 +579,10 @@ This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 
 **LN**: Has some NEAR/MISS results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
 
-**TANRAD**: The CORDIC algorithm works correctly for small angles (~0 to PI/4 radians) but requires range reduction for larger angles. Random tests fail because they use large angles outside this range. The fixed tests show 1e-14 to 1e-12 errors which are at or near machine precision.
+**TANRAD**: Uses unified range reduction via `trigRangeReduce(π/4)` to reduce any angle to [0, π/4), then calls cordicTan directly (no degree conversion). Stays in radians throughout. For small angles (< 1e-4 rad), CORDIC produces fewer significant digits. For large angles (> 100 rad), range reduction with irrational π/4 boundary causes cancellation similar to degree functions with large angles. A MISMATCH can occur when random radian values land very near asymptotes (π/2 + kπ), where BCD detects OVERFLOW but IEEE computes a large finite value.
 
 **ATANRAD**: Uses reciprocal reduction for |x| > 1: atan(x) = π/2 - atan(1/x). This ensures CORDIC converges quickly for all inputs. Works well across the full range with errors at machine precision limits.
 
-**TANDEG/ATANDEG**: Degree-based versions with range reduction. Range reduction is exact since 90° and 360° are exact decimals (unlike π for radians). Works well for angles away from asymptotes (90°, 270°). Round-trip tests show accumulated precision loss.
+**TANDEG/ATANDEG**: tanDeg uses unified `trigRangeReduce(CONST_45)` with exact decimal boundary — range reduction is lossless. Works well for angles away from asymptotes (90°, 270°). atanDeg calls cordicAtan directly, then converts to degrees. Round-trip tests show accumulated precision loss from the operation chains.
 
 **EXP**: CORDIC digit-by-digit method (inverse of ln). Uses range reduction via division by ln(10): exp(x) = exp(r) × 10^k where k = floor(x/ln(10)) and r = x - k×ln(10). Overflow (exp(x) > 10^99) returns max value; underflow (exp(-x) < 10^-99) returns zero. Achieves 13-14 digits of precision.

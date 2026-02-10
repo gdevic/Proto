@@ -62,32 +62,37 @@ Output: tan(x)
 1. Handle sign:
    - Store sign of x, work with |x| (tan is odd function)
 
-2. Range reduction (all exact in BCD):
-   a. Reduce to [0, 360): x = x mod 360
-   b. Reduce to [0, 180): if x >= 180, x = x - 180
-   c. Reduce to [0, 90):  if x >= 90, x = 180 - x, negate result
-   d. Reduce to [0, 45]:  if x > 45, x = 90 - x, use reciprocal
+2. Unified range reduction via trigRangeReduce(CONST_45):
+   a. If angle < 45, skip (q=0)
+   b. Divide angle by 45, truncate to get q mod 4
+   c. Compute remainder = angle - floor(angle/45) * 45
+   d. If q is odd: complement angle (45 - remainder), set g_useReciprocal
+   e. If q >= 2: set g_negateResult
+   f. doReciprocal = g_negateResult XOR g_useReciprocal
 
 3. Convert to radians:
    x_rad = x * (π/180)
 
-4. Apply CORDIC rotation (same as tan())
+4. Apply CORDIC rotation via cordicTan()
 
-5. Apply reciprocal if angle was > 45°:
+5. Apply reciprocal if doReciprocal is set:
    result = 1 / result
 
-6. Apply sign adjustments from step 2
+6. Apply sign adjustments from steps 1-2
 ```
 
 ### Range Reduction Details
 
-| Original range | Reduction | Identity used |
-|----------------|-----------|---------------|
-| [360, ∞) | x mod 360 | tan(x) = tan(x mod 360) |
-| [180, 360) | x - 180 | tan(x) = tan(x - 180) |
-| [90, 180) | 180 - x, negate | tan(x) = -tan(180 - x) |
-| (45, 90) | 90 - x, reciprocal | tan(x) = 1/tan(90 - x) |
-| [0, 45] | none | Direct CORDIC |
+The unified `trigRangeReduce(CONST_45)` divides by 45 and uses the truncated quotient mod 4 to encode the quadrant:
+
+| q mod 4 | Original range | Action | Identity used |
+|---------|----------------|--------|---------------|
+| 0 | [0, 45) | none | Direct CORDIC |
+| 1 | [45, 90) | complement (45 - r), set reciprocal | tan(x) = 1/tan(90 - x) |
+| 2 | [90, 135) | negate | tan(x) = -tan(x - 90) |
+| 3 | [135, 180) | complement (45 - r), set reciprocal + negate | tan(x) = -1/tan(180 - x) |
+
+The pattern repeats every 180° (4 quadrants of 45° each). The final reciprocal flag is `doReciprocal = g_negateResult XOR g_useReciprocal`.
 
 ---
 
@@ -233,6 +238,8 @@ rad_input → convert to degrees → use tan10() reduction → convert back → 
 
 The precision cost is small (two conversions), but the implementation is simpler and the reduction is exact rather than approximate.
 
+**Update**: The implementation now uses a hybrid approach. Degree functions use exact decimal range reduction as described. Radian functions (tanRad, sinRad, cosRad) now stay in radians using trigRangeReduce with π-based boundaries (π/4, π/2), avoiding the conversion overhead entirely. Only the final CORDIC computation is shared.
+
 ---
 
 ## Special Cases
@@ -319,11 +326,7 @@ Our implementation follows this proven design, achieving comparable precision (~
 
 2. **Argument reduction optimization**: For very large angles (>10⁶ degrees), use division instead of repeated subtraction for faster reduction.
 
-3. **Sin/Cos via tan**: Once tan10() is reliable, sin and cos can be computed as:
-   - sin(x) = tan(x/2) * 2 / (1 + tan²(x/2))
-   - cos(x) = (1 - tan²(x/2)) / (1 + tan²(x/2))
-
-   Or use direct CORDIC rotation mode.
+3. **Sin/Cos via tan**: **Implemented**. sinDeg/sinRad use the half-angle formula sin(x) = 2t/(1+t^2) where t = tan(x/2). cosDeg/cosRad use cos(x) = sin(x + 90°) (or x + π/2).
 
 ---
 

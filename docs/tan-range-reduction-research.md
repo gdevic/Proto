@@ -68,35 +68,37 @@ Convert to degrees, reduce using exact integer arithmetic, convert back to radia
 ### Architecture Overview
 
 ```
-tanRad(x)  ──→ [×180/π] ──→ tanDeg(x°) ──→ result
-                              │
-                              ├─ [O(1) range reduction in degrees]
-                              ├─ [×π/180 to radians]
-                              └─ cordicTan() ──→ tan value
+tanDeg(x°) ──→ trigRangeReduce(45°) ──→ [×π/180] ──→ cordicTan() ──→ result
+                    (exact BCD)
+
+tanRad(x)  ──→ trigRangeReduce(π/4) ──→ cordicTan() ──→ result
+                 (irrational boundary)       (direct, no conversion)
 
 atanRad(x) ──→ cordicAtan(x) ──→ result (radians)
 
 atanDeg(x) ──→ cordicAtan(x) ──→ [×180/π] ──→ result (degrees)
 ```
 
-**Key insight**: All range reduction happens in degrees, where 360, 180, 90, 45 are exact decimal integers. This avoids precision loss from irrational π.
+tanRad uses `trigRangeReduce` with π/4 boundary and calls `cordicTan` directly.
+
+**Key insight**: Degree functions use exact decimal range reduction (45 is an exact BCD integer). Radian functions stay in radians using π-based boundaries, avoiding conversion overhead. Both paths share the same `trigRangeReduce` logic and `cordicTan` core.
 
 ### tanDeg() Range Reduction (tan10.cpp)
 
-1. **Reduce to [0, 360)** using O(1) division: compute n = floor(S0 / 360), then S0 = S0 - n × 360
-2. **Reduce to [0, 180)** using tan period identity: if S0 ≥ 180, subtract 180
-3. **Reduce to [0, 90)** using reflection identity: if S0 ≥ 90, compute S0 = 180 - S0 and negate result
-4. **Reduce to [0, 45]** using reciprocal identity: if S0 > 45, compute S0 = 90 - S0 and use reciprocal
-5. **Convert to radians**: multiply by π/180
-6. **Apply CORDIC**: call cordicTan()
-7. **Apply reciprocal** if flag was set
-8. **Apply sign** if negation flag was set
+tanDeg() uses the unified `trigRangeReduce(CONST_45)` which handles all reduction in one call:
 
-**Precision loss**: Only in step 5, which is a single multiplication on a small value (0° to 45°).
+1. **Unified range reduction**: `trigRangeReduce(CONST_45)` divides by 45, uses `truncate()` to get q mod 4 for quadrant encoding (bit 1 = negate, bit 0 = complement), computes remainder, and optionally complements (45 - remainder)
+2. **Compute reciprocal flag**: `doReciprocal = g_negateResult XOR g_useReciprocal`
+3. **Convert to radians**: multiply by π/180
+4. **Apply CORDIC**: call cordicTan()
+5. **Apply reciprocal** if doReciprocal is set
+6. **Apply sign** from input sign and negation flag
+
+**Precision loss**: Only in step 3, which is a single multiplication on a small value (0° to 45°).
 
 ### tanRad() Implementation (tan.cpp)
 
-Converts radians to degrees by multiplying by 180/π, then delegates to tanDeg() which handles all range reduction.
+Uses `trigRangeReduce(CONST_PI_OVER_4)` to reduce the angle to [0, π/4), then calls `cordicTan()` directly. No degree conversion needed. The asymptote detection uses the same near-zero threshold as tanDeg.
 
 ### atanRad() and atanDeg()
 
@@ -128,7 +130,7 @@ The reciprocal identity transforms large inputs to small ones:
 The mod 360 operation uses division rather than repeated subtraction:
 
 1. Compute n = floor(S0 / 360) via BCD division
-2. Truncate n to integer using bcdTruncateToInt()
+2. Truncate n to integer using truncate()
 3. Compute S0 = S0 - n × 360
 
 **Complexity**: 3 BCD operations (div, mul, sub) regardless of input magnitude.
@@ -137,7 +139,7 @@ The mod 360 operation uses division rather than repeated subtraction:
 - Naive: 2,778 subtractions (O(n))
 - O(1): 3 operations
 
-The bcdTruncateToInt() helper zeros all fractional digits by examining the exponent and clearing mantissa positions beyond the decimal point.
+The `truncate()` function zeros all fractional digits by examining the exponent and clearing mantissa positions beyond the decimal point. It returns the truncated value mod 4 as a `uint8_t`, which `trigRangeReduce` uses directly for quadrant encoding.
 
 ---
 
