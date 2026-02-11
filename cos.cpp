@@ -91,6 +91,7 @@ void cosRad(BCD& _R, BCD& _S0)
     constLoad(S1, CONST_180_OVER_PI);
     mul(R, S0, S1);                    // S0 = |degrees| via postCalc
     cosDeg(R, S0);
+    // postCalc: handled by cosDeg()
 #else
     preCalc(R, S0, S1);
 

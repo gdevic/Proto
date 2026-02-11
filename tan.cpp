@@ -305,6 +305,7 @@ void cordicTan(BCD& R, BCD& S0)
     normalize(S1);
 
     div(R, S0, S1);
+    // postCalc: handled by div()
 }
 
 // Core CORDIC arctangent algorithm (Meggitt's digit-by-digit method)
