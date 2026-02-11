@@ -37,16 +37,16 @@ The tool operates in two modes:
 | Division | `div(R, S0, S1)` | Shift-and-subtract with 17-digit quotient |
 | Rounding | `round(R, S0, digits)` | Banker's rounding (round half to even) |
 | Natural Log | `ln(R, S0)` | CORDIC digit-by-digit (HP-35 style) |
-| Tangent (rad) | `tanRad(R, S0)` | Unified range reduction + direct CORDIC |
-| Arctangent (rad) | `atanRad(R, S0)` | CORDIC digit-by-digit (radians, HP-35 style) |
-| Tangent (deg) | `tanDeg(R, S0)` | Unified range reduction + deg→rad + CORDIC |
+| Tangent (rad) | `tanRad(R, S0)` | Unified range reduction via trigRangeReduce(π/4) + CORDIC + small-angle Taylor bypass |
+| Arctangent (rad) | `atanRad(R, S0)` | CORDIC digit-by-digit + small-angle Taylor bypass |
+| Tangent (deg) | `tanDeg(R, S0)` | Unified range reduction + deg→rad + CORDIC + small-angle Taylor bypass |
 | Arctangent (deg) | `atanDeg(R, S0)` | CORDIC + deg conversion (degrees) |
 | Square Root | `sqrt(R, S0)` | Newton-Raphson iteration |
 | Exponential | `exp(R, S0)` | CORDIC digit-by-digit (inverse of ln) |
 | Sine (deg) | `sinDeg(R, S0)` | Half-angle formula via tanDeg |
-| Sine (rad) | `sinRad(R, S0)` | Half-angle formula via tanRad |
-| Cosine (deg) | `cosDeg(R, S0)` | Postponed +90° offset via sinDeg |
-| Cosine (rad) | `cosRad(R, S0)` | Postponed +π/2 offset via sinRad |
+| Sine (rad) | `sinRad(R, S0)` | Converts to degrees via sinDeg |
+| Cosine (deg) | `cosDeg(R, S0)` | Quadrant-shifted range reduction + sinDegCore |
+| Cosine (rad) | `cosRad(R, S0)` | Converts to degrees via cosDeg |
 | Arcsine (deg) | `asinDeg(R, S0)` | atan(1/sqrt(1/x²-1)) identity |
 | Arcsine (rad) | `asinRad(R, S0)` | Calls asinDeg, converts |
 | Arccosine (deg) | `acosDeg(R, S0)` | 90 - asin(x) identity |
@@ -182,21 +182,62 @@ EXP +1.000000000000000e+03 OVERFLOW inf
 Summary is printed to stderr (doesn't interfere with stdout redirection). Each line shows the active tolerance class:
 ```
 ADD [Strict] comb: 961 PASS, 0 NEAR, 0 MISS
-ADD [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+ADD [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
 SUB [Strict] comb: 196 PASS, 0 NEAR, 0 MISS
-SUB [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+SUB [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
 MUL [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
-MUL [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+MUL [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
 DIV [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
-DIV [Strict] rand: 10 PASS, 0 NEAR, 0 MISS
+DIV [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
+SQRT [Standard] tests: 45 PASS, 0 NEAR, 0 MISS
+SQRT [Standard] rand: 500 PASS, 0 NEAR, 0 MISS
 LN [Standard] tests: 16 PASS, 12 NEAR, 3 MISS
-LN [Standard] rand: 10 PASS, 0 NEAR, 0 MISS
-TANDEG [Relaxed] tests: 32 PASS, 2 NEAR, 11 MISS
-TANDEG [Relaxed] rand: 1 PASS, 7 NEAR, 2 MISS
-ATANDEG [Relaxed] tests: 22 PASS, 0 NEAR, 2 MISS
-ATANDEG [Relaxed] rand: 10 PASS, 0 NEAR, 0 MISS
+LN [Standard] rand: 458 PASS, 41 NEAR, 1 MISS
+EXP [Standard] tests: 21 PASS, 12 NEAR, 0 MISS
+EXP [Standard] rand: 294 PASS, 206 NEAR, 0 MISS
+TANRAD [Relaxed] tests: 47 PASS, 17 NEAR, 23 MISS
+TANRAD [Relaxed] rand: 374 PASS, 119 NEAR, 7 MISS
+ATANRAD [Relaxed] tests: 20 PASS, 0 NEAR, 0 MISS
+ATANRAD [Relaxed] rand: 499 PASS, 0 NEAR, 1 MISS
+TANDEG [Relaxed] tests: 57 PASS, 37 NEAR, 10 MISS
+TANDEG [Relaxed] rand: 403 PASS, 86 NEAR, 11 MISS
+ATANDEG [Relaxed] tests: 24 PASS, 0 NEAR, 0 MISS
+ATANDEG [Relaxed] rand: 499 PASS, 1 NEAR, 0 MISS
+SINDEG [Relaxed] tests: 96 PASS, 0 NEAR, 0 MISS
+SINDEG [Relaxed] rand: 388 PASS, 105 NEAR, 7 MISS
+SINRAD [Relaxed] tests: 39 PASS, 8 NEAR, 0 MISS
+SINRAD [Relaxed] rand: 433 PASS, 62 NEAR, 5 MISS
+COSDEG [Relaxed] tests: 92 PASS, 1 NEAR, 0 MISS
+COSDEG [Relaxed] rand: 473 PASS, 27 NEAR, 0 MISS
+COSRAD [Relaxed] tests: 41 PASS, 14 NEAR, 1 MISS
+COSRAD [Relaxed] rand: 432 PASS, 63 NEAR, 5 MISS
+ASINDEG [Relaxed] tests: 23 PASS, 4 NEAR, 0 MISS
+ASINDEG [Relaxed] rand: 372 PASS, 126 NEAR, 2 MISS
+ASINRAD [Relaxed] tests: 13 PASS, 2 NEAR, 0 MISS
+ASINRAD [Relaxed] rand: 375 PASS, 125 NEAR, 0 MISS
+ACOSDEG [Relaxed] tests: 26 PASS, 0 NEAR, 1 MISS
+ACOSDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+ACOSRAD [Relaxed] tests: 14 PASS, 0 NEAR, 0 MISS
+ACOSRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
+
+### Round-Trip Tests
+
+Round-trip tests compose inverse and forward operations (e.g., `tan(atan(x)) = x`) to verify consistency. These use **separate test arrays** with values curated as function inputs, not the angle/argument arrays from the direct tests. This matters because the round-trip error for `tan(atan(x))` is amplified by `sec²(atan(x)) = 1 + x²`, so large tangent values push `atan` near the asymptote where tiny angular errors get magnified. Random round-trip tests use domain-appropriate generators (e.g., `OPTS_ATANRAD` with `maxExp=99`).
+
+```
+RTRIP_EXP [Standard] trip: 4 PASS, 8 NEAR, 1 MISS
+RTRIP_EXP [Standard] rand trip: 249 PASS, 63 NEAR, 188 MISS
+RTRIP_TANRAD [Relaxed] trip: 22 PASS, 4 NEAR, 2 MISS
+RTRIP_TANRAD [Relaxed] rand trip: 454 PASS, 9 NEAR, 37 MISS
+RTRIP_TANDEG [Relaxed] trip: 22 PASS, 4 NEAR, 2 MISS
+RTRIP_TANDEG [Relaxed] rand trip: 459 PASS, 6 NEAR, 35 MISS
+RTRIP_ASINDEG [Relaxed] trip: 25 PASS, 2 NEAR, 0 MISS
+RTRIP_ASINRAD [Relaxed] trip: 13 PASS, 2 NEAR, 0 MISS
+RTRIP_ACOSDEG [Relaxed] trip: 22 PASS, 4 NEAR, 1 MISS
+RTRIP_ACOSRAD [Relaxed] trip: 12 PASS, 2 NEAR, 0 MISS
+```
 
 See the [Documentation](#documentation) section for precision analysis and known limitations.

@@ -102,29 +102,22 @@ The pattern repeats every 180° (4 quadrants of 45° each). The final reciprocal
 Input: x (any real number)
 Output: atan(x) in degrees
 
-1. Handle sign:
-   - Store sign of x, work with |x| (atan is odd function)
+1. Handle zero and sign
 
-2. Reciprocal reduction (REQUIRED for |x| > 1):
-   - If |x| > 1: compute 1/x, set reciprocal flag
-   - Use identity: atan(x) = π/2 - atan(1/x)
-   - Ensures CORDIC works with input ratio ≤ 1
+2. Large-value shortcut: if exponent >= 15, return ±90° exactly
 
-3. CORDIC vectoring:
-   - Rotate vector (1, x) toward x-axis
-   - Count rotations at each digit position
+3. Call cordicAtan(R, S0):
+   - CORDIC vectoring handles all magnitudes directly (no reciprocal reduction)
+   - Small-angle Taylor bypass for |x| < 0.001 (SMALL_ATAN_TAYLOR)
    - Result is in radians
 
-4. Apply reciprocal reduction:
-   If reciprocal flag: result = π/2 - result
-
-5. Convert to degrees:
+4. Convert to degrees:
    result = result_rad * (180/π)
 
-6. Restore sign
+5. Restore sign
 ```
 
-**Critical**: Reciprocal reduction is REQUIRED, not optional. Without it, inputs |x| > 1 cause CORDIC counters to max out at the BCD digit limit (9), producing grossly wrong results (e.g., 143° instead of 83° for atan(8.36)).
+`cordicAtan` handles |x| > 1 directly via CORDIC vectoring — counter[0] can reach up to 9 (BCD digit limit). No explicit reciprocal reduction is performed.
 
 ---
 
@@ -157,15 +150,11 @@ These constants are stored as 16-digit BCD mantissas. The conversion step introd
 
 | Source | Error contribution |
 |--------|-------------------|
-| Reciprocal division (if |x|>1) | ~0.5 ULP |
-| CORDIC algorithm | ~1-2 digits |
-| Final division | ~0.5 ULP |
-| Reciprocal subtraction (if used) | ~0.5 ULP |
+| CORDIC vectoring (K=8) | ~1-2 digits |
+| Residual y/x division | ~0.5 ULP |
 | Radian→degree conversion | ~0.5 ULP |
 
 **Total**: ~14 correct digits across full range.
-
-**Note**: The reciprocal reduction adds one division for |x| > 1, but this is essential for correctness—without it, the algorithm produces wrong results.
 
 ---
 
@@ -238,7 +227,7 @@ rad_input → convert to degrees → use tan10() reduction → convert back → 
 
 The precision cost is small (two conversions), but the implementation is simpler and the reduction is exact rather than approximate.
 
-**Update**: The implementation now uses a hybrid approach. Degree functions use exact decimal range reduction as described. Radian functions (tanRad, sinRad, cosRad) now stay in radians using trigRangeReduce with π-based boundaries (π/4, π/2), avoiding the conversion overhead entirely. Only the final CORDIC computation is shared.
+**Update**: The implementation uses a hybrid approach. Degree functions use exact decimal range reduction as described. `tanRad` stays in radians using `trigRangeReduce(CONST_PI_OVER_4)` then calls `cordicTan` directly — no degree conversion. For `sinRad` and `cosRad`, `RAD_VIA_DEG=1` (the active default) converts to degrees via multiplication by 180/π, then delegates to `sinDeg`/`cosDeg` respectively, gaining exact decimal range reduction at the cost of one irrational multiplication.
 
 ---
 
@@ -268,8 +257,8 @@ The precision cost is small (two conversions), but the implementation is simpler
 ### Shared CORDIC Constants
 
 Both tan.cpp and tan10.cpp use the same atan constant table:
-- 8 stored constants: atan(10⁻ʲ) for j = 0..7
-- 8 generated dynamically: atan(10⁻ʲ) ≈ 10⁻ʲ for j = 8..15
+- K=8 stored constants: atan(10⁻ʲ) for j = 0..7
+- Remaining precision captured by the residual y/x division in both cordicTan and cordicAtan
 
 This enables code sharing between radian and degree implementations.
 
@@ -278,9 +267,9 @@ This enables code sharing between radian and degree implementations.
 Following the standard pattern:
 - S0: input / y coordinate
 - S1: x coordinate
-- S2: temp for arithmetic
-- S3: counter array (16 positions)
-- S4: scratch / constants
+- S2: digit counters (mant[0..7])
+- S3: save y (during CORDIC rotation)
+- S4: save x (during CORDIC rotation)
 - R: result
 
 ### BCD Comparison Function
@@ -326,7 +315,7 @@ Our implementation follows this proven design, achieving comparable precision (~
 
 2. **Argument reduction optimization**: For very large angles (>10⁶ degrees), use division instead of repeated subtraction for faster reduction.
 
-3. **Sin/Cos via tan**: **Implemented**. sinDeg/sinRad use the half-angle formula sin(x) = 2t/(1+t^2) where t = tan(x/2). cosDeg/cosRad use cos(x) = sin(x + 90°) (or x + π/2).
+3. **Sin/Cos via tan**: **Implemented**. sinDeg uses the half-angle formula sin(x) = 2t/(1+t^2) where t = tan(x/2), with range reduction via `trigRangeReduce(90)`. sinRad (with `RAD_VIA_DEG=1`) converts to degrees and delegates to sinDeg. cosDeg uses `trigRangeReduce(90)` + quadrant shift + complement (`90 - S0`) + `sinDegCore()`. cosRad (with `RAD_VIA_DEG=1`) converts to degrees and delegates to cosDeg.
 
 ---
 

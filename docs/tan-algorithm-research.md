@@ -12,7 +12,7 @@ This document analyzes algorithms for computing tangent and arctangent with BCD 
 
 | Algorithm | Iterations | Total Ops | Code Complexity | Prerequisites | BCD Fit |
 |-----------|------------|-----------|-----------------|---------------|---------|
-| **CORDIC (Meggitt)** | 16-20 | ~150 add/shift + 1 div | Low-Med | div() | Excellent |
+| **CORDIC (Meggitt)** | 8 (K=8) | ~80 add/shift + 1 div | Low-Med | div() | Excellent |
 | Taylor Series | 30-50+ | ~100 mul + 100 add | Low | Range reduction | Poor |
 | Polynomial (Chebyshev) | N/A | ~15 mul + 15 add | Medium | Coefficients | Good |
 | Continued Fraction | 20-30 | ~60 div + 60 add | Medium | div() | Fair |
@@ -32,96 +32,114 @@ CORDIC computes tangent by rotating a unit vector through the input angle, then 
 - **Shared constants**: tan() and atan() use the same constant table
 - **Self-correcting**: Errors don't accumulate catastrophically
 
-### tan(x) Algorithm
+### tan(x) Algorithm (cordicTan)
 ```
-Input: x (angle in radians, BCD number)
-Output: tan(x)
+Input: S0 = angle in radians (reduced to small range)
+Output: R = tan(angle)
 
-1. Handle sign:
-   - Store sign of x, work with |x|
+0. Small-angle bypass (SMALL_TAN_TAYLOR):
+   If esign && exp >= 3 (|x| < 0.001 rad):
+     Use Taylor: tan(x) = x·(1 + x²·(1/3 + x²·2/15))
+     Return (avoids normalizeToZeroExp digit loss)
+
+1. normalizeToZeroExp(S0):
+   Right-shift mantissa until exponent is zero
 
 2. Digit extraction (pseudo-division):
-   For j = 0 to 15:
+   For j = 0 to K-1 (K=8):
      counter[j] = 0
      While angle >= atan_const[j]:
        angle -= atan_const[j]
        counter[j]++
+       (break if counter[j] >= 10)
 
 3. CORDIC rotation (pseudo-multiplication):
-   x_reg = 1.0, y_reg = remainder
+   y = S0 (remainder), x = S1 = 1.0
    For j = K-1 down to 0:
      For k = 0 to counter[j]-1:
-       x_new = x_reg - (y_reg >> j)
-       y_new = y_reg + (x_reg >> j)
-       x_reg = x_new, y_reg = y_new
+       y_next = y + (x >> j)
+       x_new  = x - (y >> j)    [uses savedX, savedY]
+       y = y_next, x = x_new
 
 4. Handle overflow:
-   If x_reg == 0: return MAX_VALUE (tan approaching infinity)
+   If x == 0: set FLAG_OF_ERR, return
 
-5. Normalize y_reg
+5. If y == 0: return 0
+   Normalize y and x
 
 6. Compute result:
-   result = y_reg / x_reg (using div())
-
-7. Restore sign
+   R = y / x (using div())
 ```
 
-### atan(x) Algorithm
+### atan(x) Algorithm (cordicAtan)
 ```
-Input: x (BCD number)
-Output: atan(x) in radians
+Input: S0 = value to compute arctangent of
+Output: R = atan(S0) in radians
 
-1. Handle sign:
-   - Store sign of x, work with |x|
+0. preCalc, zero check, store sign
 
-2. Reciprocal reduction (REQUIRED for |x| > 1):
-   - If |x| > 1: compute 1/x, set reciprocal flag
-   - Use identity: atan(x) = π/2 - atan(1/x)
-   - This ensures CORDIC works with ratio y/x ≤ 1
+1. Large-input shortcut:
+   If positive exponent > 15: return π/2
+   (atan(x) ≈ π/2 within 16-digit precision for |x| >= 10^16)
 
-3. CORDIC vectoring (pseudo-division):
-   x_reg = 1.0, y_reg = x, result = 0
-   For j = 0 to 15:
+2. Small-angle bypass (SMALL_ATAN_TAYLOR):
+   If esign && exp >= 3 (|x| < 0.001):
+     Use Taylor: atan(x) = x·(1 - x²·(1/3 - x²·(1/5 - x²/7)))
+     Restore sign, postCalc, return
+
+3. normalizeToZeroExp(S0):
+   Right-shift mantissa until exponent is zero
+
+4. CORDIC vectoring (pseudo-division):
+   y = S0, x = S1 = 1.0, counters in S2
+   For j = 0 to K-1 (K=8):
      counter[j] = 0
-     While y_reg/x_reg >= 10^-j:
-       x_new = x_reg + (y_reg >> j)
-       y_new = y_reg - (x_reg >> j)
-       x_reg = x_new, y_reg = y_new
+     While y - (x >> j) >= 0:
+       y_next = y - (x >> j)
+       x_new  = x + (y >> j)    [uses savedX, savedY]
+       y = y_next, x = x_new
        counter[j]++
+       (break if counter[j] >= 10)
 
-4. Accumulate constants (pseudo-multiplication):
-   For j = 15 down to 0:
-     result += counter[j] * atan_const[j]
+5. Compute residual:
+   R = y / x  (small angle approximation for remainder)
 
-5. Add remainder:
-   result += y_reg / x_reg  (small angle approximation)
+6. Accumulate atan constants (from K-1 down to 0):
+   For j = K-1 down to 0:
+     For k = 0 to counter[j]-1:
+       running_total += atan_const[j]
+   (adds constants to residual from step 5)
 
-6. Apply reciprocal reduction:
-   If reciprocal flag: result = π/2 - result
-
-7. Normalize result
-
-8. Restore sign
+7. Normalize result, restore sign, postCalc
 ```
 
-### Why Reciprocal Reduction is Required
+Note: cordicAtan does NOT use reciprocal reduction. The CORDIC vectoring mode
+handles |x| > 1 directly because counter[0] can reach up to 9 (BCD digit limit),
+covering atan values up to 9 * atan(1) ≈ 7.07 radians. For very large inputs
+(exponent > 15), the shortcut in step 1 returns π/2 directly.
 
-Without reciprocal reduction, inputs |x| > 1 cause the CORDIC counters to max out:
+### How cordicAtan Handles Large Inputs
 
-| Input | y/x ratio | Counter[0] needed | Problem |
-|-------|-----------|-------------------|---------|
-| 0.5 | 0.5 | 0 | OK |
-| 1.0 | 1.0 | 1 | OK |
-| 8.36 | 8.36 | ~8-10 | Counters max at 9 (BCD digit) |
+The CORDIC vectoring mode handles inputs with |x| > 1 without reciprocal reduction.
+Each BCD counter digit can hold 0-9, so counter[0] alone covers inputs up to
+tan(9 * atan(1)) ≈ tan(7.07 rad). Combined with `normalizeToZeroExp` (which right-shifts
+the mantissa for negative-exponent values), the algorithm converges for all practical inputs.
 
-When counters hit the BCD digit limit (9), the algorithm over-accumulates the angle, producing grossly wrong results (e.g., 143° instead of 83° for atan(8.36)).
+For very large inputs (exponent > 15, i.e., |x| >= 10^16), a shortcut returns π/2 directly,
+since atan(x) = π/2 - 1/x + O(1/x^3) and the 1/x term falls below 16-digit precision.
 
-The reciprocal identity transforms large inputs to small ones:
-- atan(8.36) = π/2 - atan(1/8.36) = π/2 - atan(0.1196)
-- atan(0.1196) converges quickly with counter[0]=0, counter[1]=1
+| Input | Counter[0] | Behavior |
+|-------|-----------|----------|
+| 0.5 | 0 | Handled by counter[1]+ |
+| 1.0 | 1 | atan(1) = π/4 |
+| 5.0 | 5-6 | Within BCD digit range |
+| 9.0 | 8-9 | Near counter limit, still converges |
+| 1e16+ | N/A | Shortcut returns π/2 directly |
 
 ### Constants Required
 ```
+K = 8 stored constants (j = 0..7), used by both cordicTan and cordicAtan:
+
 atan_const[0]  = atan(1)       = 0.7853981633974483  (PI/4)
 atan_const[1]  = atan(0.1)     = 0.0996686524911620
 atan_const[2]  = atan(0.01)    = 0.0099996666866665
@@ -131,15 +149,16 @@ atan_const[5]  = atan(0.00001) = 0.0000099999999966
 atan_const[6]  = atan(1e-6)    = 0.0000009999999999
 atan_const[7]  = atan(1e-7)    = 0.0000000999999999
 
-For j >= 8: atan(10^-j) ≈ 10^-j (small angle approximation)
+Remaining precision (j >= 8) is captured by the residual y/x division in
+both cordicTan and cordicAtan, since atan(10^-j) ≈ 10^-j for small angles.
 Pattern: (j+1) leading zeros followed by 9s (same as ln constants!)
 ```
 
 ### Performance
 - **Convergence**: ~1 decimal digit per iteration
-- **For 16 digits**: 16-20 iterations in each phase
-- **Operations**: ~100 BCD additions/shifts + 1 division for tan()
-- **Operations**: ~100 BCD additions/shifts for atan()
+- **Iterations**: K=8 stored constants; residual division captures remaining precision
+- **Operations**: ~80 BCD additions/shifts + 1 division for tan()
+- **Operations**: ~80 BCD additions/shifts + 1 division for atan()
 
 ---
 
@@ -215,36 +234,63 @@ atan(x) = x / (1 + x²/(3 + 4x²/(5 + 9x²/(7 + ...))))
 ### Range Reduction
 For tan() with large angles:
 - Both tanDeg and tanRad use unified `trigRangeReduce(boundary)` to reduce to [0, boundary)
-- tanDeg uses exact decimal boundary (45°), tanRad uses π/4 (stays in radians, no degree conversion)
+- tanDeg uses exact decimal boundary (CONST_45 = 45°), tanRad uses CONST_PI_OVER_4 (stays in radians, no degree conversion)
+- For tan: actual reciprocal = `g_negateResult XOR g_useReciprocal`
 - See `docs/tan-range-reduction-research.md` for details
 
-For atan(), reciprocal reduction is REQUIRED for |x| > 1:
-- Uses identity: atan(x) = π/2 - atan(1/x)
-- Without this, CORDIC counters max out and produce wrong results
-- See "Why Reciprocal Reduction is Required" section above
+For atan():
+- cordicAtan handles all magnitudes directly via CORDIC vectoring (no reciprocal reduction)
+- Large inputs (exponent > 15): shortcut returns π/2
+- Small inputs (|x| < 0.001): Taylor series bypass preserves full precision
+- See "How cordicAtan Handles Large Inputs" section above
 
 ### Special Cases
 - tan(0) = 0 exactly
 - tan(PI/4) = 1 exactly
-- tan(PI/2) = undefined (overflow)
+- tan(PI/2) = undefined (overflow, FLAG_OF_ERR)
 - atan(0) = 0 exactly
 - atan(1) = PI/4 exactly
-- atan(±∞) = ±PI/2
+- atan(large) = π/2 (shortcut for exponent > 15)
+
+### Small-Angle Taylor Bypasses
+
+Both cordicTan and cordicAtan have optional Taylor series bypasses for small inputs
+(controlled by `SMALL_TAN_TAYLOR` and `SMALL_ATAN_TAYLOR` in proto.h, both enabled).
+
+**Problem**: `normalizeToZeroExp` right-shifts the mantissa by |exponent| positions to
+zero the exponent. Each shift destroys one digit from the 16-digit mantissa. For small
+angles (large negative exponent), this is catastrophic.
+
+**Solution**: For |x| < 0.001 (exponent <= -3), bypass CORDIC and use Taylor series
+which works with full-precision mul/add and no mantissa shifting.
+
+**SMALL_TAN_TAYLOR** (cordicTan):
+- Threshold: `esign && (exp >= 3 || exp < 0)`, i.e., exponent <= -3
+- Formula: `tan(x) = x * (1 + x^2 * (1/3 + x^2 * 2/15))` (Horner form, 3 terms)
+- Truncation error: 17x^7/315, at most ~5.4e-17 at x=0.001
+- Constants: 1/3 and 2/15 from const.cpp
+
+**SMALL_ATAN_TAYLOR** (cordicAtan):
+- Threshold: `esign && (exp >= 3 || exp < 0)`, i.e., exponent <= -3
+- Formula: `atan(x) = x * (1 - x^2 * (1/3 - x^2 * (1/5 - x^2/7)))` (Horner form, 4 terms)
+- Truncation error: x^9/9, at most ~1.1e-17 at x=0.001
+- Constants: 1/3, 1/5, and 1/7 from const.cpp
 
 ### Register Usage
 Following ln() pattern:
 - S0: y coordinate / input
 - S1: x coordinate
-- S2: temp for arithmetic
-- S3: counter array (16 positions)
-- S4: scratch
+- S2: digit counters (K=8 positions in S2.mant[0..7])
+- S3: save y (during CORDIC rotation)
+- S4: save x (during CORDIC rotation)
 - R: result
 
 ### Precision
 - CORDIC provides uniform precision throughout the range
-- Part 3 accumulation should proceed from LSB to MSB
+- In cordicAtan, constant accumulation proceeds from K-1 down to 0
 - Final result typically achieves 14-15 correct digits
 - tan() near PI/2 loses precision due to division by small x
+- Small-angle Taylor bypasses (exp <= -3) recover precision lost to normalizeToZeroExp
 
 ---
 

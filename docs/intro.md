@@ -62,7 +62,7 @@ Microsoft made `long double` identical to `double`. GCC on x86-64 uses the full 
 
 ## Portable Precision
 
-The codebase uses a type alias `Real` that resolves to `long double` on Linux and `double` on Windows. A `REAL_LITERAL` macro ensures numeric literals are parsed at full precision—a cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast.
+The codebase uses a type alias `Real` controlled by the `USE_LONG_DOUBLE` compile-time define. When defined, `Real` resolves to `long double`; when not defined, it resolves to `double`. The default build (`make`) defines `USE_LONG_DOUBLE`, giving full 80-bit precision on Linux. The `make double` target builds without it, producing a `double`-only binary useful for Windows compatibility testing. A `REAL_LITERAL` macro ensures numeric literals are parsed at full precision—a cast like `(long double)3.14159...` doesn't work because the literal is parsed as `double` first, losing precision before the cast.
 
 ## String-Based Construction
 

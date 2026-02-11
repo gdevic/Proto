@@ -521,9 +521,9 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 | Multiply | 16.0 digits | Guard digit rounding (17th digit of 32-digit product) |
 | Divide | 16.0 digits | Guard digit rounding (17th/18th quotient digit) |
 | Sqrt | 14.9 digits | Newton-Raphson iteration |
-| Log | 14.5 digits | CORDIC, 16 iterations |
-| Exp | 10-14 digits | Degrades with larger inputs |
-| Atan | 14.8 digits | CORDIC, 16 iterations |
+| Log | 14.5 digits | CORDIC, 15 iterations (j=0..14) |
+| Exp | 13-14 digits | CORDIC (inverse of ln) |
+| Atan | 14.8 digits | CORDIC, K=8 stored constants + residual division |
 | Tan (deg/rad) | ~14-14.5 digits | CORDIC + range reduction |
 | Sin/Cos (deg/rad) | ~13.5-14 digits | Half-angle formula via tan |
 
@@ -579,7 +579,7 @@ This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 
 **LN**: Has some NEAR/MISS results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
 
-**TANRAD**: Uses unified range reduction via `trigRangeReduce(π/4)` to reduce any angle to [0, π/4), then calls cordicTan directly (no degree conversion). Stays in radians throughout. For small angles (< 1e-4 rad), CORDIC produces fewer significant digits. For large angles (> 100 rad), range reduction with irrational π/4 boundary causes cancellation similar to degree functions with large angles. A MISMATCH can occur when random radian values land very near asymptotes (π/2 + kπ), where BCD detects OVERFLOW but IEEE computes a large finite value.
+**TANRAD**: Uses unified range reduction via `trigRangeReduce(π/4)` to reduce any angle to [0, π/4), then calls cordicTan directly (no degree conversion). Stays in radians throughout. With `SMALL_TAN_TAYLOR=1`, angles < 0.001 rad use Taylor series bypass, preserving full precision. For moderate-small angles (0.001-0.1 rad), CORDIC's normalizeToZeroExp shifts out 1-2 mantissa digits, reducing precision to ~13-14 digits. For large angles (> 100 rad), range reduction with irrational π/4 boundary causes cancellation similar to degree functions with large angles. A MISMATCH can occur when random radian values land very near asymptotes (π/2 + kπ), where BCD detects OVERFLOW but IEEE computes a large finite value.
 
 **ATANRAD**: Uses reciprocal reduction for |x| > 1: atan(x) = π/2 - atan(1/x). This ensures CORDIC converges quickly for all inputs. Works well across the full range with errors at machine precision limits.
 

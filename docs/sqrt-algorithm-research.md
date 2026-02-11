@@ -8,7 +8,7 @@ This document analyzes algorithms for computing square root with BCD arithmetic,
 
 **Alternative Implementation**: Digit-by-digit method (`sqrt_dd.cpp`) - preserved for reference
 
-**Recommendation**: The Newton-Raphson implementation is used for microcode. While the digit-by-digit method provides theoretically optimal precision, it proved too complex to implement in microcode due to its 32-digit extended arithmetic requirements (using 4 register pairs). Newton-Raphson reuses existing div/mul/add operations with a slight precision loss (~1 ULP) but much simpler microcode.
+**Recommendation**: The Newton-Raphson implementation is used for microcode. While the digit-by-digit method provides theoretically optimal precision, it proved too complex to implement in microcode due to its 32-digit extended arithmetic requirements (using 2 register pairs for 32-digit working precision). Newton-Raphson reuses existing div/mul/add operations with a slight precision loss (~1 ULP) but much simpler microcode.
 
 ---
 
@@ -17,7 +17,7 @@ This document analyzes algorithms for computing square root with BCD arithmetic,
 | Algorithm | Iterations | Ops/Iteration | Convergence | BCD Suitability | HW Complexity |
 |-----------|------------|---------------|-------------|-----------------|---------------|
 | Digit-by-digit | 17 | ~50 add/cmp | Linear (1 digit/iter) | Excellent | High (microcode) |
-| **Newton-Raphson** | 5-6 | 1 div + 2 add | Quadratic | Good (reuses div) | Low (microcode) |
+| **Newton-Raphson** | 5-6 | 2 div + 1 add | Quadratic | Good (reuses div) | Low (microcode) |
 | Binary Search | ~55 | 1 mul + cmp | Linear | Poor (full mul) | Low |
 | CORDIC (hyperbolic) | 54-60 | ~10 add/shift | Linear (~0.3 digit/iter) | Good | Medium |
 | Goldschmidt | 4-5 | 2 mul/iter | Quadratic | Poor (needs mul) | High |
@@ -31,7 +31,7 @@ This document analyzes algorithms for computing square root with BCD arithmetic,
 
 The digit-by-digit square root algorithm extracts one decimal digit per iteration, similar to long division. It is the BCD equivalent of the "paper and pencil" square root algorithm taught in schools.
 
-**Note**: This method is implemented in `sqrt_dd.cpp` but is NOT used in microcode. While it provides excellent precision, the 32-digit extended arithmetic (requiring 4 register pairs) proved too complex to implement in microcode. See section 2 for the Newton-Raphson method that is actually used.
+**Note**: This method is implemented in `sqrt_dd.cpp` but is NOT used in microcode. While it provides excellent precision, the 32-digit extended arithmetic (requiring 2 register pairs for 32-digit working precision) proved too complex to implement in microcode. See section 2 for the Newton-Raphson method that is actually used.
 
 ### Algorithm Principle
 
@@ -152,16 +152,20 @@ Iteration 5: ~16 digits correct
 
 If using full-precision division throughout:
 ```
-5 iterations x (1 division + 2 additions) per iteration
-= 5 divisions + 10 additions
+5 iterations x (1 division + 1 addition + 1 halving) per iteration
+= 5 divisions + 5 additions + 5 halvings
 ```
 
-Given division costs ~300 BCD operations:
+In the actual `sqrt_nr.cpp` implementation, halving is performed by a full BCD division by 2 (no nibble-safe shift-right-by-2 primitive exists), so each iteration costs **2 divisions + 1 addition**. The square-based correction phase adds up to 3 multiplications.
+
+Given division costs ~300 BCD operations and multiplication ~250:
 ```
-Total: ~1500+ BCD operations
+NR loop:   5 iterations x (2 div + 1 add) = 10 div + 5 add ≈ 3005
+Correction: up to 3 mul ≈ 750
+Total: ~3750 BCD operations
 ```
 
-This is *more* expensive than digit-by-digit for 16-digit BCD!
+This is significantly *more* expensive than digit-by-digit for 16-digit BCD!
 
 ### Why Newton-Raphson Is Often Faster in Binary
 
@@ -176,7 +180,7 @@ None of these advantages apply to nibble-safe BCD microcode.
 
 Despite the higher operation count, Newton-Raphson was chosen because:
 1. **Simplicity**: Reuses existing `div`, `mul`, and `add` operations - no new primitives needed
-2. **Low register pressure**: Uses only S0, S1, S3, S4, R (digit-by-digit needs 32-digit extended arithmetic with 4 register pairs)
+2. **Low register pressure**: Uses only S0, S1, S3, S4, R (5 registers; digit-by-digit needs all 6 with 32-digit extended arithmetic via 2 register pairs)
 3. **Straightforward microcode**: The iteration loop is simple to express
 4. **Acceptable precision**: ~1 ULP error is within tolerance for most applications
 
@@ -184,10 +188,12 @@ The digit-by-digit method's 32-digit extended arithmetic, while elegant in C++, 
 
 ### Current Implementation Details (`sqrt_nr.cpp`)
 
+**Registers used**: S0 (input/working), S1 (working), S3 (saved guess / candidate), S4 (original n), R (result).
+
 The implementation includes:
-1. **Initial guess via exponent halving**: `R = S0` with `exp = exp/2` gives a good starting point
-2. **Newton-Raphson loop**: Iterates until 14 digits converge (indices 0-13)
-3. **Square-based correction**: Up to 3 iterations comparing R² with n, incrementing/decrementing mantissa to refine within 1 ULP
+1. **Initial guess via exponent halving**: `expHalf()` helper copies S0 to R, then halves the exponent using BCD shift-right chaining (`H' = H/2`, `L' = L/2 + (H_odd ? 5 : 0)`), placing the guess at the correct order of magnitude
+2. **Newton-Raphson loop**: Each iteration performs `div(n, guess)`, `add(guess, n/guess)`, `div(sum, 2)`. Converges when the first 14 mantissa digits (indices 0-13) match the saved guess in S3. Typically ~5 iterations
+3. **Square-based correction**: Up to 3 iterations of `mul(S3, S3)` compared against n (in S4) using `mantCmp`. Increments or decrements mantissa via `mantInc`/`mantDec` to refine within 1 ULP. Exits early on exact match (R² == n)
 
 ### Verdict
 
@@ -411,12 +417,12 @@ Requires:
 | Algorithm | Multiplications | Divisions | Additions | Shifts | Total Ops |
 |-----------|----------------|-----------|-----------|--------|-----------|
 | Digit-by-digit | 0 | 0 | ~150 | ~70 | ~850 |
-| Newton-Raphson | 0 | 5 | 10 | 5 | ~1500 |
+| Newton-Raphson | 3 | 10 | 5 | 0 | ~3750 |
 | Binary Search | 54 | 0 | 54 | 108 | ~13,500 |
 | CORDIC | 0 | 0 | 120 | 120 | ~600 |
 | Goldschmidt | 10 | 0 | 5 | 0 | ~2500 |
 
-*Note: "Total Ops" counts BCD digit operations, assuming mul=250, div=300, add/shift=1*
+*Note: "Total Ops" counts BCD digit operations, assuming mul=250, div=300, add/shift=1. Newton-Raphson totals include 5 NR iterations (2 div + 1 add each) plus up to 3 correction multiplications.*
 
 ### Hardware Suitability Matrix
 
@@ -427,7 +433,7 @@ Requires:
 | Simple state machine | Yes | Medium | Yes | Medium | No |
 | No div/mul in loop | Yes | No | No | Yes | No |
 | Matches div.cpp pattern | Yes | N/A | N/A | No | N/A |
-| Register pressure | Medium (6) | Low (3) | Low (3) | Medium (5) | High (6) |
+| Register pressure | Medium (6) | Low (5) | Low (3) | Medium (5) | High (6) |
 
 ---
 
@@ -459,7 +465,7 @@ Requires:
 
 ### Edge Cases Handled Correctly
 
-- **Negative input**: Returns 0 (undefined)
+- **Negative input**: Sets `FLAG_INV_ERR` (INVALID)
 - **Zero input**: Returns 0
 - **Odd exponent**: Shifts mantissa appropriately before processing
 - **Rounding overflow**: Handles 9.999...9 + 1 = 10.000...0

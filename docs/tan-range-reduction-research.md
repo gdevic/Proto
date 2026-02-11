@@ -74,14 +74,20 @@ tanDeg(x°) ──→ trigRangeReduce(45°) ──→ [×π/180] ──→ cordi
 tanRad(x)  ──→ trigRangeReduce(π/4) ──→ cordicTan() ──→ result
                  (irrational boundary)       (direct, no conversion)
 
+sinRad(x)  ──→ [×180/π] ──→ sinDeg()  ──→ result
+                (convert to degrees, then exact decimal reduction)
+
+cosRad(x)  ──→ [×180/π] ──→ cosDeg()  ──→ result
+                (convert to degrees, then exact decimal reduction)
+
 atanRad(x) ──→ cordicAtan(x) ──→ result (radians)
 
 atanDeg(x) ──→ cordicAtan(x) ──→ [×180/π] ──→ result (degrees)
 ```
 
-tanRad uses `trigRangeReduce` with π/4 boundary and calls `cordicTan` directly.
+tanRad uses `trigRangeReduce` with π/4 boundary and calls `cordicTan` directly. sinRad and cosRad convert to degrees (multiply by 180/π) then delegate to sinDeg and cosDeg respectively (`RAD_VIA_DEG=1`), which use exact decimal range reduction.
 
-**Key insight**: Degree functions use exact decimal range reduction (45 is an exact BCD integer). Radian functions stay in radians using π-based boundaries, avoiding conversion overhead. Both paths share the same `trigRangeReduce` logic and `cordicTan` core.
+**Key insight**: Degree functions use exact decimal range reduction (45 or 90 is an exact BCD integer). tanRad is the only radian function that stays in radians using a π-based boundary; sinRad and cosRad convert to degrees first and delegate to their degree counterparts, trading one irrational multiplication for exact decimal range reduction. All paths share the same `cordicTan` core.
 
 ### tanDeg() Range Reduction (tan10.cpp)
 
@@ -102,26 +108,12 @@ Uses `trigRangeReduce(CONST_PI_OVER_4)` to reduce the angle to [0, π/4), then c
 
 ### atanRad() and atanDeg()
 
-**Reciprocal reduction is REQUIRED** for arctangent when |x| > 1:
 - Domain: (-∞, +∞)
 - Range: (-π/2, +π/2) radians or (-90°, +90°)
-- Identity used: atan(x) = π/2 - atan(1/x) for |x| > 1
 
-atanDeg() calls cordicAtan() then multiplies result by 180/π to convert to degrees.
+atanDeg() calls cordicAtan() then multiplies result by 180/π to convert to degrees. atanRad() delegates directly to cordicAtan().
 
-**Why reciprocal reduction is required** (not just an optimization):
-
-Without it, large inputs cause CORDIC counters to max out at the BCD digit limit (9), producing grossly wrong results. For example, atan(8.36) would return 143° instead of the correct 83°.
-
-| Input | Without reduction | With reduction |
-|-------|-------------------|----------------|
-| 0.5 | 26.57° ✓ | 26.57° ✓ |
-| 1.0 | 45.00° ✓ | 45.00° ✓ |
-| 8.36 | 143.37° ✗ | 83.18° ✓ |
-
-The reciprocal identity transforms large inputs to small ones:
-- atan(8.36) = π/2 - atan(1/8.36) = π/2 - atan(0.1196)
-- atan(0.1196) converges quickly with counter[0]=0, counter[1]=1
+**How cordicAtan handles all magnitudes**: The CORDIC vectoring mode handles |x| > 1 directly — counter[0] can reach up to 9 (BCD digit limit), allowing inputs as large as ~9. For |x| >= 10^15, cordicAtan returns pi/2 directly (the difference from pi/2 is below 16-digit precision). For |x| < 0.001, the small-angle Taylor bypass (`SMALL_ATAN_TAYLOR=1`) avoids normalizeToZeroExp digit loss.
 
 ---
 
@@ -139,7 +131,7 @@ The mod 360 operation uses division rather than repeated subtraction:
 - Naive: 2,778 subtractions (O(n))
 - O(1): 3 operations
 
-The `truncate()` function zeros all fractional digits by examining the exponent and clearing mantissa positions beyond the decimal point. It returns the truncated value mod 4 as a `uint8_t`, which `trigRangeReduce` uses directly for quadrant encoding.
+The `truncate()` function zeros all fractional digits by examining the exponent and clearing mantissa positions beyond the decimal point. It returns void and sets `g_negateResult` (bit 1) and `g_useReciprocal` (bit 0) from the integer mod 4 as global side effects, which `trigRangeReduce` uses directly for quadrant encoding.
 
 ---
 

@@ -36,7 +36,7 @@ Most scientific calculators expose both `LN` and `LOG` keys - internally they sh
 
 | Algorithm | Iterations | Total Ops | Code Complexity | Prerequisites | BCD Fit |
 |-----------|------------|-----------|-----------------|---------------|---------|
-| **CORDIC** | 16-20 | ~100 add/shift | Low-Med | None | Excellent |
+| **CORDIC** | 15 | ~100 add/shift | Low-Med | None | Excellent |
 | Polynomial | N/A | ~12 mul + 12 add | Medium | Coefficients | Good |
 | Hyperbolic CORDIC | 16-18 | ~100 add/shift | Medium | None | Excellent |
 | Newton-Raphson | 4-5 | 5 exp calls | Very Low | **exp()** | Blocked |
@@ -97,7 +97,7 @@ ln_const[1]  = ln(1.1)             = 0.0953101798043249
 ln_const[2]  = ln(1.01)            = 0.0099503308531681
 ...
 ln_const[14] = ln(1.00000000000001)
-ln(10)       = 2.3025850929940457
+ln(10)       = 2.302585092994046
 ```
 Note: ln_const[15] = ln(1+10^-15) ≈ 10^-15 is not used; it shifts to all zeros in 16-digit BCD.
 
@@ -187,8 +187,8 @@ Hybrid approach: Reduce argument to small range, apply Chebyshev/minimax polynom
 - Operations use local guard digit and sticky flag to track precision loss during shifts
 
 ### Special Cases
-- ln(x) undefined for x <= 0: return zero
-- ln(1) = 0 exactly: detect and return zero
+- ln(x) undefined for x <= 0: set FLAG_INV_ERR and return (R stays zero from preCalc)
+- ln(1) = 0 exactly: detect and return zero (avoids ~3.4e-14 CORDIC precision loss)
 - ln(10^n) = n * ln(10): exact for integer exponents
 
 ### Precision
@@ -213,17 +213,10 @@ Output: exp(x)
 1. Handle sign:
    - If x < 0, compute exp(|x|) then return 1/exp(|x|)
 
-2. Range reduction (two methods available):
-   Method A (repeated subtraction - hardware-friendly):
-     k = 0
-     While x >= ln(10):
-       x = x - ln(10)
-       k++
-     r = x
-   Method B (division-based - fewer iterations):
+2. Range reduction (division-based):
      k = floor(x / ln(10))
      r = x - k*ln(10)
-   Both yield: exp(x) = exp(r) * 10^k, where 0 <= r < ln(10)
+   exp(x) = exp(r) * 10^k, where 0 <= r < ln(10)
 
 3. Pseudo-division (decompose r):
    For j = 0 to 14:
@@ -255,14 +248,15 @@ See "Range Reduction Method Comparison" section below for precision analysis com
 **Shared Constants**: Uses the same `ln_const[]` table as `ln()`, enabling efficient code sharing in `log.cpp`.
 
 **Overflow/Underflow Handling**:
-- If result would exceed 10^99: return maximum value (9.999...e+99)
-- If result would be less than 10^-99: return zero
+- If k >= 100 with positive input: set FLAG_OF_ERR (overflow)
+- If k >= 100 with negative input: return zero (large negative exp underflows to 0, not an error)
+- If carry during pseudo-multiplication causes expInc overflow: FLAG_OF_ERR (positive) or return zero (negative)
 
-**Negative Input**: Computed as `1/exp(|x|)` using the div() function, avoiding the need for a separate algorithm.
+**Negative Input**: Computed as `1/exp(|x|)` using the `reciprocal()` function, avoiding the need for a separate algorithm.
 
 ### Performance
 - **Convergence**: Same as ln() - approximately one digit per iteration
-- **Operations**: ~100 BCD operations (shifts/adds) for pseudo-division/multiplication, plus range reduction (either ~k subtractions or one div+mul)
+- **Operations**: ~100 BCD operations (shifts/adds) for pseudo-division/multiplication, plus range reduction (one div + one truncate + one mul + one add)
 - **Precision**: Achieves 13-14 correct digits, matching ln()
 
 ### Round-Trip Testing
