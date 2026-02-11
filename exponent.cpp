@@ -87,6 +87,16 @@ bool isExpGT(const BCD& a, const BCD& b)
     return isExpGTMag(a.exp.data(), b.exp.data());
 }
 
+// Returns exponent as int within [0, 15], otherwise returns -1 (stands in for CF set)
+int8_t expGet(const BCD& x)
+{
+    if (x.exp[0] > 1 )
+        return -1;
+    if ((x.exp[0] == 1) && (x.exp[1] > 5))
+        return -1;
+    return int8_t(x.exp[0] * 10 + x.exp[1]);
+}
+
 // Copy exponent from src to dst
 void expCopyS(BCD& dst, const BCD& src)
 {

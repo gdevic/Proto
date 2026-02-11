@@ -21,6 +21,9 @@ bool isExpEQ(const BCD &a, const BCD &b);
 // Returns true if exponent of a > exponent of b
 bool isExpGT(const BCD& a, const BCD& b);
 
+// Returns exponent as int within [0, 15], otherwise returns -1 (stands in for CF set)
+int8_t expGet(const BCD& x);
+
 // Copy exponent from src to dst (copies esign, exp[0], exp[1])
 void expCopyS(BCD& dst, const BCD& src);
 
