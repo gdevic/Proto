@@ -72,7 +72,7 @@ bool isRegGE(const BCD& a, const BCD& b)
 // Clear a register to zero
 void regClear(BCD& x)
 {
-    // In microcode, we jumop into mantClear() after zeroing exp + sign nibbles
+    // In microcode, we jump into mantClear() after zeroing exp + sign nibbles
     x = BCD{};
 }
 
@@ -88,7 +88,7 @@ void regClearExpSign(BCD& x)
 // Copy register from src to dst
 void regCopy(BCD& dst, const BCD& src)
 {
-    // In microcode, we jumop into mantCopy() after copying exp + sign nibbles
+    // In microcode, we jump into mantCopy() after copying exp + sign nibbles
     dst = src;
 }
 
@@ -231,46 +231,44 @@ void roundFix(BCD& R, const BCD& S0, int d)
 
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
-// Returns true if the resulting integer is odd
-bool truncate(BCD& x)
+// Extracts integer mod 4 for quadrant encoding:
+//   g_negateResult  = bit 1 of (integer mod 4)
+//   g_useReciprocal = bit 0 of (integer mod 4)
+// Since 100 ≡ 0 (mod 4), only the last two decimal digits affect mod 4.
+// We extract bits directly from the ones digit (lsb), then correct for the tens
+// digit: since 10 ≡ 2 (mod 4), an odd tens digit adds 2, which flips bit 1.
+void truncate(BCD& x)
 {
+    uint8_t lsb = 0;
+    uint8_t oddTens = 0;
+
     // If negative exponent, |x| < 1, so integer part is 0
     if (x.esign) {
         regClear(x);
-        return false;
+        goto setGlobals;
     }
 
-    // If exp >= 16, ones digit is beyond mantissa (implicitly zero), nothing to truncate
-    if ((x.exp[0] >= 2) || ((x.exp[0] == 1) && (x.exp[1] >= 6)))
-        return false;
+    {
+        int8_t e = expGet(x);
 
-    // If exp == 15, all 16 mantissa digits are integer part, nothing to truncate
-    // Ones digit is at mant[15] (last position)
-    if ((x.exp[0] == 1) && (x.exp[1] == 5))
-        return x.mant[15] & 1;
+        // exp >= 16: ones digit is beyond mantissa, lost to precision; lsb unknown
+        if (e < 0)
+            goto setGlobals;
 
-    // exp is 0-14 (fits in nibble): compute as exp[0]*10 + exp[1]
-    uint8_t exp = x.exp[1];
-    if (x.exp[0])
-        exp += 10;
+        // Ones digit at mant[e], tens digit at mant[e-1] if present
+        lsb = x.mant[e];
+        oddTens = (e > 0) && (x.mant[e - 1] & 1);
 
-    // The ones digit is at mant[exp]
-    bool odd = x.mant[exp] & 1;
+        // Zero fractional digits (positions e+1 through 15)
+        uint8_t pos = e + 1;
+        while (pos < MAX_MANT)
+            x.mant[pos++] = 0;
+    }
 
-    // Zero fractional digits (positions exp+1 through 15)
-    exp++;
-    while (exp < MAX_MANT)
-        x.mant[exp++] = 0;
-
-    return odd;
-
-    // If this was a FLOOR function (toward negative infinity):
-    // - For positive numbers: floor = truncate (no change needed)
-    // - For negative numbers with fractional part: floor = truncate - 1
-    // Implementation would require:
-    // 1. Before zeroing, check if any fractional digits are non-zero (hadFraction flag)
-    // 2. After zeroing, if (x.sign && hadFraction) then subtract 1 from mantissa
-    // 3. Handle borrow propagation and potential underflow to -1.000...e(exp+1)
+setGlobals:
+    // Odd tens adds 10 ≡ 2 (mod 4), flipping bit 1 of the ones digit
+    g_negateResult = ((lsb >> 1) ^ oddTens) & 1;
+    g_useReciprocal = lsb & 1;
 }
 
 // Apply banker's rounding (round-to-even) using guard digit and sticky bit.

@@ -1,9 +1,10 @@
 /******************************************************************************
  * tan10.cpp - Tangent and arctangent (degrees) with exact range reduction
  *
- * Implements tanDeg() and atanDeg(). Range reduction uses exact decimal
- * constants (360, 180, 90, 45) avoiding precision loss from irrational π.
- * Converts to radians only for final CORDIC computation.
+ * Implements tanDeg() and atanDeg(). Range reduction uses trigRangeReduce(45)
+ * with exact decimal constant. For tan, actual reciprocal = g_negateResult XOR
+ * g_useReciprocal (verified all 4 quadrants). Converts to radians only for
+ * final CORDIC computation.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -11,84 +12,11 @@
 
 #include "proto.h"
 #include "testbench.h"
+#include "exponent.h"
 #include "mantissa.h"
 #include "register.h"
 #include <cassert>
 #include <cmath>
-
-// Range reduction for tanDeg: reduces angle to [0, 45] degrees
-// Input: S0 = positive angle in degrees
-// Output: S0 = reduced angle in [0, 45], g_negateResult and g_useReciprocal set
-// Uses registers: S0, S1, S2, S3, S4, R
-static void tanDegRangeReduce()
-{
-    g_negateResult = false;
-    g_useReciprocal = false;
-
-    // Reduce angle to [0, 360) using: S0 = S0 - floor(S0/360) * 360
-    constLoad(S4, CONST_360);
-
-    if (isRegGE(S0, S4)) {
-        // Save original angle in S3 (S2 is used by mul as accumulator)
-        regCopy(S3, S0);
-
-        // Compute quotient: R = S0 / 360
-        regCopy(S1, S4);
-        div(R, S0, S1);
-
-        // Truncate to integer: n = floor(S0 / 360)
-        truncate(R);
-
-        // Compute product: R = n * 360
-        regCopy(S0, R);
-        regCopy(S1, S4);
-        mul(R, S0, S1);
-
-        // Compute remainder: S0 = original - n * 360
-        regCopy(S0, S3);
-        regCopy(S1, R);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-    }
-
-    // Now S0 is in [0, 360)
-    // Reduce to [0, 180) using tan(x) = tan(x - 180)
-    constLoad(S2, CONST_180);
-
-    if (isRegGE(S0, S2)) {
-        regCopy(S1, S2);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-    }
-
-    // Now S0 is in [0, 180)
-    // Check if angle >= 90: use tan(x) = -tan(180 - x) for x in [90, 180)
-    constLoad(S4, CONST_90);
-
-    if (isRegGE(S0, S4)) {
-        // S0 = 180 - S0 (S2 still holds 180)
-        regCopy(S1, S0);
-        regCopy(S0, S2);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-        g_negateResult = true;
-    }
-
-    // Now S0 is in [0, 90)
-    // Check if we need reciprocal (angle > 45): use tan(90-x) = 1/tan(x)
-    constLoad(S4, CONST_45);
-    g_useReciprocal = isRegGT(S0, S4);
-
-    if (g_useReciprocal) {
-        // S0 = 90 - S0
-        regCopy(S1, S0);
-        constLoad(S0, CONST_90);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-    }
-
-    // Now S0 is in [0, 45] degrees
-}
 
 // Compute tangent in degrees: R = tanDeg(S0)
 // Input in degrees, output is the tangent value
@@ -111,17 +39,43 @@ void tanDeg(BCD& R, BCD& S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    tanDegRangeReduce();
+    trigRangeReduce(CONST_45);
+
+    // For tan: actual reciprocal = g_negateResult XOR g_useReciprocal
+    // q=0: angle in [0,45), no negate, no reciprocal → doRecip=false
+    // q=1: complement to [0,45), reciprocal → doRecip=true (0^1)
+    // q=2: negate, angle in [0,45) → doRecip=false (1^0) [negate but no recip]
+    // q=3: negate + complement → doRecip=false XOR...wait: 1^1=false
+    // Actually: q=2 maps to [90,135) → tan is negative, no reciprocal
+    //           q=3 maps to [135,180) → tan is negative + reciprocal
+    bool doReciprocal = g_negateResult ^ g_useReciprocal;
 
     // Near-zero with reciprocal = asymptote (reduced angle ≈ 0 at 90+180k degrees)
-    // Threshold: exponent <= -13 means result would exceed 10^13, beyond 16-digit precision
-    if (g_useReciprocal) {
-        if (isMantZero(S0.mant.data()) ||
-            (S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 3))))) {
-            FLAG_OF_ERR = true;
-            return;  // No postCalc on error path
+    // For exactly zero: true overflow (tan(90°) = ∞)
+    if (doReciprocal && isMantZero(S0.mant.data())) {
+        FLAG_OF_ERR = true;
+        return;  // No postCalc on error path
+    }
+
+#if TAN_HANDLE_LARGE_X
+    // For very small ε (exp >= 13): cot(ε°) ≈ (180/π) / ε, exact to 30+ digits
+    // since tan(x) ≈ x for |x| < 1e-15 rad. Avoids CORDIC entirely — just divide.
+    // Works up to result ≈ 9.999e+99 (ε ≈ 1.7e-99°); div() handles true overflow.
+    if (doReciprocal) {
+        int8_t e = expGet(S0);
+        if (S0.esign && e >= 13) {
+            // cot(ε°) = 1/tan(ε_rad) ≈ 1/ε_rad = (180/π) / ε_deg
+            regCopy(S1, S0);
+            constLoad(S0, CONST_180_OVER_PI);
+            div(R, S0, S1);             // R = (180/π) / ε_deg
+            if (FLAG_OF_ERR)
+                return;                  // True overflow (result > 9.999e+99)
+            R.sign = g_negateResult ^ g_inputSign;
+            postCalc(R, S0, S1);
+            return;
         }
     }
+#endif
 
     // Handle tan(0) = 0 after reduction (non-reciprocal case)
     if (isMantZero(S0.mant.data())) {
@@ -131,29 +85,20 @@ void tanDeg(BCD& R, BCD& S0)
 
     // ---------- Convert degrees to radians ----------
     // S0 = S0 * (PI/180)
-    // PI/180 = 0.01745329251994329... with exponent -2
-
-    // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
 
-    mul(R, S0, S1);
-
-    // R now contains the angle in radians
-    regCopy(S0, R);
+    mul(R, S0, S1);              // S0 = R (angle in radians) via postCalc
     regClear(R);
 
     // ---------- Apply CORDIC ----------
     cordicTan(R, S0);
 
     // ---------- Apply reciprocal if needed ----------
-    if (g_useReciprocal)
+    if (doReciprocal)
         reciprocal(R, R);  // R = 1 / R (cot = 1/tan)
 
     // ---------- Apply sign ----------
-    if (g_negateResult)
-        R.sign = !g_inputSign;
-    else
-        R.sign = g_inputSign;
+    R.sign = g_negateResult ^ g_inputSign;
     postCalc(R, S0, S1);
 }
 
@@ -178,7 +123,8 @@ void atanDeg(BCD& R, BCD& S0)
     // Mathematically: atan(x) = π/2 - 1/x + O(1/x³) for large x
     // At 10^15, the 1/x term is 10^-15, below our 16-digit precision floor
     bool inputSign = S0.sign;
-    if (!S0.esign && ((S0.exp[0] >= 2) || ((S0.exp[0] == 1) && (S0.exp[1] >= 5)))) {
+    int8_t e = expGet(S0);
+    if (!S0.esign && (e < 0)) {
         // Return exactly ±90 degrees
         constLoad(R, CONST_90);
         R.sign = inputSign;
@@ -193,13 +139,10 @@ void atanDeg(BCD& R, BCD& S0)
     if (isMantZero(R.mant.data()))
         return;  // postCalc: handled by cordicAtan()
 
-    // Convert to degrees: R = R * (180/PI)
+    // Convert to degrees: R = R * (180/PI); S0 = R via postCalc
     bool resultSign = R.sign;
-    regCopy(S0, R);
 
-    // S1 = 180/PI = 57.29577951308232... = 5.729...e1
     constLoad(S1, CONST_180_OVER_PI);
-
     mul(R, S0, S1);
 
     // Preserve sign through multiplication
@@ -226,9 +169,21 @@ void testTanDeg()
         "0.1",                    // smaller
         "0.01",                   // very small
         "0.001",                  // very very small
-        // Near asymptotes
-        "89",                     // near 90, large positive
-        "89.9",                   // very near 90
+        // Near asymptotes: approach 90° digit by digit
+        "89",                     // ε=1°
+        "89.9",                   // ε=0.1°
+        "89.99",                  // ε=0.01°
+        "89.999",                 // ε=0.001°
+        "89.9999",                // ε=1e-4°
+        "89.99999",               // ε=1e-5°
+        "89.999999",              // ε=1e-6°
+        "89.9999999",             // ε=1e-7°
+        "89.99999999",            // ε=1e-8°
+        "89.999999999",           // ε=1e-9°
+        "89.9999999999",          // ε=1e-10°
+        "89.99999999999",         // ε=1e-11°
+        "89.999999999999",        // ε=1e-12°
+        "89.9999999999999",       // ε=1e-13° (cot shortcut)
         "91",                     // past 90, large negative
         // Quadrant 2 (90-180): tan is negative
         "120",                    // tan = -sqrt(3)
@@ -265,6 +220,26 @@ void testTanDeg()
         "44.99999999999999",      // Just under 45 (16 sig digits)
         "45.00000000000001",      // Just over 45 (reciprocal path, 16 sig digits)
         "89.99999999999999",      // Near asymptote (16 sig digits)
+        // Quadrant sweep: q*90+37 for q=-8..+8 (4 full rotations each way)
+        "-683", "-593", "-503", "-413", "-323", "-233", "-143", "-53",
+        "37", "127", "217", "307",
+        "397", "487", "577", "667", "757",
+        // Quadrant boundaries: q*90±1 for q=-8..+8 (avoiding asymptotes at odd*90)
+        "-721", "-719",           // near -720 (tan≈0)
+        "-631", "-629",           // near -630 (asymptote)
+        "-541", "-539",           // near -540 (tan≈0)
+        "-451", "-449",           // near -450 (asymptote)
+        "-361", "-359",           // near -360 (tan≈0)
+        "-271", "-269",           // near -270 (asymptote)
+        "-181", "-179",           // near -180 (tan≈0)
+        "-91", "-89",             // near -90 (asymptote)
+        "179", "181",             // near 180 (tan≈0)
+        "269", "271",             // near 270 (asymptote)
+        "359", "361",             // near 360 (tan≈0)
+        "449", "451",             // near 450 (asymptote)
+        "539", "541",             // near 540 (tan≈0)
+        "629", "631",             // near 630 (asymptote)
+        "719", "721",             // near 720 (tan≈0)
         // === Error cases ===
         // OVERFLOW: asymptotes at 90, 270, etc.
         "90",                         // tan(90) = infinity
@@ -278,8 +253,46 @@ void testTanDeg()
 
     if (!runTests<Arity::Unary>("TANDEG", tanDeg, ieeeTanDeg, val, sizeof(val) / sizeof(val[0])))
         return;
+
     // Round-trip tests: tanDeg(atanDeg(x)) = x
-    if (!runRoundTripTests<false>("RTRIP_TANDEG", tanDeg, atanDeg, ieeeTanDeg, ieeeAtanDeg, val, sizeof(val) / sizeof(val[0])))
+    // Uses tangent values (not angles): for input x, error ≈ (1+x²) × angular_error,
+    // so large |x| pushes atan near 90° where sec²(θ) amplification dominates.
+    // Keep most |x| ≤ 50 for well-conditioned round-trip.
+    static const std::string tripVal[] = {
+        "0",                          // exact zero
+        "1",                          // atan=45° (tan of 45°)
+        "-1",                         // atan=-45°
+        "0.5773502691896257",         // 1/sqrt(3): atan=30°
+        "1.732050808068834",          // sqrt(3): atan=60° (amplification ~4)
+        "0.2679491924311228",         // 2-sqrt(3): atan=15°
+        // Small values (test Taylor bypass region and CORDIC small-angle)
+        "0.001",                      // very small
+        "0.01",                       // small
+        "0.1",                        // moderate-small
+        "-0.001",
+        "-0.1",
+        // Moderate values (well-conditioned, sec² ≤ ~2500)
+        "2",                          // atan≈63.4°
+        "5",                          // atan≈78.7°, sec²=26
+        "10",                         // atan≈84.3°, sec²=101
+        "20",                         // atan≈87.1°, sec²=401
+        "40",                         // atan≈88.6°, sec²=1601
+        "-2",
+        "-10",
+        "-40",
+        // Near the MISS boundary (~50): probe amplification threshold
+        "50",                         // sec²=2501
+        "-50",
+        // Fractional values
+        "0.3",
+        "0.7",
+        "1.5",
+        "3.14159265358979",           // PI as a tangent value
+        "7.5",
+        "-0.7",
+        "-3.14159265358979",
+    };
+    if (!runRoundTripTests<false>("RTRIP_TANDEG", tanDeg, atanDeg, ieeeTanDeg, ieeeAtanDeg, tripVal, sizeof(tripVal) / sizeof(tripVal[0])))
         return;
     if (!runRoundTripTests<true>("RTRIP_TANDEG", tanDeg, atanDeg, ieeeTanDeg, ieeeAtanDeg, nullptr, 0, OPTS_ATANDEG))
         return;

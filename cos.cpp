@@ -1,12 +1,11 @@
 /******************************************************************************
- * cos.cpp - Cosine functions using postponed +90° offset
+ * cos.cpp - Cosine functions via quadrant-shifted range reduction
  *
- * Implements cosDeg(), cosRad() using the identity cos(x) = sin(x + 90).
- * The +90° offset is applied after mod-180 range reduction (not before),
- * ensuring the offset is always exact even for very large inputs.
- * cosRad converts to degrees first, eliminating the irrational π/2 constant.
- *
- * Shares sinDegRangeReduce() and sinDegCore() from sin.cpp.
+ * Implements cosDeg(), cosRad() using the identity cos(x) = sin(x + 90°).
+ * Instead of adding 90° and calling sinDeg, uses trigRangeReduce directly
+ * with a +1 quadrant shift (2-bit increment of {negate, reciprocal}).
+ * This avoids redundant range reduction and — for cosRad — eliminates
+ * multiple irrational-constant operations that lose precision.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -19,38 +18,9 @@
 #include <cassert>
 #include <cmath>
 
-// Apply +90° offset to angle in [0, 180) for cosine computation
-// Transforms to [0, 90] suitable for sinDegCore, adjusting parity
-// Input: S0 = angle in [0, 180), g_negateResult = current parity
-// Output: S0 = angle in [0, 90], g_negateResult updated
-// Uses registers: S0, S1, S4, R
-static void cosDegApplyOffset()
-{
-    // cos(x) = sin(x + 90). After mod 180, S0 = r ∈ [0, 180).
-    // We need sin(r + 90):
-    //   r < 90:  sin(r+90) = sin(180-(r+90)) = sin(90-r). Parity unchanged.
-    //   r >= 90: sin(r+90) = sin(r+90-180) × (-1) = sin(r-90), flip parity.
-    //   r == 90: sin(180) = 0 (handled by caller's zero check)
-    constLoad(S4, CONST_90);
-
-    if (isRegGE(S0, S4)) {
-        // r >= 90: angle = r - 90, flip parity
-        regCopy(S1, S4);
-        g_negateResult = !g_negateResult;
-    } else {
-        // r < 90: angle = 90 - r, keep parity
-        regCopy(S1, S0);
-        regCopy(S0, S4);
-    }
-    sub(R, S0, S1);
-    regCopy(S0, R);
-    // Now S0 is in [0, 90]
-}
-
 // Compute cosine in degrees: R = cosDeg(S0)
-// Input in degrees, output is the cosine value
-// Uses postponed offset: mod 180 on original angle, then ±90 on reduced angle
-// This ensures the offset is always exact even for very large inputs
+// Uses trigRangeReduce(90) + quadrant shift instead of add-90-then-sinDeg.
+// The complement (90 - S0) is exact in decimal, preserving full precision.
 // Reads from S0, stores result in R
 void cosDeg(BCD& _R, BCD& _S0)
 {
@@ -65,51 +35,63 @@ void cosDeg(BCD& _R, BCD& _S0)
         return;
     }
 
-    // cos is an even function: cos(-x) = cos(x), so discard sign
+    // cos is even: cos(-x) = cos(x)
+    g_inputSign = false;
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    // Mod 180 on the original angle (NOT angle+90)
-    g_inputSign = false;   // cos is even
-    g_negateResult = false;
-    sinDegRangeReduce();
+    trigRangeReduce(CONST_90);
 
-    // Apply +90° offset to the small reduced angle [0, 180)
-    // This transforms to [0, 90] with adjusted parity
-    cosDegApplyOffset();
+    // Shift quadrant by +1: cos(x) = sin(x + 90°)
+    // Increment 2-bit counter {g_negateResult, g_useReciprocal}
+    g_negateResult ^= g_useReciprocal;
+    g_useReciprocal = !g_useReciprocal;
 
-    // Special case: cos = 0 after reduction (i.e., cos(90+n*180) = 0)
+    // Toggle complement for the shifted quadrant: S0 = 90 - S0
+    // This is exact in decimal (90 is an exact BCD constant)
+    regCopy(S1, S0);
+    constLoad(S0, CONST_90);
+    sub(R, S0, S1);                // R = 90 - angle; S0 = R via postCalc
+
+    // Special case: cos = 0 (e.g., cos(90°), cos(270°))
     if (isMantZero(S0.mant.data())) {
         postCalc(R, S0, S1);
         return;
     }
 
-    // Now S0 is in (0, 90]
-
-    // Special case: sin(90) = 1 exactly (reduced angle = 90 means cos(n*180) = ±1)
+    // Special case: cos = ±1 (e.g., cos(180°) = -1, cos(360°) = +1)
     constLoad(S4, CONST_90);
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = g_negateResult;
+        R.sign = g_negateResult ^ g_inputSign;
         postCalc(R, S0, S1);
         return;
     }
 
-    // Now S0 is in (0, 90) - compute sin using half-angle formula
-    // g_inputSign=false because cos is even (sign comes from parity only)
+    // S0 is in (0, 90) — compute sin using half-angle formula
     sinDegCore();
     postCalc(R, S0, S1);
 }
 
 // Compute cosine in radians: R = cosRad(S0)
-// Input in radians, output is the cosine value
-// Converts to degrees, then calls cosDeg
+// Uses trigRangeReduce(π/2) + quadrant shift instead of add-π/2-then-sinRad.
+// Reduces irrational-constant operations from ~4 to 2 (one in trigRangeReduce,
+// one complement), improving precision for near-zero results.
 // Reads from S0, stores result in R
-void cosRad(BCD& R, BCD& S0)
+void cosRad(BCD& _R, BCD& _S0)
 {
-    assert((&R == &::R) && (&S0 == &::S0));
+    assert((&_R == &::R) && (&_S0 == &::S0));
 
+#if RAD_VIA_DEG
+    // Convert radians to degrees: S0 = S0 * (180/π), then delegate to cosDeg
+    // No zero check needed here — cosDeg handles it
+    preCalc(R, S0, S1);
+    S0.sign = false;                   // cos is even
+    constLoad(S1, CONST_180_OVER_PI);
+    mul(R, S0, S1);                    // S0 = |degrees| via postCalc
+    cosDeg(R, S0);
+#else
     preCalc(R, S0, S1);
 
     // Special case: cosRad(0) = 1 exactly
@@ -119,15 +101,44 @@ void cosRad(BCD& R, BCD& S0)
         return;
     }
 
-    // Convert radians to degrees: degrees = radians * (180/PI)
-    constLoad(S1, CONST_180_OVER_PI);
-    mul(R, S0, S1);
+    // cos is even: cos(-x) = cos(x)
+    g_inputSign = false;
+    S0.sign = false;
 
-    // R now contains degrees, move to S0 (cosDeg discards sign)
-    regCopy(S0, R);
+    // ---------- Range Reduction ----------
+    g_negateResult = false;
+    g_useReciprocal = false;
+    trigRangeReduce(CONST_PI_OVER_2);
 
-    cosDeg(R, S0);
-    // postCalc: handled by cosDeg()
+    // Shift quadrant by +1: cos(x) = sin(x + π/2)
+    g_negateResult ^= g_useReciprocal;
+    g_useReciprocal = !g_useReciprocal;
+
+    // Toggle complement for the shifted quadrant: S0 = π/2 - S0
+    regCopy(S1, S0);
+    constLoad(S0, CONST_PI_OVER_2);
+    sub(R, S0, S1);                // R = π/2 - angle; S0 = R via postCalc
+
+    // Special case: cos = 0 (e.g., cos(π/2), cos(3π/2))
+    if (isMantZero(S0.mant.data())) {
+        postCalc(R, S0, S1);
+        return;
+    }
+
+    // Special case: cos = ±1 (e.g., cos(π) = -1, cos(2π) = +1)
+    constLoad(S4, CONST_PI_OVER_2);
+    if (isRegEQ(S0, S4)) {
+        regClear(R);
+        R.mant[0] = 1;
+        R.sign = g_negateResult ^ g_inputSign;
+        postCalc(R, S0, S1);
+        return;
+    }
+
+    // S0 is in (0, π/2) — compute sin using half-angle formula
+    sinRadCore();
+    postCalc(R, S0, S1);
+#endif
 }
 
 // IEEE operations for cos test runner
@@ -176,6 +187,36 @@ void testCosDeg()
         "89.99999999999999",      // Near 90 (16 sig digits)
         "90.00000000000001",      // Just past 90 (16 sig digits)
         "179.9999999999999",      // Near 180 (16 sig digits)
+        // Near-zero cos: x near ±90°, ±270° (exercises small-angle Taylor bypass)
+        // cosDeg(x) → sinDeg(x+90) → tan(reduced/2) → cordicTan
+        // At 85°: reduced 5° → tan(2.5°) → 0.044 rad, exp=-2 (CORDIC)
+        // At 89°: reduced 1° → tan(0.5°) → 0.0087 rad, exp=-3 (Taylor)
+        "85",                     // cos≈0.0872, reduced→CORDIC (just outside Taylor)
+        "89",                     // cos≈0.0175, reduced→Taylor (exp=-3)
+        "89.9",                   // cos≈0.00175, deeper into Taylor
+        "89.99",                  // cos≈1.75e-4
+        "89.999",                 // cos≈1.75e-5
+        "89.9999",                // cos≈1.75e-6
+        "90.001",                 // cos≈-1.75e-5 (other side of 90)
+        "90.01",                  // cos≈-1.75e-4
+        "90.1",                   // cos≈-1.75e-3
+        "91",                     // cos≈-0.0175
+        "-89",                    // cos is even: same as 89
+        "-89.99",                 // same as 89.99
+        // Near 270°
+        "269",                    // cos≈-0.0175
+        "269.99",                 // cos≈-1.75e-4
+        "270.01",                 // cos≈1.75e-4
+        "271",                    // cos≈0.0175
+        // Quadrant sweep: q*90+37 for q=-8..+8 (4 full rotations each way)
+        "-683", "-593", "-503", "-413", "-323", "-233", "-143", "-53",
+        "37", "127", "217", "307",
+        "397", "487", "577", "667", "757",
+        // Quadrant boundaries: q*90±1 for q=-8..+8
+        "-721", "-719", "-631", "-629", "-541", "-539", "-451", "-449",
+        "-361", "-359", "-271", "-269", "-181", "-179", "-91", "-89",
+        "91", "179", "181", "269", "271",
+        "359", "361", "449", "451", "539", "541", "629", "631", "719", "721",
     };
 
     if (!runTests<Arity::Unary>("COSDEG", cosDeg, ieeeCosDeg, val, sizeof(val) / sizeof(val[0])))
@@ -196,6 +237,32 @@ void testCosRad()
         "3.14159265358979",       // PI = 180 deg, cos=-1
         "-0.523598775598299",     // -PI/6
         "-1.570796326794897",     // -PI/2
+        // Near-zero cos: x near ±π/2 (exercises small-angle Taylor bypass)
+        // cosRad(x) → sinRad(x+π/2) → tan(reduced/2) → cordicTan
+        "1.48",                   // π/2-0.09: cos≈0.09, reduced→CORDIC
+        "1.56",                   // π/2-0.011: cos≈0.011, reduced→Taylor (exp=-3)
+        "1.570",                  // π/2-0.0008: cos≈8e-4, Taylor
+        "1.5707",                 // π/2-9.6e-5: cos≈9.6e-5, Taylor
+        "1.5708",                 // π/2+3.7e-6: cos≈-3.7e-6, Taylor
+        "1.571",                  // π/2+2e-4: cos≈-2e-4, Taylor
+        "1.58",                   // π/2+0.009: cos≈-0.009, Taylor
+        "-1.56",                  // -π/2+0.011: cos≈0.011, Taylor
+        "-1.5707",                // -π/2+9.6e-5: cos≈9.6e-5, Taylor
+        // Quadrant sweep: one value per quadrant q=-8..+8
+        "-12", "-10", "-9", "-7", "-5.5", "-4", "-2.5", "-1",
+        "0.5", "2", "4", "5.5", "7", "8.5", "10", "11.5", "13",
+        // Quadrant boundaries: near n*π/2 (±0.1 from boundary)
+        "-12.67", "-12.47",       // near -8·π/2 ≈ -12.566
+        "-11.0", "-10.9",         // near -7·π/2 ≈ -10.996
+        "-4.81", "-4.61",         // near -3·π/2 ≈ -4.712
+        "-3.24", "-3.04",         // near -2·π/2 = -π ≈ -3.142
+        "-1.67", "-1.47",         // near -π/2 ≈ -1.571
+        "1.47", "1.67",           // near π/2 ≈ 1.571
+        "3.04", "3.24",           // near π ≈ 3.142
+        "4.61", "4.81",           // near 3π/2 ≈ 4.712
+        "6.18", "6.38",           // near 2π ≈ 6.283
+        "10.9", "11.0",           // near 7·π/2 ≈ 10.996
+        "12.47", "12.67",         // near 8·π/2 ≈ 12.566
     };
 
     if (!runTests<Arity::Unary>("COSRAD", cosRad, ieeeCosRad, val, sizeof(val) / sizeof(val[0])))

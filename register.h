@@ -51,8 +51,8 @@ void roundFix(BCD& R, const BCD& S0, int d);
 
 // Truncate BCD to integer part (toward zero, not floor toward negative infinity)
 // Modifies x in place, zeroing fractional digits
-// Returns true if the resulting integer is odd
-bool truncate(BCD& x);
+// Sets g_negateResult from bit 1 and g_useReciprocal from bit 0 of (integer mod 4)
+void truncate(BCD& x);
 
 // Apply banker's rounding (round-to-even) using guard digit and sticky bit.
 // Handles overflow from rounding (9999...9 + 1) by shifting and incrementing exponent.

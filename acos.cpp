@@ -36,35 +36,28 @@ void acosDeg(BCD& R, BCD& S0)
     }
 
     // Save input sign for special case handling
-    bool inputSign = S0.sign;
+    g_inputSign = S0.sign;
 
     // Check domain: |x| <= 1
     S0.sign = false;  // work with |x|
     constLoad(S4, CONST_1);
-    if (isRegGT(S0, S4)) {
-        // |x| > 1: domain error
-        FLAG_INV_ERR = true;
-        return;  // No postCalc on error path
-    }
-
-    // Special case: x = 1 exactly
-    if (isRegEQ(S0, S4) && !inputSign) {
-        // acos(1) = 0
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // Special case: x = -1 exactly
-    if (isRegEQ(S0, S4) && inputSign) {
-        // acos(-1) = 180
-        constLoad(R, CONST_180);
+    if (isRegGE(S0, S4)) {
+        if (isRegGT(S0, S4)) {
+            // |x| > 1: domain error
+            FLAG_INV_ERR = true;
+            return;  // No postCalc on error path
+        }
+        // |x| = 1 exactly
+        if (g_inputSign)
+            constLoad(R, CONST_180);   // acos(-1) = 180
+        // else: acos(1) = 0, R already zero from preCalc
         postCalc(R, S0, S1);
         return;
     }
 
     // General case: acos(x) = 90 - asin(x)
     // Restore sign for asin computation
-    S0.sign = inputSign;
+    S0.sign = g_inputSign;
 
     // Compute asin(x) in R
     asinDeg(R, S0);
@@ -97,10 +90,9 @@ void acosRad(BCD& R, BCD& S0)
     // Convert degrees to radians: radians = degrees * (PI/180)
     // S0 = R via postCalc
 
-    // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
-
     mul(R, S0, S1);
+    // postCalc: handled by mul()
 }
 
 // IEEE operations for test runner

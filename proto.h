@@ -13,6 +13,36 @@
 
 #include "bcd.h"
 
+// Enable radian sin/cos via degree conversion: sinRad→sinDeg, cosRad→cosDeg.
+// One irrational multiplication (×180/π) then exact decimal range reduction.
+// Eliminates irrational-constant cancellation in radian range reduction.
+#define RAD_VIA_DEG 1
+
+// Near-asymptote cot shortcut for tanDeg and tanRad.
+// When the reduced angle ε has exponent ≤ -13, bypasses CORDIC and computes
+// cot(ε) directly: (180/π)/ε for degrees, 1/ε for radians. Exact to 30+ digits
+// since tan(x)≈x for tiny x. Replaces OVERFLOW with a computed result.
+//
+// Disabled (0): unreachable on the real calculator. The 14-digit input limit
+// means the closest a user can type to an asymptote is ε≈1e-12 (exp=-12),
+// below the exp≥13 threshold. Internal callers (sinDegCore, sinRadCore) pass
+// arguments in [0°,45°)/[0,π/4), never near an asymptote. Only test vectors
+// with 15+ significant digits can trigger this path.
+#define TAN_HANDLE_LARGE_X 0
+
+// Small-angle Taylor series bypass in cordicTan.
+// For |x| < 0.001 rad (exp ≤ -3), uses tan(x) = x·(1 + x²·(1/3 + x²·2/15))
+// instead of CORDIC. Avoids normalizeToZeroExp which destroys digits proportional
+// to the negative exponent. At exp=-3 the Taylor truncation error (~5e-17) is
+// within 16-digit precision; CORDIC would lose 3+ digits from mantissa shifting.
+#define SMALL_TAN_TAYLOR 1
+
+// Small-angle Taylor series bypass in cordicAtan.
+// For |x| < 0.001 (exp ≤ -3), uses atan(x) = x·(1 - x²·(1/3 - x²·(1/5 - x²/7)))
+// instead of CORDIC. Same normalizeToZeroExp digit-loss problem as cordicTan.
+// Four Horner terms keep truncation error (x⁹/9) below 1e-15 at the threshold.
+#define SMALL_ATAN_TAYLOR 1
+
 // User Registers
 inline BCD X;
 inline BCD Y;
@@ -31,9 +61,9 @@ inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
 inline bool FLAG_S1_ZERO = false;   // S1 is zero (set by preCalc)
 
 // Trig globals (map to microcode nibbles)
-inline bool g_inputSign = false;      // Original input sign      → ARG_SIGN (0x135)
-inline bool g_negateResult = false;   // Negate from range reduce → new nibble (0x13C)
-inline bool g_useReciprocal = false;  // Reciprocal flag          → new nibble (0x13D)
+inline bool g_inputSign = false;      // Original input sign      → ARG_SIGN
+inline bool g_negateResult = false;   // Negate from range reduce → NEGATE_RESULT
+inline bool g_useReciprocal = false;  // Reciprocal flag          → USE_RECIP
 
 // Constant identifiers for constLoad()
 inline constexpr uint8_t CONST_1   = 0;   // Value 1.0
@@ -46,29 +76,30 @@ inline constexpr uint8_t CONST_PI_OVER_180 = 6;   // π/180 = 0.0174532925199432
 inline constexpr uint8_t CONST_180_OVER_PI = 7;   // 180/π = 57.29577951308232...
 inline constexpr uint8_t CONST_PI_OVER_2   = 8;   // π/2 = 1.5707963267948966...
 inline constexpr uint8_t CONST_LN10        = 9;   // ln(10) = 2.302585092994046...
+inline constexpr uint8_t CONST_PI_OVER_4   = 10;  // π/4 = 0.7853981633974483...
 
 // Load a predefined constant into a BCD register
 void constLoad(BCD& x, uint8_t which);
 
-// Arithmetic operations: read from S0 and S1, write result to R
+// Arithmetic and algebraic operations: read from S0 and S1, write result to R
 void add(BCD &R, BCD &S0, BCD &S1);
 void sub(BCD &R, BCD &S0, BCD &S1);
 void mul(BCD &R, BCD &S0, BCD &S1);
 void div(BCD &R, BCD &S0, BCD &S1);
+// Uncomment sqrt implementation: sqrt_nr (default) or sqrt_dd
+// Use inline function to avoid conflict with std::sqrt
+//inline void sqrt(BCD &R, BCD &S0) { sqrt_dd(R, S0); }
+void sqrt_dd(BCD &R, BCD &S0);     // Digit-by-digit method (sqrt_dd.cpp)
+void sqrt_nr(BCD &R, BCD &S0);     // Newton-Raphson method (sqrt_nr.cpp)
+inline void sqrt(BCD &R, BCD &S0) { sqrt_nr(R, S0); }
 
 // Transcendental operations: read from S0, write result to R
 void ln(BCD &R, BCD &S0);
 void exp(BCD &R, BCD &S0);
-void sqrt_dd(BCD &R, BCD &S0);   // Digit-by-digit method (sqrt_dd.cpp)
-void sqrt_nr(BCD &R, BCD &S0);   // Newton-Raphson method (sqrt_nr.cpp)
-// Uncomment sqrt implementation: sqrt_nr (default) or sqrt_dd
-// Use inline function to avoid conflict with std::sqrt
-//inline void sqrt(BCD &R, BCD &S0) { sqrt_dd(R, S0); }
-inline void sqrt(BCD &R, BCD &S0) { sqrt_nr(R, S0); }
-void tanRad(BCD &R, BCD &S0);   // Tangent, input in radians
-void atanRad(BCD &R, BCD &S0);  // Arctangent, output in radians
-void tanDeg(BCD &R, BCD &S0);   // Tangent, input in degrees
-void atanDeg(BCD &R, BCD &S0);  // Arctangent, output in degrees
+void tanRad(BCD &R, BCD &S0);      // Tangent, input in radians
+void atanRad(BCD &R, BCD &S0);     // Arctangent, output in radians
+void tanDeg(BCD &R, BCD &S0);      // Tangent, input in degrees
+void atanDeg(BCD &R, BCD &S0);     // Arctangent, output in degrees
 void cordicTan(BCD &R, BCD &S0);   // Core CORDIC for tan (internal)
 void cordicAtan(BCD &R, BCD &S0);  // Core CORDIC for atan (internal)
 void sinDeg(BCD &R, BCD &S0);      // Sine, input in degrees
@@ -80,18 +111,22 @@ void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
 void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
 
+// Unified trig range reduction: reduces |angle| to [0, boundary) using q mod 4
+// Sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from quadrant
+void trigRangeReduce(uint8_t constId);
+
 // Internal helpers shared between sin.cpp and cos.cpp
-void sinDegRangeReduce();          // Mod-180 range reduce, sets g_negateResult
-void sinDegCore();                 // Half-angle core for angle in (0, 90), uses globals
+void sinDegCore();                 // Half-angle core for angle in (0, 90) deg, uses globals
+void sinRadCore();                 // Half-angle core for angle in (0, π/2) rad, uses globals
 
 // Test functions
 void testAddition();
 void testSubtraction();
 void testMultiplication();
 void testDivision();
+void testSqrt();
 void testLn();
 void testExp();
-void testSqrt();
 void testTanRad();
 void testAtanRad();
 void testTanDeg();

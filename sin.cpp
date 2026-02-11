@@ -1,14 +1,13 @@
 /******************************************************************************
- * sin.cpp - Sine functions using half-angle formula
+ * sin.cpp - Sine functions and unified trig range reduction
  *
  * Implements sinDeg(), sinRad() using the identity:
  *   sin(x) = 2t / (1 + t²)  where t = tan(x/2)
  *
- * Also provides sinDegRangeReduce() and sinDegCore() as shared helpers
- * used by cos.cpp for the postponed +90° offset technique.
+ * Provides trigRangeReduce() as shared range reduction for all trig functions.
+ * Uses truncate() mod 4 to encode quadrant: bit 1 = negate, bit 0 = complement.
  *
- * Range reduction uses mod 180 with parity tracking, then
- * reflection to [0, 90] to keep tan(x/2) in optimal range [0, 1].
+ * sinDegCore() and sinRadCore() are shared helpers used by cos.cpp.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -21,27 +20,78 @@
 #include <cassert>
 #include <cmath>
 
-// Internal helper: compute sin from angle in (0, 90) degrees
+// Unified trig range reduction: reduces positive angle to [0, boundary)
+// Divides S0 by boundary, truncate() sets g_negateResult (bit 1) and g_useReciprocal (bit 0)
+// from the quadrant (integer mod 4).
+// If g_useReciprocal: complements angle (S0 = boundary - S0)
+// Input: S0 = positive angle
+// Output: S0 = reduced angle in [0, boundary), globals set from quadrant
+// Uses registers: S0, S1, S2, S3, S4, R
+void trigRangeReduce(uint8_t constId)
+{
+    g_negateResult = false;
+    g_useReciprocal = false;
+
+    constLoad(S1, constId);         // S1 = boundary
+
+    // If already in [0, boundary), nothing to do (q=0)
+    if (!isRegGE(S0, S1))
+        return;
+
+    // Save original angle and boundary
+    regCopy(S3, S0);                // S3 = original angle
+    regCopy(S4, S1);                // S4 = boundary
+
+    // Divide by boundary to get quotient
+    div(R, S0, S1);                 // R = S0 / boundary
+    truncate(R);                    // Sets g_negateResult, g_useReciprocal; R = floor
+
+    // Compute product: floor(q) * boundary
+    regCopy(S0, R);
+    regCopy(S1, S4);                // S1 = boundary (from S4)
+    mul(R, S0, S1);                 // R = floor(q) * boundary  [S2 destroyed]
+
+    // Compute remainder: original - floor(q) * boundary
+    regCopy(S0, S3);                // S0 = original
+    sub(R, S0, S1);                 // R = remainder (S1 = R via postCalc)
+
+    // If bit 0 set: complement angle (S0 = boundary - S0)
+    if (g_useReciprocal) {
+        regCopy(S1, S0);
+        regCopy(S0, S4);            // S4 = boundary (survived mul)
+        sub(R, S0, S1);             // R = boundary - remainder; S0 = R via postCalc
+    }
+}
+
+// Internal helper: compute sin from reduced angle using half-angle formula
+// sin(x) = 2t / (1 + t²) where t = tan(x/2)
+// isDeg: true = angle in (0, 90) degrees, calls tanDeg
+//        false = angle in (0, π/2) radians, calls tanRad
+// In microcode, isDeg is passed via a register and conditionally branches to tanDeg or tanRad.
 // Input: angle in S0 (will be modified), g_negateResult and g_inputSign for final sign
 // Output: result in R
 // Uses: all registers
 // Note: mul uses S2 as accumulator, so only S3, S4 are safe across mul calls
-// Since angle is in (0, 90), tan(angle/2) is in (0, 1) - optimal CORDIC range
-void sinDegCore()
+static void sinCore(bool isDeg)
 {
-    // Save globals before tanDeg clobbers them (push in microcode)
+    // ---------- Compute tan(x/2) ----------
+    // First divide angle by 2: S0 = S0 / 2
+    constLoad(S1, CONST_2);
+    div(R, S0, S1);  // R = angle / 2; S0 = R via postCalc
+
+    // Save globals before tan clobbers them (push in microcode)
     bool savedInputSign = g_inputSign;
     bool savedNegate = g_negateResult;
 
-    // ---------- Compute tan(x/2) ----------
-    // First divide angle by 2: S0 = S0 / 2
-    // S0 already has angle, S1 = 2 (divisor)
-    constLoad(S1, CONST_2);
-    div(R, S0, S1);  // R = angle / 2
-    regCopy(S0, R);
+    // Compute tan(x/2) — dispatch by unit
+    if (isDeg)
+        tanDeg(R, S0);
+    else
+        tanRad(R, S0);
 
-    // Compute tan(x/2) using existing tanDeg
-    tanDeg(R, S0);
+    // Restore globals after tan (pop in microcode)
+    g_inputSign = savedInputSign;
+    g_negateResult = savedNegate;
 
     // t = tan(x/2) is now in R
     // sin(x) = 2*t / (1 + t²)
@@ -58,86 +108,29 @@ void sinDegCore()
     // Compute t² (S4 still has t)
     regCopy(S0, S4);
     regCopy(S1, S4);
-    mul(R, S0, S1);  // R = t² (mul uses S2)
+    mul(R, S0, S1);  // R = t²; S1 = R via postCalc
 
     // Compute 1 + t² (denominator)
-    regCopy(S1, R);  // S1 = t²
     constLoad(S0, CONST_1);
-    add(R, S0, S1);  // R = 1 + t²
+    add(R, S0, S1);  // R = 1 + t²; S1 = R via postCalc
 
     // Compute sin = (2*t) / (1 + t²)
-    regCopy(S1, R);   // S1 = 1 + t²
     regCopy(S0, S3);  // S0 = 2*t (from S3)
     div(R, S0, S1);   // R = sin(x)
 
-    // Restore globals after tanDeg (pop in microcode)
-    g_inputSign = savedInputSign;
-    g_negateResult = savedNegate;
-
     // Apply final sign
-    if (g_negateResult)
-        R.sign = !g_inputSign;
-    else
-        R.sign = g_inputSign;
+    R.sign = g_negateResult ^ g_inputSign;
 }
 
-// Mod-180 range reduction: reduces positive angle to [0, 180) with parity
-// Input: S0 = positive angle in degrees, g_negateResult initialized by caller
-// Output: S0 = angle mod 180 in [0, 180), g_negateResult set if odd parity
-// Uses registers: S0, S1, S3, S4, R
-void sinDegRangeReduce()
-{
-    // sin(x + 180) = -sin(x), so we reduce mod 180 and track parity
-    constLoad(S4, CONST_180);
-
-    if (isRegGE(S0, S4)) {
-        // Save original angle in S3
-        regCopy(S3, S0);
-
-        // Compute quotient: q = floor(S0 / 180)
-        regCopy(S1, S4);
-        div(R, S0, S1);
-
-        // Truncate to integer and check if q is odd (determines sign)
-        g_negateResult = truncate(R);
-
-        // Compute product: R = q * 180
-        regCopy(S0, R);
-        regCopy(S1, S4);
-        mul(R, S0, S1);
-
-        // Compute remainder: S0 = original - q * 180
-        regCopy(S0, S3);
-        regCopy(S1, R);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-    }
-
-    // Now S0 is in [0, 180)
-}
-
-// Reflect angle from [0, 180) to [0, 90] for sin computation
-// Input: S0 = angle in [0, 180)
-// Output: S0 = angle in [0, 90]
-// Uses registers: S0, S1, S4, R
-static void sinDegReflect()
-{
-    // Reflect to [0, 90] using sin(180-x) = sin(x)
-    constLoad(S4, CONST_90);
-    if (isRegGT(S0, S4)) {
-        // S0 = 180 - S0
-        regCopy(S1, S0);
-        constLoad(S0, CONST_180);
-        sub(R, S0, S1);
-        regCopy(S0, R);
-    }
-}
+// Wrappers matching the declarations in proto.h
+void sinDegCore() { sinCore(true); }
+void sinRadCore() { sinCore(false); }
 
 // Compute sine in degrees: R = sinDeg(S0)
 // Input in degrees, output is the sine value
 // Uses half-angle formula: sin(x) = 2*tan(x/2) / (1 + tan²(x/2))
-// Range reduction: mod 180 with parity, then reflect to [0, 90]
-// This keeps tan(x/2) in [0, 1] range for optimal precision
+// Range reduction via trigRangeReduce(90): divides by 90, q mod 4 gives quadrant
+// g_useReciprocal is set but ignored (sin doesn't need reciprocal)
 // Reads from S0, stores result in R
 void sinDeg(BCD& _R, BCD& _S0)
 {
@@ -156,9 +149,7 @@ void sinDeg(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    g_negateResult = false;
-    sinDegRangeReduce();
-    sinDegReflect();
+    trigRangeReduce(CONST_90);
 
     // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
     if (isMantZero(S0.mant.data())) {
@@ -168,15 +159,12 @@ void sinDeg(BCD& _R, BCD& _S0)
 
     // Now S0 is in (0, 90]
 
-    // Special case: sin(90) = 1 exactly
+    // Special case: sin(90) = 1 exactly (when complement produced boundary value)
     constLoad(S4, CONST_90);
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        if (g_negateResult)
-            R.sign = !g_inputSign;
-        else
-            R.sign = g_inputSign;
+        R.sign = g_negateResult ^ g_inputSign;
         postCalc(R, S0, S1);
         return;
     }
@@ -189,12 +177,20 @@ void sinDeg(BCD& _R, BCD& _S0)
 
 // Compute sine in radians: R = sinRad(S0)
 // Input in radians, output is the sine value
-// Converts to degrees and calls sinDeg
+// Stays in radians: trigRangeReduce(π/2) then sinRadCore using tanRad
 // Reads from S0, stores result in R
-void sinRad(BCD& R, BCD& S0)
+void sinRad(BCD& _R, BCD& _S0)
 {
-    assert((&R == &::R) && (&S0 == &::S0));
+    assert((&_R == &::R) && (&_S0 == &::S0));
 
+#if RAD_VIA_DEG
+    // Convert radians to degrees: S0 = S0 * (180/π), then delegate to sinDeg
+    // No zero check needed here — sinDeg handles it
+    preCalc(R, S0, S1);
+    constLoad(S1, CONST_180_OVER_PI);
+    mul(R, S0, S1);                    // S0 = degrees via postCalc
+    sinDeg(R, S0);
+#else
     preCalc(R, S0, S1);
 
     // Special case: sinRad(0) = 0 exactly
@@ -203,20 +199,35 @@ void sinRad(BCD& R, BCD& S0)
         return;
     }
 
-    bool inputSign = S0.sign;
+    // Store sign and work with positive value (sin is odd function)
+    g_inputSign = S0.sign;
     S0.sign = false;
 
-    // Convert radians to degrees: degrees = radians * (180/PI)
-    constLoad(S1, CONST_180_OVER_PI);
-    mul(R, S0, S1);
+    // ---------- Range Reduction ----------
+    trigRangeReduce(CONST_PI_OVER_2);
 
-    // R now contains degrees, move to S0
-    regCopy(S0, R);
-    S0.sign = inputSign;
+    // Special case: sin(0) after reduction (i.e., sin(n*π) = 0)
+    if (isMantZero(S0.mant.data())) {
+        postCalc(R, S0, S1);
+        return;
+    }
 
-    // Call sinDeg (but we need to set up properly since sinDeg expects S0)
-    sinDeg(R, S0);
-    // postCalc: handled by sinDeg()
+    // Now S0 is in (0, π/2]
+
+    // Special case: sin(π/2) = 1 exactly
+    constLoad(S4, CONST_PI_OVER_2);
+    if (isRegEQ(S0, S4)) {
+        regClear(R);
+        R.mant[0] = 1;
+        R.sign = g_negateResult ^ g_inputSign;
+        postCalc(R, S0, S1);
+        return;
+    }
+
+    // Now S0 is in (0, π/2) - compute sin using half-angle formula
+    sinRadCore();
+    postCalc(R, S0, S1);
+#endif
 }
 
 // IEEE operations for test runner
@@ -289,6 +300,15 @@ void testSinDeg()
         "90.00000000000001",      // Just over 90 (reflection, 16 sig digits)
         // Very small angle
         "0.0001",                 // tan(x/2) approximation
+        // Quadrant sweep: q*90+37 for q=-8..+8 (4 full rotations each way)
+        "-683", "-593", "-503", "-413", "-323", "-233", "-143", "-53",
+        "37", "127", "217", "307",
+        "397", "487", "577", "667", "757",
+        // Quadrant boundaries: q*90±1 for q=-8..+8
+        "-721", "-719", "-631", "-629", "-541", "-539", "-451", "-449",
+        "-361", "-359", "-271", "-269", "-181", "-179", "-91", "-89",
+        "91", "179", "181", "269", "271",
+        "359", "361", "449", "451", "539", "541", "629", "631", "719", "721",
     };
 
     if (!runTests<Arity::Unary>("SINDEG", sinDeg, ieeeSinDeg, val, sizeof(val) / sizeof(val[0])))
@@ -309,6 +329,21 @@ void testSinRad()
         "3.14159265358979",       // PI = 180 deg, sin=0
         "-0.523598775598299",     // -PI/6
         "-1.570796326794897",     // -PI/2
+        // Quadrant sweep: one value per quadrant q=-8..+8
+        "-12", "-10", "-9", "-7", "-5.5", "-4", "-2.5", "-1",
+        "0.5", "2", "4", "5.5", "7", "8.5", "10", "11.5", "13",
+        // Quadrant boundaries: near n*π/2 (±0.1 from boundary)
+        "-12.67", "-12.47",       // near -8·π/2 ≈ -12.566
+        "-11.0", "-10.9",         // near -7·π/2 ≈ -10.996
+        "-4.81", "-4.61",         // near -3·π/2 ≈ -4.712
+        "-3.24", "-3.04",         // near -2·π/2 = -π ≈ -3.142
+        "-1.67", "-1.47",         // near -π/2 ≈ -1.571
+        "1.47", "1.67",           // near π/2 ≈ 1.571
+        "3.04", "3.24",           // near π ≈ 3.142
+        "4.61", "4.81",           // near 3π/2 ≈ 4.712
+        "6.18", "6.38",           // near 2π ≈ 6.283
+        "10.9", "11.0",           // near 7·π/2 ≈ 10.996
+        "12.47", "12.67",         // near 8·π/2 ≈ 12.566
     };
 
     if (!runTests<Arity::Unary>("SINRAD", sinRad, ieeeSinRad, val, sizeof(val) / sizeof(val[0])))

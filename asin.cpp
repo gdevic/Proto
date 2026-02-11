@@ -4,7 +4,6 @@
  * Implements asinDeg() and asinRad() using:
  *   asin(x) = atan(1 / sqrt(1/x² - 1))
  *
- * This form avoids saving x across sqrt() which uses all registers.
  * Domain: |x| <= 1, returns degrees or radians.
  *
  * Copyright (c) 2025 Goran Devic
@@ -28,14 +27,11 @@ void asinDeg(BCD& R, BCD& S0)
 
     preCalc(R, S0, S1);
 
-    // Special case: asin(0) = 0 exactly
-    if (FLAG_S0_ZERO) {
-        postCalc(R, S0, S1);
-        return;
-    }
+    // Special case: asin(0) = 0 exactly (R, S0, S1 already zero from preCalc)
+    if (FLAG_S0_ZERO) return;
 
     // Save input sign (asin is odd function)
-    bool inputSign = S0.sign;
+    g_inputSign = S0.sign;
     S0.sign = false;
 
     // Check domain: |x| <= 1
@@ -50,7 +46,7 @@ void asinDeg(BCD& R, BCD& S0)
     if (isRegEQ(S0, S4)) {
         // asin(1) = 90, asin(-1) = -90
         constLoad(R, CONST_90);
-        R.sign = inputSign;
+        R.sign = g_inputSign;
         postCalc(R, S0, S1);
         return;
     }
@@ -81,9 +77,9 @@ void asinDeg(BCD& R, BCD& S0)
     reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
 
     // Compute atan in degrees
-    g_inputSign = inputSign;
     bool savedInputSign = g_inputSign;   // save before atanDeg (push in microcode)
     atanDeg(R, S0);                      // clobbers g_inputSign
+    // We have to restore g_inputSign (no optimizations) since asinRad depends on it
     g_inputSign = savedInputSign;        // restore after atanDeg (pop in microcode)
 
     // Apply sign (asin is odd function)
@@ -107,18 +103,14 @@ void asinRad(BCD& R, BCD& S0)
         return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
-    bool resultSign = R.sign;
-    R.sign = false;
+    // S0 already equals R from asinDeg's postCalc; g_inputSign holds the sign
+    S0.sign = false;
 
-    regCopy(S0, R);
-
-    // S1 = PI/180 = 0.01745... = 1.745...e-2
     constLoad(S1, CONST_PI_OVER_180);
-
     mul(R, S0, S1);
 
     // Restore sign
-    R.sign = resultSign;
+    R.sign = g_inputSign;
 }
 
 // IEEE operations for test runner

@@ -59,6 +59,27 @@ static const uint8_t mant_pi_over_4[MAX_MANT] = {
     7,8,5,3,9,8,1,6,3,3,9,7,4,4,8,3
 };
 
+// Taylor series constants for small-angle bypasses (SMALL_TAN_TAYLOR, SMALL_ATAN_TAYLOR)
+// 1/3 = 3.333333333333333e-1 (truncated, -0.33 ULP from true repeating 3)
+extern const uint8_t mant_one_third[MAX_MANT] = {
+    3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+};
+
+// 2/15 = 1.333333333333333e-1 (truncated, -0.33 ULP from true repeating 3)
+extern const uint8_t mant_two_fifteenths[MAX_MANT] = {
+    1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+};
+
+// 1/5 = 2.000000000000000e-1 (exact, 0 ULP)
+extern const uint8_t mant_one_fifth[MAX_MANT] = {
+    2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+// 1/7 = 1.428571428571429e-1 (rounded up, +0.43 ULP: true d16=8, d17=5)
+extern const uint8_t mant_one_seventh[MAX_MANT] = {
+    1,4,2,8,5,7,1,4,2,8,5,7,1,4,2,9
+};
+
 // Load a predefined constant into a BCD register
 // x: destination register
 // which: constant identifier (CONST_1, CONST_2, etc.)
