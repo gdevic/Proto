@@ -111,6 +111,7 @@ void asinRad(BCD& R, BCD& S0)
 
     // Restore sign
     R.sign = g_inputSign;
+    postCalc(R, S0, S1);
 }
 
 // IEEE operations for test runner
