@@ -74,7 +74,7 @@ void sinCore()
     constLoad(S1, CONST_2);
     div(R, S0, S1);  // R = angle / 2; S0 = R via postCalc
 
-    // Compute tan(x/2) (in degrees)
+    // Compute tan(x/2) in degrees
     tanDeg(R, S0);
 
     // t = tan(x/2) is now in R
@@ -158,13 +158,12 @@ void sinDeg(BCD& _R, BCD& _S0)
 
 // Compute sine in radians: R = sinRad(S0)
 // Input in radians, output is the sine value
-// Stays in radians: trigRangeReduce(π/2) then sinRadCore using tanRad
+// Converts to degrees then delegates to sinDeg for exact decimal range reduction
 // Reads from S0, stores result in R
 void sinRad(BCD& _R, BCD& _S0)
 {
     assert((&_R == &::R) && (&_S0 == &::S0));
 
-#if RAD_VIA_DEG
     // Convert radians to degrees: S0 = S0 * (180/π), then delegate to sinDeg
     // No zero check needed here — sinDeg handles it
     preCalc(R, S0, S1);
@@ -172,48 +171,6 @@ void sinRad(BCD& _R, BCD& _S0)
     mul(R, S0, S1);                    // S0 = degrees via postCalc
     sinDeg(R, S0);
     // postCalc: handled by sinDeg()
-#else
-    preCalc(R, S0, S1);
-
-    // Special case: sinRad(0) = 0 exactly
-    if (FLAG_S0_ZERO) {
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // Store sign and work with positive value (sin is odd function)
-    g_inputSign = S0.sign;
-    S0.sign = false;
-
-    // ---------- Range Reduction ----------
-    constLoad(S1, CONST_PI_OVER_2);
-    trigRangeReduce(S0, S1);
-
-    // Compute the final sign
-    bool sign = g_negateResult ^ g_inputSign;
-
-    // Special case: sin(0) after reduction (i.e., sin(n*π) = 0)
-    if (isMantZero(S0.mant.data())) {
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // Now S0 is in (0, π/2]
-
-    // Special case: sin(π/2) = 1 exactly
-    constLoad(S4, CONST_PI_OVER_2);
-    if (isRegEQ(S0, S4)) {
-        constLoad(R, CONST_1);
-        R.sign = sign;
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // Now S0 is in (0, π/2) - compute sin using half-angle formula
-    sinCore();
-    R.sign = sign;
-    postCalc(R, S0, S1);
-#endif
 }
 
 // IEEE operations for test runner

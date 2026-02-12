@@ -75,69 +75,19 @@ void cosDeg(BCD& _R, BCD& _S0)
 }
 
 // Compute cosine in radians: R = cosRad(S0)
-// Uses trigRangeReduce(π/2) + quadrant shift instead of add-π/2-then-sinRad.
-// Reduces irrational-constant operations from ~4 to 2 (one in trigRangeReduce,
-// one complement), improving precision for near-zero results.
+// Converts to degrees then delegates to cosDeg for exact decimal range reduction
 // Reads from S0, stores result in R
 void cosRad(BCD& _R, BCD& _S0)
 {
     assert((&_R == &::R) && (&_S0 == &::S0));
 
-#if RAD_VIA_DEG
     // Convert radians to degrees: S0 = S0 * (180/π), then delegate to cosDeg
     // No zero check needed here — cosDeg handles it
     preCalc(R, S0, S1);
     constLoad(S1, CONST_180_OVER_PI);
-    mul(R, S0, S1);                    // S0 = |degrees| via postCalc
+    mul(R, S0, S1);                    // S0 = degrees via postCalc
     cosDeg(R, S0);
     // postCalc: handled by cosDeg()
-#else
-    preCalc(R, S0, S1);
-
-    // Special case: cosRad(0) = 1 exactly
-    if (FLAG_S0_ZERO) {
-        constLoad(R, CONST_1);
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // cos is even: cos(-x) = cos(x)
-    g_inputSign = false;
-    S0.sign = false;
-
-    // ---------- Range Reduction ----------
-    constLoad(S1, CONST_PI_OVER_2);
-    trigRangeReduce(S0, S1);
-
-    // Shift quadrant by +1: cos(x) = sin(x + π/2)
-    // g_useReciprocal is quadrant bit 0 from truncate(), used here as carry for the +1 shift
-    bool sign = g_negateResult ^ g_useReciprocal;
-
-    // Toggle complement for the shifted quadrant: S0 = π/2 - S0
-    regCopy(S1, S0);
-    constLoad(S0, CONST_PI_OVER_2);
-    sub(R, S0, S1);                // R = π/2 - angle; S0 = R via postCalc
-
-    // Special case: cos = 0 (e.g., cos(π/2), cos(3π/2))
-    if (isMantZero(S0.mant.data())) {
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // Special case: cos = ±1 (e.g., cos(π) = -1, cos(2π) = +1)
-    constLoad(S4, CONST_PI_OVER_2);
-    if (isRegEQ(S0, S4)) {
-        constLoad(R, CONST_1);
-        R.sign = sign;
-        postCalc(R, S0, S1);
-        return;
-    }
-
-    // S0 is in (0, π/2) — compute sin using half-angle formula
-    sinCore();
-    R.sign = sign;
-    postCalc(R, S0, S1);
-#endif
 }
 
 // IEEE operations for cos test runner

@@ -13,11 +13,6 @@
 
 #include "bcd.h"
 
-// Enable radian sin/cos via degree conversion: sinRad→sinDeg, cosRad→cosDeg.
-// One irrational multiplication (×180/π) then exact decimal range reduction.
-// Eliminates irrational-constant cancellation in radian range reduction.
-#define RAD_VIA_DEG 1
-
 // Near-asymptote cot shortcut for tanDeg and tanRad.
 // When the reduced angle ε has exponent ≤ -13, bypasses CORDIC and computes
 // cot(ε) directly: (180/π)/ε for degrees, 1/ε for radians. Exact to 30+ digits
@@ -25,7 +20,7 @@
 //
 // Disabled (0): unreachable on the real calculator. The 14-digit input limit
 // means the closest a user can type to an asymptote is ε≈1e-12 (exp=-12),
-// below the exp≥13 threshold. Internal callers (sinDegCore, sinRadCore) pass
+// below the exp≥13 threshold. Internal callers (sinCore) pass
 // arguments in [0°,45°)/[0,π/4), never near an asymptote. Only test vectors
 // with 15+ significant digits can trigger this path.
 #define TAN_HANDLE_LARGE_X 0

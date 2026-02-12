@@ -67,13 +67,11 @@ This document provides a unified analysis of all 12 trigonometric entry points i
 
 ### 1.4 Radians vs Degrees
 
-The implementation uses a **degrees-first architecture** controlled by `RAD_VIA_DEG` (currently 1). With `RAD_VIA_DEG=1`, forward radian variants sinRad and cosRad convert the input to degrees (multiplying by 180/pi) and delegate to sinDeg and cosDeg respectively. This uses one irrational multiplication followed by exact decimal range reduction. tanRad and atanRad are independent of this flag: tanRad stays in radians with `trigRangeReduce(pi/4)`, and atanRad calls cordicAtan directly (CORDIC already returns radians). Inverse radian variants (asinRad, acosRad) call their degree counterpart and convert the output to radians.
-
-When `RAD_VIA_DEG=0` (inactive), sinRad and cosRad would use radian-native paths: `trigRangeReduce(pi/2)` with sinRadCore/tanRad, staying in radians throughout. This path exists in the code but is not compiled by default.
+The implementation uses a **degrees-first architecture**. Forward radian variants sinRad and cosRad convert the input to degrees (multiplying by 180/pi) and delegate to sinDeg and cosDeg respectively. This uses one irrational multiplication followed by exact decimal range reduction. tanRad and atanRad are independent: tanRad stays in radians with `trigRangeReduce(pi/4)`, and atanRad calls cordicAtan directly (CORDIC already returns radians). Inverse radian variants (asinRad, acosRad) call their degree counterpart and convert the output to radians.
 
 This design has significant precision implications:
 - **Degrees enable exact range reduction**: 360, 180, 90, and 45 are exact BCD constants. Modular reduction by these values introduces zero rounding error.
-- **RAD_VIA_DEG=1 trades one irrational multiply for exact reduction**: sinRad/cosRad perform a single multiplication by 180/pi, then benefit from exact decimal range reduction in sinDeg/cosDeg. This eliminates irrational-constant cancellation in radian range reduction.
+- **One irrational multiply for exact reduction**: sinRad/cosRad perform a single multiplication by 180/pi, then benefit from exact decimal range reduction in sinDeg/cosDeg. This eliminates irrational-constant cancellation that radian-native range reduction would suffer.
 - **CORDIC works in radians internally**: After range reduction (whether from degrees or radians), the reduced angle is in radians for the CORDIC core. Degree functions convert their small reduced angle (0 to 45 degrees) to radians via pi/180; tanRad feeds the reduced angle directly.
 - **Unified range reduction**: A single `trigRangeReduce(constId)` function handles both degree and radian paths, parameterized by the boundary constant (45, 90 for degrees; pi/4 for tanRad).
 
@@ -97,9 +95,9 @@ All 12 trigonometric entry points, their source files, input/output units, and c
 | `tanRad` | `tan.cpp` | radians | value | Unified range reduction + direct CORDIC | `trigRangeReduce`, `cordicTan` |
 | `atanDeg` | `tan10.cpp` | value | degrees | CORDIC + convert to deg | `cordicAtan` |
 | `atanRad` | `tan.cpp` | value | radians | CORDIC (direct) | `cordicAtan` |
-| `sinDeg` | `sin.cpp` | degrees | value | Half-angle + CORDIC | `trigRangeReduce`, `sinDegCore`, `tanDeg` |
+| `sinDeg` | `sin.cpp` | degrees | value | Half-angle + CORDIC | `trigRangeReduce`, `sinCore`, `tanDeg` |
 | `sinRad` | `sin.cpp` | radians | value | Converts to degrees, delegates to sinDeg | `sinDeg` |
-| `cosDeg` | `cos.cpp` | degrees | value | Quadrant-shifted range reduction + sinDegCore | `trigRangeReduce`, `sinDegCore` |
+| `cosDeg` | `cos.cpp` | degrees | value | Quadrant-shifted range reduction + sinCore | `trigRangeReduce`, `sinCore` |
 | `cosRad` | `cos.cpp` | radians | value | Converts to degrees, delegates to cosDeg | `cosDeg` |
 | `asinDeg` | `asin.cpp` | value | degrees | Identity via atan | `atanDeg`, `sqrt`, `div`, `mul` |
 | `asinRad` | `asin.cpp` | value | radians | asinDeg + convert | `asinDeg` |
@@ -111,24 +109,18 @@ All 12 trigonometric entry points, their source files, input/output units, and c
 ```mermaid
 graph TD
     subgraph "Degree Path"
-        cosDeg["cosDeg()"] --> sinDegCore["sinDegCore()"]
-        sinDeg["sinDeg()"] --> sinDegCore
-        sinDegCore --> tanDeg["tanDeg()"]
+        cosDeg["cosDeg()"] --> sinCore["sinCore()"]
+        sinDeg["sinDeg()"] --> sinCore
+        sinCore --> tanDeg["tanDeg()"]
         tanDeg --> cordicTan["cordicTan()"]
     end
 
-    subgraph "Radian Path (RAD_VIA_DEG=1, active)"
+    subgraph "Radian Path (converts to degrees)"
         sinRad["sinRad()"] -->|"×180/π"| sinDeg
         cosRad["cosRad()"] -->|"×180/π"| cosDeg
     end
 
-    subgraph "Radian Path (RAD_VIA_DEG=0, inactive)"
-        sinRad_alt["sinRad()"] --> sinRadCore["sinRadCore()"]
-        cosRad_alt["cosRad()"] --> sinRadCore
-        sinRadCore --> tanRad
-    end
-
-    subgraph "tanRad (always radian-native)"
+    subgraph "tanRad (radian-native)"
         tanRad["tanRad()"] --> cordicTan
     end
 
@@ -153,15 +145,13 @@ graph TD
     cordicTan --> div["div()"]
     cordicAtan --> div
     cordicAtan --> add["add()"]
-    sinDegCore --> div
-    sinDegCore --> mul["mul()"]
-    sinRadCore --> div
-    sinRadCore --> mul
+    sinCore --> div
+    sinCore --> mul["mul()"]
     asinDeg --> div
     asinDeg --> mul
 ```
 
-All paths ultimately converge on `cordicTan` or `cordicAtan` as the shared computational engines. These two functions are the only ones that perform the CORDIC digit-by-digit rotation using the atan constant table. With `RAD_VIA_DEG=1` (current default), sinRad and cosRad convert to degrees and merge into the degree path. tanRad stays radian-native with its own `trigRangeReduce(pi/4)` call. cosDeg calls `trigRangeReduce` and `sinDegCore` directly (not sinDeg).
+All paths ultimately converge on `cordicTan` or `cordicAtan` as the shared computational engines. These two functions are the only ones that perform the CORDIC digit-by-digit rotation using the atan constant table. sinRad and cosRad convert to degrees and merge into the degree path. tanRad stays radian-native with its own `trigRangeReduce(pi/4)` call. cosDeg calls `trigRangeReduce` and `sinCore` directly (not sinDeg).
 
 ---
 
@@ -169,7 +159,7 @@ All paths ultimately converge on `cordicTan` or `cordicAtan` as the shared compu
 
 ### 3.1 Unified Range Reduction: trigRangeReduce(constId)
 
-`trigRangeReduce(uint8_t constId)` is parameterized by boundary constant. For tanDeg the boundary is CONST_45 (45 degrees); for sinDeg and cosDeg it is CONST_90 (90 degrees); for tanRad it is CONST_PI_OVER_4 (pi/4). With `RAD_VIA_DEG=1` (current default), sinRad and cosRad convert to degrees and delegate to sinDeg/cosDeg, so `trigRangeReduce` is not called with pi/2 boundary. The pi/2 boundary (CONST_PI_OVER_2) is used only by the `RAD_VIA_DEG=0` path for sinRad/cosRad.
+`trigRangeReduce(S0, S1)` is parameterized by boundary constant loaded into S1 by the caller. For tanDeg the boundary is CONST_45 (45 degrees); for sinDeg and cosDeg it is CONST_90 (90 degrees); for tanRad it is CONST_PI_OVER_4 (pi/4). sinRad and cosRad convert to degrees and delegate to sinDeg/cosDeg, so `trigRangeReduce` is not called with pi/2 boundary.
 
 The reduction converts any angle to [0, boundary] using four steps:
 
@@ -192,7 +182,7 @@ After reduction, degree functions convert the small reduced angle to radians (mu
 
 ### 3.2 sinDeg/sinRad: trigRangeReduce with 90° Boundary
 
-sinDeg uses `trigRangeReduce(CONST_90)`. With `RAD_VIA_DEG=1` (current default), sinRad converts to degrees and delegates to sinDeg, so it also uses the 90-degree boundary indirectly. The radian-native path (`RAD_VIA_DEG=0`) would use `trigRangeReduce(CONST_PI_OVER_2)` for sinRad.
+sinDeg uses `trigRangeReduce(CONST_90)`. sinRad converts to degrees and delegates to sinDeg, so it also uses the 90-degree boundary indirectly.
 
 The `truncate()` function returns void and sets `g_negateResult` (bit 1) and `g_useReciprocal` (bit 0) from the integer mod 4 as global side effects. For sine, `g_useReciprocal` is ignored — sine does not need the reciprocal reduction that tangent uses.
 
@@ -210,7 +200,7 @@ For larger inputs, the CORDIC rotation at position j=0 would need a counter > 9,
 
 ### 3.4 Unit Conversions
 
-With `RAD_VIA_DEG=1` (current default), sinRad and cosRad convert input radians to degrees and delegate. tanRad stays in radians. Degree functions convert the small reduced angle to radians for the CORDIC core. Inverse radian variants convert degree output to radians:
+sinRad and cosRad convert input radians to degrees and delegate. tanRad stays in radians. Degree functions convert the small reduced angle to radians for the CORDIC core. Inverse radian variants convert degree output to radians:
 
 | Function | Conversion | Constant | Notes |
 |----------|-----------|----------|-------|
@@ -218,7 +208,7 @@ With `RAD_VIA_DEG=1` (current default), sinRad and cosRad convert input radians 
 | `tanRad` | (none) | — | Stays in radians throughout |
 | `sinDeg` | (via tanDeg) | CONST_PI_OVER_180 | Inherited from tanDeg |
 | `sinRad` | rad → deg input (×180/π) | CONST_180_OVER_PI | Delegates to sinDeg |
-| `cosDeg` | (none — quadrant shift, no conversion) | — | trigRangeReduce(90) + sinDegCore (inherits tanDeg's conversion) |
+| `cosDeg` | (none — quadrant shift, no conversion) | — | trigRangeReduce(90) + sinCore (inherits tanDeg's conversion) |
 | `cosRad` | rad → deg input (×180/π) | CONST_180_OVER_PI | Delegates to cosDeg |
 | `asinRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 | Degree output → radian |
 | `acosRad` | result: `rad = deg * pi/180` | CONST_PI_OVER_180 | Degree output → radian |
@@ -306,7 +296,7 @@ This counts how many atan(10^-j) rotations are needed to reduce y toward zero.
 | S4 | Save x (during rotation) | Save x (during vectoring) |
 | R | Rotation temp, then result | Shifted values, then result |
 
-Note: `mul()` uses S2 as its internal accumulator. Functions that call `mul()` (like `sinDegCore`) can only rely on S3 and S4 being preserved across mul calls.
+Note: `mul()` uses S2 as its internal accumulator. Functions that call `mul()` (like `sinCore`) can only rely on S3 and S4 being preserved across mul calls.
 
 ---
 
@@ -373,7 +363,7 @@ Each trigonometric function builds on lower-level operations, each contributing 
 | atanRad | cordicAtan (direct) | CORDIC: ~1-2 digits | ~14.5 |
 | sinDeg | range reduce (exact) + div by 2 + tanDeg + 2 mul + add + div | 6 operations | ~13.5 |
 | sinRad | rad→deg conversion (1 mul) + sinDeg chain | Conversion: ~0.5 ULP, then sinDeg chain | ~13.5 |
-| cosDeg | trigRangeReduce(90) + quadrant shift + sub + sinDegCore (half-angle) | Same ops as sinDeg (quadrant shift is exact) | ~13.5 |
+| cosDeg | trigRangeReduce(90) + quadrant shift + sub + sinCore (half-angle) | Same ops as sinDeg (quadrant shift is exact) | ~13.5 |
 | cosRad | rad→deg conversion (1 mul) + cosDeg chain | Conversion: ~0.5 ULP, then cosDeg chain | ~13.5 |
 | asinDeg | mul + div + sub + sqrt + reciprocal + atanDeg | 6 operations | ~13 |
 | asinRad | asinDeg + deg-to-rad (1 mul) | Extra mul: ~0.5 ULP | ~12.5 |
@@ -440,11 +430,11 @@ Round-trip tests verify `forward(inverse(x)) = x` (e.g., `tan(atan(x))`):
 
 Error clustering patterns observed across test results:
 
-**tanDeg/tanRad - Near asymptotes**: Near 90 degrees (or pi/2 radians), tiny angle changes produce huge result changes. At 89.9 degrees, err ~ 1.6e-8 (only ~8 correct digits) because the result itself (~573) magnifies any input error. These errors only affect direct tanDeg/tanRad calls. Functions that use tanDeg internally (sinDeg, cosDeg, sinRad, cosRad) are **not** affected: sinDeg range-reduces to (0, 90] and then calls `tan(angle/2)` where angle/2 is in (0, 45], keeping the tangent argument in [0, 1] — well away from any asymptote. With `RAD_VIA_DEG=1`, sinRad and cosRad convert to degrees and delegate to sinDeg/cosDeg, so they inherit the same safe behavior. asinDeg/acosDeg call atanDeg, not tanDeg, so asymptote errors do not propagate to them either.
+**tanDeg/tanRad - Near asymptotes**: Near 90 degrees (or pi/2 radians), tiny angle changes produce huge result changes. At 89.9 degrees, err ~ 1.6e-8 (only ~8 correct digits) because the result itself (~573) magnifies any input error. These errors only affect direct tanDeg/tanRad calls. Functions that use tanDeg internally (sinDeg, cosDeg, sinRad, cosRad) are **not** affected: sinDeg range-reduces to (0, 90] and then calls `tan(angle/2)` where angle/2 is in (0, 45], keeping the tangent argument in [0, 1] — well away from any asymptote. sinRad and cosRad convert to degrees and delegate to sinDeg/cosDeg, so they inherit the same safe behavior. asinDeg/acosDeg call atanDeg, not tanDeg, so asymptote errors do not propagate to them either.
 
 **tanDeg - Small angles**: For angles < 1 degree, the degrees-to-radians conversion introduces multiplicative error. tan(0.001 deg) shows err ~ 4.2e-14 (MISS), a systematic ~14.3-digit precision from the pi/180 constant's limited accuracy.
 
-**sinDeg/sinRad - Consistent ~13.5 digits**: The half-angle formula chains 6 operations (div, tan, 2 mul, add, div), each contributing ~0.5 ULP. Random tests show ~1.4% MISS rate for sinDeg at the Relaxed threshold, consistent with the operation chain budget of ~13.5 digits. With `RAD_VIA_DEG=1`, sinRad converts to degrees and delegates to sinDeg, adding one irrational multiplication (×180/pi) followed by exact decimal range reduction. Random tests show ~1% MISS rate for sinRad. The errors come from operation chain accumulation, not from tan near-asymptote issues (see note above).
+**sinDeg/sinRad - Consistent ~13.5 digits**: The half-angle formula chains 6 operations (div, tan, 2 mul, add, div), each contributing ~0.5 ULP. Random tests show ~1.4% MISS rate for sinDeg at the Relaxed threshold, consistent with the operation chain budget of ~13.5 digits. sinRad converts to degrees and delegates to sinDeg, adding one irrational multiplication (×180/pi) followed by exact decimal range reduction. Random tests show ~1% MISS rate for sinRad. The errors come from operation chain accumulation, not from tan near-asymptote issues (see note above).
 
 **atanDeg/atanRad - Small input degradation**: For |x| < 1e-6, the CORDIC vectoring produces fewer significant digits in the count array. At 1e-14, the result has only ~13 correct digits because most CORDIC iterations produce zero counts.
 
@@ -461,7 +451,7 @@ Error clustering patterns observed across test results:
 | Catastrophic cancellation | Up to 5+ digits | asinDeg near |x|=1 |
 | Range reduction (degrees) | 0 (exact) | tanDeg, sinDeg |
 | Range reduction (radians) | ~0.5 ULP (irrational boundary) | tanRad |
-| Rad→deg conversion | ~0.5 ULP (×180/π) | sinRad, cosRad (with RAD_VIA_DEG=1) |
+| Rad→deg conversion | ~0.5 ULP (×180/π) | sinRad, cosRad |
 
 ### 6.5 Summary Table
 
@@ -553,7 +543,7 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 | atanRad | tan.cpp | CORDIC direct | ~14.5 digits | cordicAtan |
 | sinDeg | sin.cpp | Half-angle + CORDIC | ~13.5 digits | trigRangeReduce, tanDeg |
 | sinRad | sin.cpp | Converts to degrees, delegates to sinDeg | ~13.5 digits | sinDeg |
-| cosDeg | cos.cpp | Quadrant-shifted range reduction + sinDegCore | ~13.5 digits | trigRangeReduce, sinDegCore |
+| cosDeg | cos.cpp | Quadrant-shifted range reduction + sinCore | ~13.5 digits | trigRangeReduce, sinCore |
 | cosRad | cos.cpp | Converts to degrees, delegates to cosDeg | ~13.5 digits | cosDeg |
 | asinDeg | asin.cpp | atan(1/sqrt(1/x^2-1)) | ~13 digits | atanDeg, sqrt |
 | asinRad | asin.cpp | asinDeg + convert | ~12.5 digits | asinDeg |
@@ -566,7 +556,7 @@ For j >= 8, atan(10^-j) = 10^-j - 10^(-3j)/3 + ..., and the correction term 10^(
 
 **Why half-angle for sine**: The identity sin(x) = 2t/(1+t^2) reuses the existing tanDeg CORDIC pipeline. Alternative approaches (separate CORDIC for sin/cos, Taylor series) would require additional constant tables or more complex iteration loops with no significant precision advantage.
 
-**Why quadrant-shifted range reduction for cosine**: cosDeg uses `trigRangeReduce(CONST_90)` followed by incrementing the 2-bit quadrant counter `{g_negateResult, g_useReciprocal}` by 1. This achieves `cos(x) = sin(x + 90)` without adding 90 to the input angle. After the quadrant shift, the complement operation `90 - reduced_angle` is computed on a small value (the reduced angle is in [0, 90)), so it is always exact in decimal. This avoids the precision loss of adding 90 to a large input and avoids redundant range reduction (sinDeg would range-reduce again). cosDeg then calls sinDegCore directly. With `RAD_VIA_DEG=1`, cosRad converts to degrees and delegates to cosDeg, gaining the same exact-decimal advantages.
+**Why quadrant-shifted range reduction for cosine**: cosDeg uses `trigRangeReduce(CONST_90)` followed by incrementing the 2-bit quadrant counter `{g_negateResult, g_useReciprocal}` by 1. This achieves `cos(x) = sin(x + 90)` without adding 90 to the input angle. After the quadrant shift, the complement operation `90 - reduced_angle` is computed on a small value (the reduced angle is in [0, 90)), so it is always exact in decimal. This avoids the precision loss of adding 90 to a large input and avoids redundant range reduction (sinDeg would range-reduce again). cosDeg then calls sinCore directly. cosRad converts to degrees and delegates to cosDeg, gaining the same exact-decimal advantages.
 
 **Why identity-based asin/acos**: The formula asin(x) = atan(1/sqrt(1/x^2 - 1)) reuses existing atan and sqrt functions. The restructured form avoids needing to preserve x across the sqrt call, which would be impossible given sqrt's use of all registers.
 

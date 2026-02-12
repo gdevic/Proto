@@ -35,8 +35,8 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Tangent (degrees)** (`tan10.cpp`): Unified range reduction via `trigRangeReduce(45)` with `truncate()` mod 4 quadrant encoding. Converts to radians for final CORDIC. For tan, actual reciprocal = `g_negateResult XOR g_useReciprocal`. See `docs/tan10-algorithm-research.md`.
 - **Tangent (radians)** (`tan.cpp`): Stays in radians using `trigRangeReduce(π/4)` then calls `cordicTan` directly. No rad→deg→rad round trip. See `docs/tan-algorithm-research.md`.
 - **Arctangent (degrees)** (`tan10.cpp`): CORDIC in radians, then converts to degrees. Works across full range. See `docs/tan10-algorithm-research.md`.
-- **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). Unified range reduction via `trigRangeReduce(90)` for degrees, `trigRangeReduce(π/2)` for radians. `sinDegCore` calls tanDeg; `sinRadCore` calls tanRad (stays in radians). See `docs/sincos-algorithm-research.md`.
-- **Cosine** (`cos.cpp`): cosDeg uses `trigRangeReduce(90)` + quadrant shift (2-bit increment of {g_negateResult, g_useReciprocal}) + complement (90 - S0) + `sinDegCore()`. cosRad (with `RAD_VIA_DEG=1`) converts to degrees and delegates to cosDeg. See `docs/sincos-algorithm-research.md`.
+- **Sine** (`sin.cpp`): Half-angle formula sin(x) = 2t/(1+t²) where t=tan(x/2). sinDeg uses `trigRangeReduce(90)` then `sinCore()` which calls tanDeg. sinRad converts to degrees (×180/π) and delegates to sinDeg. See `docs/sincos-algorithm-research.md`.
+- **Cosine** (`cos.cpp`): cosDeg uses `trigRangeReduce(90)` + quadrant shift (2-bit increment of {g_negateResult, g_useReciprocal}) + complement (90 - S0) + `sinCore()`. cosRad converts to degrees (×180/π) and delegates to cosDeg. See `docs/sincos-algorithm-research.md`.
 - **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 - **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 
@@ -78,13 +78,11 @@ Three global bools map to microcode nibble-sized RAM variables:
 - For sin: `g_useReciprocal` is set but ignored
 
 **Save/restore pattern** (maps to push/pop in microcode):
-- `sinDegCore()` saves/restores `g_inputSign` and `g_negateResult` around its `tanDeg()` call
-- `sinRadCore()` saves/restores `g_inputSign` and `g_negateResult` around its `tanRad()` call
 - `asinDeg()` saves/restores `g_inputSign` around its `atanDeg()` call
 
-**Call chains** (with RAD_VIA_DEG=1):
-- Degree: sinDeg → sinDegCore → tanDeg → cordicTan
-- Degree: cosDeg → trigRangeReduce + quadrant shift → sinDegCore → tanDeg → cordicTan
+**Call chains**:
+- Degree: sinDeg → sinCore → tanDeg → cordicTan
+- Degree: cosDeg → trigRangeReduce + quadrant shift → sinCore → tanDeg → cordicTan
 - Radian: sinRad → (×180/π) → sinDeg (degree path)
 - Radian: cosRad → (×180/π) → cosDeg (degree path)
 - Radian: tanRad → trigRangeReduce(π/4) → cordicTan (stays in radians)

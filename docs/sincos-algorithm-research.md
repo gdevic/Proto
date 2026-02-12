@@ -7,9 +7,9 @@ Eight trigonometric functions implemented using half-angle formulas and arctange
 | Function | Input | Output | Formula |
 |----------|-------|--------|---------|
 | `sinDeg` | degrees | sine value | Half-angle |
-| `sinRad` | radians | sine value | Converts to degrees, delegates to `sinDeg` (RAD_VIA_DEG=1) |
-| `cosDeg` | degrees | cosine value | Quadrant-shifted range reduction + `sinDegCore` |
-| `cosRad` | radians | cosine value | Converts to degrees, delegates to `cosDeg` (RAD_VIA_DEG=1) |
+| `sinRad` | radians | sine value | Converts to degrees (×180/π), delegates to `sinDeg` |
+| `cosDeg` | degrees | cosine value | Quadrant-shifted range reduction + `sinCore` |
+| `cosRad` | radians | cosine value | Converts to degrees (×180/π), delegates to `cosDeg` |
 | `asinDeg` | value [-1,1] | degrees [-90,90] | Arctangent identity |
 | `asinRad` | value [-1,1] | radians [-π/2,π/2] | Calls `asinDeg`, converts |
 | `acosDeg` | value [-1,1] | degrees [0,180] | 90 - asin |
@@ -84,9 +84,7 @@ Solution: Save `t` to S4, save `2t` to S3 before computing `t²`.
 
 ### Radians Version (sinRad)
 
-With `RAD_VIA_DEG=1` (the active default), `sinRad` converts the input to degrees via multiplication by 180/π, then delegates to `sinDeg`.
-
-With `RAD_VIA_DEG=0` (inactive), `sinRad` stays in radians: `trigRangeReduce(CONST_PI_OVER_2)` then `sinRadCore()` which calls `tanRad` instead of `tanDeg`.
+`sinRad` converts the input to degrees via multiplication by 180/π, then delegates to `sinDeg`. One irrational multiplication followed by exact decimal range reduction gives better precision than radian-native range reduction with irrational π/2 boundary.
 
 ## Cosine via Quadrant-Shifted Range Reduction
 
@@ -107,7 +105,7 @@ g_negateResult ^= g_useReciprocal;   // carry: bit1 ^= bit0
 g_useReciprocal = !g_useReciprocal;  // increment bit0
 ```
 
-After the quadrant shift, the reduced angle is complemented (`S0 = 90 - S0`) and passed to `sinDegCore()` — not `sinDeg()`. This avoids redundant range reduction since the angle is already reduced.
+After the quadrant shift, the reduced angle is complemented (`S0 = 90 - S0`) and passed to `sinCore()` — not `sinDeg()`. This avoids redundant range reduction since the angle is already reduced.
 
 ### Why Quadrant Shift
 
@@ -121,9 +119,7 @@ The complement step (`90 - S0`) is exact in BCD because 90 is a representable de
 
 ### Radians Version
 
-With `RAD_VIA_DEG=1` (the active default), `cosRad` converts the input to degrees via multiplication by 180/π (stripping the sign first, since cos is even), then delegates to `cosDeg`.
-
-With `RAD_VIA_DEG=0` (inactive), `cosRad` uses the same quadrant-shift approach with π-based boundaries: `trigRangeReduce(CONST_PI_OVER_2)` + quadrant shift + complement (`π/2 - S0`) + `sinRadCore()`. This stays in radians but uses irrational π/2 constants in the complement step.
+`cosRad` converts the input to degrees via multiplication by 180/π, then delegates to `cosDeg`. Same rationale as sinRad: one irrational multiplication followed by exact decimal range reduction.
 
 ## Arctangent Identity (asin)
 
@@ -226,7 +222,7 @@ Testing `sin(asin(x)) = x` and `cos(acos(x)) = x`:
 
 ## Future Improvements
 
-1. **Degree-native CORDIC**: Could implement sin/cos directly in CORDIC rotation mode with degree-based constants. With `RAD_VIA_DEG=1`, the radian path converts to degrees and delegates, so a degree-native CORDIC would benefit both paths. Could reduce operation count for the degree path.
+1. **Degree-native CORDIC**: Could implement sin/cos directly in CORDIC rotation mode with degree-based constants. Since the radian path converts to degrees and delegates, a degree-native CORDIC would benefit both paths. Could reduce operation count for the degree path.
 
 2. **Small angle optimization**: For `|x| < ε`, use Taylor series `sin(x) ≈ x`, `cos(x) ≈ 1 - x²/2`.
 

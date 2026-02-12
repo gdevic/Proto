@@ -85,7 +85,7 @@ atanRad(x) ──→ cordicAtan(x) ──→ result (radians)
 atanDeg(x) ──→ cordicAtan(x) ──→ [×180/π] ──→ result (degrees)
 ```
 
-tanRad uses `trigRangeReduce` with π/4 boundary and calls `cordicTan` directly. sinRad and cosRad convert to degrees (multiply by 180/π) then delegate to sinDeg and cosDeg respectively (`RAD_VIA_DEG=1`), which use exact decimal range reduction.
+tanRad uses `trigRangeReduce` with π/4 boundary and calls `cordicTan` directly. sinRad and cosRad convert to degrees (multiply by 180/π) then delegate to sinDeg and cosDeg respectively, which use exact decimal range reduction.
 
 **Key insight**: Degree functions use exact decimal range reduction (45 or 90 is an exact BCD integer). tanRad is the only radian function that stays in radians using a π-based boundary; sinRad and cosRad convert to degrees first and delegate to their degree counterparts, trading one irrational multiplication for exact decimal range reduction. All paths share the same `cordicTan` core.
 

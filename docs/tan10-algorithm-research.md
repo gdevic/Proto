@@ -227,7 +227,7 @@ rad_input → convert to degrees → use tan10() reduction → convert back → 
 
 The precision cost is small (two conversions), but the implementation is simpler and the reduction is exact rather than approximate.
 
-**Update**: The implementation uses a hybrid approach. Degree functions use exact decimal range reduction as described. `tanRad` stays in radians using `trigRangeReduce(CONST_PI_OVER_4)` then calls `cordicTan` directly — no degree conversion. For `sinRad` and `cosRad`, `RAD_VIA_DEG=1` (the active default) converts to degrees via multiplication by 180/π, then delegates to `sinDeg`/`cosDeg` respectively, gaining exact decimal range reduction at the cost of one irrational multiplication.
+**Update**: The implementation uses a hybrid approach. Degree functions use exact decimal range reduction as described. `tanRad` stays in radians using `trigRangeReduce(CONST_PI_OVER_4)` then calls `cordicTan` directly — no degree conversion. `sinRad` and `cosRad` convert to degrees via multiplication by 180/π, then delegate to `sinDeg`/`cosDeg` respectively, gaining exact decimal range reduction at the cost of one irrational multiplication.
 
 ---
 
@@ -315,7 +315,7 @@ Our implementation follows this proven design, achieving comparable precision (~
 
 2. **Argument reduction optimization**: For very large angles (>10⁶ degrees), use division instead of repeated subtraction for faster reduction.
 
-3. **Sin/Cos via tan**: **Implemented**. sinDeg uses the half-angle formula sin(x) = 2t/(1+t^2) where t = tan(x/2), with range reduction via `trigRangeReduce(90)`. sinRad (with `RAD_VIA_DEG=1`) converts to degrees and delegates to sinDeg. cosDeg uses `trigRangeReduce(90)` + quadrant shift + complement (`90 - S0`) + `sinDegCore()`. cosRad (with `RAD_VIA_DEG=1`) converts to degrees and delegates to cosDeg.
+3. **Sin/Cos via tan**: **Implemented**. sinDeg uses the half-angle formula sin(x) = 2t/(1+t^2) where t = tan(x/2), with range reduction via `trigRangeReduce(90)`. sinRad converts to degrees and delegates to sinDeg. cosDeg uses `trigRangeReduce(90)` + quadrant shift + complement (`90 - S0`) + `sinCore()`. cosRad converts to degrees and delegates to cosDeg.
 
 ---
 
