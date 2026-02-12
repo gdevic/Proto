@@ -45,11 +45,8 @@ void cosDeg(BCD& _R, BCD& _S0)
     trigRangeReduce(S0, S1);
 
     // Shift quadrant by +1: cos(x) = sin(x + 90°)
-    // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
-    g_negateResult ^= g_useReciprocal;
-
-    // Compute the final sign
-    bool sign = g_negateResult ^ g_inputSign;
+    // g_useReciprocal is quadrant bit 0 from truncate(), used here as carry for the +1 shift
+    bool sign = g_negateResult ^ g_useReciprocal;
 
     // Toggle complement for the shifted quadrant: S0 = 90 - S0
     // This is exact in decimal (90 is an exact BCD constant)
@@ -116,11 +113,8 @@ void cosRad(BCD& _R, BCD& _S0)
     trigRangeReduce(S0, S1);
 
     // Shift quadrant by +1: cos(x) = sin(x + π/2)
-    // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
-    g_negateResult ^= g_useReciprocal;
-
-    // Compute the final sign
-    bool sign = g_negateResult ^ g_inputSign;
+    // g_useReciprocal is quadrant bit 0 from truncate(), used here as carry for the +1 shift
+    bool sign = g_negateResult ^ g_useReciprocal;
 
     // Toggle complement for the shifted quadrant: S0 = π/2 - S0
     regCopy(S1, S0);
