@@ -45,8 +45,8 @@ void asinCore()
     // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
     reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
 
-    // Compute atan (degrees or radians based on FLAG_DEG)
-    atanDegRad(R, S0);
+    // Compute atan (in degrees)
+    atanDeg(R, S0);
 }
 
 // Compute arcsine in degrees: R = asinDeg(S0)
@@ -55,7 +55,6 @@ void asinCore()
 // Reads from S0, stores result in R
 void asinDeg(BCD& R, BCD& S0)
 {
-    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -98,7 +97,6 @@ void asinDeg(BCD& R, BCD& S0)
 // Reads from S0, stores result in R
 void asinRad(BCD& R, BCD& S0)
 {
-    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     // Compute asin in degrees first

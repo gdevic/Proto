@@ -24,7 +24,6 @@
 // Reads from S0, stores result in R
 void cosDeg(BCD& _R, BCD& _S0)
 {
-    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -82,7 +81,6 @@ void cosDeg(BCD& _R, BCD& _S0)
 // Reads from S0, stores result in R
 void cosRad(BCD& _R, BCD& _S0)
 {
-    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
 #if RAD_VIA_DEG

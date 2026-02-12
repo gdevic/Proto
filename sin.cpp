@@ -74,8 +74,8 @@ void sinCore()
     constLoad(S1, CONST_2);
     div(R, S0, S1);  // R = angle / 2; S0 = R via postCalc
 
-    // Compute tan(x/2) — dispatch by unit
-    tanDegRad(R, S0); // Call common tangent which dispatches by unit
+    // Compute tan(x/2) (in degrees)
+    tanDeg(R, S0);
 
     // t = tan(x/2) is now in R
     // sin(x) = 2*t / (1 + t²)
@@ -111,7 +111,6 @@ void sinCore()
 // Reads from S0, stores result in R
 void sinDeg(BCD& _R, BCD& _S0)
 {
-    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -163,7 +162,6 @@ void sinDeg(BCD& _R, BCD& _S0)
 // Reads from S0, stores result in R
 void sinRad(BCD& _R, BCD& _S0)
 {
-    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
 #if RAD_VIA_DEG
