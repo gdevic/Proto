@@ -440,7 +440,8 @@ void tanRad(BCD& R, BCD& S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_PI_OVER_4);
+    constLoad(S1, CONST_PI_OVER_4);
+    trigRangeReduce(S0, S1);
 
     // For tan: actual reciprocal = g_negateResult XOR g_useReciprocal
     bool doReciprocal = g_negateResult ^ g_useReciprocal;

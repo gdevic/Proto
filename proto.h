@@ -120,7 +120,8 @@ void tanDegRad(BCD &R, BCD &S0);
 
 // Unified trig range reduction: reduces |angle| to [0, boundary) using q mod 4
 // Sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from quadrant
-void trigRangeReduce(uint8_t constId);
+// Caller must load boundary constant into S1 before calling
+void trigRangeReduce(BCD& S0, BCD& S1);
 
 // Internal helper shared between sin.cpp and cos.cpp
 void sinCore();                    // Half-angle core, dispatches tanDeg/tanRad via FLAG_DEG

@@ -21,18 +21,17 @@
 #include <cmath>
 
 // Unified trig range reduction: reduces positive angle to [0, boundary)
-// Divides S0 by boundary, truncate() sets g_negateResult (bit 1) and g_useReciprocal (bit 0)
-// from the quadrant (integer mod 4).
+// Divides S0 by boundary, truncate() sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from the quadrant (integer mod 4).
 // If g_useReciprocal: complements angle (S0 = boundary - S0)
-// Input: S0 = positive angle
+// Input: S0 = positive angle, S1 = boundary constant (caller must load via constLoad)
 // Output: S0 = reduced angle in [0, boundary), globals set from quadrant
 // Uses registers: S0, S1, S2, S3, S4, R
-void trigRangeReduce(uint8_t constId)
+void trigRangeReduce(BCD& _S0, BCD& _S1)
 {
+    assert((&_S0 == &::S0) && (&_S1 == &::S1));
+
     g_negateResult = false;
     g_useReciprocal = false;
-
-    constLoad(S1, constId);         // S1 = boundary
 
     // If already in [0, boundary), nothing to do (q=0)
     if (!isRegGE(S0, S1))
@@ -128,7 +127,8 @@ void sinDeg(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_90);
+    constLoad(S1, CONST_90);
+    trigRangeReduce(S0, S1);
 
     // Compute the final sign
     bool sign = g_negateResult ^ g_inputSign;
@@ -188,7 +188,8 @@ void sinRad(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_PI_OVER_2);
+    constLoad(S1, CONST_PI_OVER_2);
+    trigRangeReduce(S0, S1);
 
     // Compute the final sign
     bool sign = g_negateResult ^ g_inputSign;

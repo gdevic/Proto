@@ -41,7 +41,8 @@ void cosDeg(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_90);
+    constLoad(S1, CONST_90);
+    trigRangeReduce(S0, S1);
 
     // Shift quadrant by +1: cos(x) = sin(x + 90°)
     // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
@@ -111,7 +112,8 @@ void cosRad(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_PI_OVER_2);
+    constLoad(S1, CONST_PI_OVER_2);
+    trigRangeReduce(S0, S1);
 
     // Shift quadrant by +1: cos(x) = sin(x + π/2)
     // Only the carry into g_negateResult matters; the new g_useReciprocal is never read

@@ -39,7 +39,8 @@ void tanDeg(BCD& R, BCD& S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    trigRangeReduce(CONST_45);
+    constLoad(S1, CONST_45);
+    trigRangeReduce(S0, S1);
 
     // For tan: actual reciprocal = g_negateResult XOR g_useReciprocal
     // q=0: angle in [0,45), no negate, no reciprocal → doRecip=false
