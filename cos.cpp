@@ -47,6 +47,9 @@ void cosDeg(BCD& _R, BCD& _S0)
     // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
     g_negateResult ^= g_useReciprocal;
 
+    // Compute the final sign
+    bool sign = g_negateResult ^ g_inputSign;
+
     // Toggle complement for the shifted quadrant: S0 = 90 - S0
     // This is exact in decimal (90 is an exact BCD constant)
     regCopy(S1, S0);
@@ -64,13 +67,14 @@ void cosDeg(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = g_negateResult ^ g_inputSign;
+        R.sign = sign;
         postCalc(R, S0, S1);
         return;
     }
 
     // S0 is in (0, 90) — compute sin using half-angle formula
     sinCore();
+    R.sign = sign;
     postCalc(R, S0, S1);
 }
 
@@ -108,13 +112,14 @@ void cosRad(BCD& _R, BCD& _S0)
     S0.sign = false;
 
     // ---------- Range Reduction ----------
-    g_negateResult = false;
-    g_useReciprocal = false;
     trigRangeReduce(CONST_PI_OVER_2);
 
     // Shift quadrant by +1: cos(x) = sin(x + π/2)
     // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
     g_negateResult ^= g_useReciprocal;
+
+    // Compute the final sign
+    bool sign = g_negateResult ^ g_inputSign;
 
     // Toggle complement for the shifted quadrant: S0 = π/2 - S0
     regCopy(S1, S0);
@@ -132,13 +137,14 @@ void cosRad(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = g_negateResult ^ g_inputSign;
+        R.sign = sign;
         postCalc(R, S0, S1);
         return;
     }
 
     // S0 is in (0, π/2) — compute sin using half-angle formula
     sinCore();
+    R.sign = sign;
     postCalc(R, S0, S1);
 #endif
 }

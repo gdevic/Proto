@@ -7,7 +7,7 @@
  * Provides trigRangeReduce() as shared range reduction for all trig functions.
  * Uses truncate() mod 4 to encode quadrant: bit 1 = negate, bit 0 = complement.
  *
- * sinDegCore() and sinRadCore() are shared helpers used by cos.cpp.
+ * sinCore() is a shared helper used by cos.cpp.
  *
  * Copyright (c) 2025 Goran Devic
  * SPDX-License-Identifier: CC-BY-NC-SA-4.0
@@ -75,16 +75,8 @@ void sinCore()
     constLoad(S1, CONST_2);
     div(R, S0, S1);  // R = angle / 2; S0 = R via postCalc
 
-    // Save globals before tan clobbers them (push in microcode)
-    bool savedInputSign = g_inputSign;
-    bool savedNegate = g_negateResult;
-
     // Compute tan(x/2) — dispatch by unit
     tanDegRad(R, S0); // Call common tangent which dispatches by unit
-
-    // Restore globals after tan (pop in microcode)
-    g_inputSign = savedInputSign;
-    g_negateResult = savedNegate;
 
     // t = tan(x/2) is now in R
     // sin(x) = 2*t / (1 + t²)
@@ -110,9 +102,6 @@ void sinCore()
     // Compute sin = (2*t) / (1 + t²)
     regCopy(S0, S3);  // S0 = 2*t (from S3)
     div(R, S0, S1);   // R = sin(x)
-
-    // Apply final sign
-    R.sign = g_negateResult ^ g_inputSign;
 }
 
 // Compute sine in degrees: R = sinDeg(S0)
@@ -141,6 +130,9 @@ void sinDeg(BCD& _R, BCD& _S0)
     // ---------- Range Reduction ----------
     trigRangeReduce(CONST_90);
 
+    // Compute the final sign
+    bool sign = g_negateResult ^ g_inputSign;
+
     // Special case: sin(0) after reduction (i.e., sin(n*180) = 0)
     if (isMantZero(S0.mant.data())) {
         postCalc(R, S0, S1);
@@ -154,7 +146,7 @@ void sinDeg(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = g_negateResult ^ g_inputSign;
+        R.sign = sign;
         postCalc(R, S0, S1);
         return;
     }
@@ -162,6 +154,7 @@ void sinDeg(BCD& _R, BCD& _S0)
     // Now S0 is in (0, 90) - compute sin using half-angle formula
     // tan(S0/2) will be in (0, 1) - optimal range for CORDIC
     sinCore();
+    R.sign = sign;
     postCalc(R, S0, S1);
 }
 
@@ -198,6 +191,9 @@ void sinRad(BCD& _R, BCD& _S0)
     // ---------- Range Reduction ----------
     trigRangeReduce(CONST_PI_OVER_2);
 
+    // Compute the final sign
+    bool sign = g_negateResult ^ g_inputSign;
+
     // Special case: sin(0) after reduction (i.e., sin(n*π) = 0)
     if (isMantZero(S0.mant.data())) {
         postCalc(R, S0, S1);
@@ -211,13 +207,14 @@ void sinRad(BCD& _R, BCD& _S0)
     if (isRegEQ(S0, S4)) {
         regClear(R);
         R.mant[0] = 1;
-        R.sign = g_negateResult ^ g_inputSign;
+        R.sign = sign;
         postCalc(R, S0, S1);
         return;
     }
 
     // Now S0 is in (0, π/2) - compute sin using half-angle formula
-    sinRadCore();
+    sinCore();
+    R.sign = sign;
     postCalc(R, S0, S1);
 #endif
 }
