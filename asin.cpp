@@ -32,7 +32,7 @@ void asinDeg(BCD& R, BCD& S0)
     if (FLAG_S0_ZERO) return;
 
     // Save input sign (asin is odd function)
-    g_inputSign = S0.sign;
+    bool sign = S0.sign;
     S0.sign = false;
 
     // Check domain: |x| <= 1
@@ -47,7 +47,7 @@ void asinDeg(BCD& R, BCD& S0)
     if (isRegEQ(S0, S4)) {
         // asin(1) = 90, asin(-1) = -90
         constLoad(R, CONST_90);
-        R.sign = g_inputSign;
+        R.sign = sign;
         postCalc(R, S0, S1);
         return;
     }
@@ -78,13 +78,10 @@ void asinDeg(BCD& R, BCD& S0)
     reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
 
     // Compute atan in degrees
-    bool savedInputSign = g_inputSign;   // save before atanDeg (push in microcode)
-    atanDeg(R, S0);                      // clobbers g_inputSign
-    // We have to restore g_inputSign (no optimizations) since asinRad depends on it
-    g_inputSign = savedInputSign;        // restore after atanDeg (pop in microcode)
+    atanDeg(R, S0);
 
     // Apply sign (asin is odd function)
-    R.sign = g_inputSign;
+    R.sign = sign;
     postCalc(R, S0, S1);
 }
 
@@ -105,14 +102,9 @@ void asinRad(BCD& R, BCD& S0)
         return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
-    // S0 already equals R from asinDeg's postCalc; g_inputSign holds the sign
-    S0.sign = false;
-
+    // S0 already equals R (with correct sign) from asinDeg's postCalc
     constLoad(S1, CONST_PI_OVER_180);
     mul(R, S0, S1);
-
-    // Restore sign
-    R.sign = g_inputSign;
     postCalc(R, S0, S1);
 }
 
