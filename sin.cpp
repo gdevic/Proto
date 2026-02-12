@@ -57,7 +57,6 @@ void trigRangeReduce(uint8_t constId)
 
     // If bit 0 set: complement angle (S0 = boundary - S0)
     if (g_useReciprocal) {
-        regCopy(S1, S0);
         regCopy(S0, S4);            // S4 = boundary (survived mul)
         sub(R, S0, S1);             // R = boundary - remainder; S0 = R via postCalc
     }
