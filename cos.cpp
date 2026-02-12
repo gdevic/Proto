@@ -31,7 +31,7 @@ void cosDeg(BCD& _R, BCD& _S0)
 
     // Special case: cosDeg(0) = 1 exactly
     if (FLAG_S0_ZERO) {
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         postCalc(R, S0, S1);
         return;
     }
@@ -65,8 +65,7 @@ void cosDeg(BCD& _R, BCD& _S0)
     // Special case: cos = ±1 (e.g., cos(180°) = -1, cos(360°) = +1)
     constLoad(S4, CONST_90);
     if (isRegEQ(S0, S4)) {
-        regClear(R);
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         R.sign = sign;
         postCalc(R, S0, S1);
         return;
@@ -102,7 +101,7 @@ void cosRad(BCD& _R, BCD& _S0)
 
     // Special case: cosRad(0) = 1 exactly
     if (FLAG_S0_ZERO) {
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         postCalc(R, S0, S1);
         return;
     }
@@ -135,8 +134,7 @@ void cosRad(BCD& _R, BCD& _S0)
     // Special case: cos = ±1 (e.g., cos(π) = -1, cos(2π) = +1)
     constLoad(S4, CONST_PI_OVER_2);
     if (isRegEQ(S0, S4)) {
-        regClear(R);
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         R.sign = sign;
         postCalc(R, S0, S1);
         return;

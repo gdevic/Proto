@@ -144,8 +144,7 @@ void sinDeg(BCD& _R, BCD& _S0)
     // Special case: sin(90) = 1 exactly (when complement produced boundary value)
     constLoad(S4, CONST_90);
     if (isRegEQ(S0, S4)) {
-        regClear(R);
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         R.sign = sign;
         postCalc(R, S0, S1);
         return;
@@ -205,8 +204,7 @@ void sinRad(BCD& _R, BCD& _S0)
     // Special case: sin(π/2) = 1 exactly
     constLoad(S4, CONST_PI_OVER_2);
     if (isRegEQ(S0, S4)) {
-        regClear(R);
-        R.mant[0] = 1;
+        constLoad(R, CONST_1);
         R.sign = sign;
         postCalc(R, S0, S1);
         return;
