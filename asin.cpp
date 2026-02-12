@@ -17,6 +17,38 @@
 #include <cassert>
 #include <cmath>
 
+// Core arcsine computation: asin(x) = atan(1 / sqrt(1/x² - 1))
+// Input: S0 = |x| in (0, 1), positive, domain-checked by caller
+// Output: R = asin(|x|), positive (caller applies sign)
+// Uses registers: S0, S1, S2, S3, S4, R
+void asinCore()
+{
+    // Compute x²: S0 = x, result in R
+    regCopy(S1, S0);
+    mul(R, S0, S1);  // R = x²; S1 = R via postCalc
+
+    // Compute 1/x²
+    constLoad(S0, CONST_1);      // S0 = 1, S1 = x² via postCalc
+    div(R, S0, S1);   // R = 1/x²; S0 = R via postCalc
+
+    // Compute 1/x² - 1
+    constLoad(S1, CONST_1);      // S0 = 1/x² via postCalc, S1 = 1
+    sub(R, S0, S1);   // R = 1/x² - 1; S0 = R via postCalc
+
+    // Compute sqrt(1/x² - 1): input S0, result in R
+    sqrt(R, S0);      // R = sqrt(1/x² - 1)
+
+    // Check for sqrt error (shouldn't happen if domain check passed)
+    if (FLAG_INV_ERR)
+        return;  // postCalc: handled by sqrt()
+
+    // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
+    reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
+
+    // Compute atan (degrees or radians based on FLAG_DEG)
+    atanDegRad(R, S0);
+}
+
 // Compute arcsine in degrees: R = asinDeg(S0)
 // Input is a value in [-1, 1], output in degrees [-90, 90]
 // Uses formula: asin(x) = atan(x / sqrt(1 - x²))
@@ -52,33 +84,8 @@ void asinDeg(BCD& R, BCD& S0)
         return;
     }
 
-    // General case: asin(x) = atan(1 / sqrt(1/x² - 1))
-    // This formula avoids needing to save x across sqrt (which uses S4)
-
-    // Compute x²: S0 = x, result in R
-    regCopy(S1, S0);
-    mul(R, S0, S1);  // R = x²; S1 = R via postCalc
-
-    // Compute 1/x²
-    constLoad(S0, CONST_1);      // S0 = 1, S1 = x² via postCalc
-    div(R, S0, S1);   // R = 1/x²; S0 = R via postCalc
-
-    // Compute 1/x² - 1
-    constLoad(S1, CONST_1);      // S0 = 1/x² via postCalc, S1 = 1
-    sub(R, S0, S1);   // R = 1/x² - 1; S0 = R via postCalc
-
-    // Compute sqrt(1/x² - 1): input S0, result in R
-    sqrt(R, S0);      // R = sqrt(1/x² - 1)
-
-    // Check for sqrt error (shouldn't happen if domain check passed)
-    if (FLAG_INV_ERR)
-        return;  // postCalc: handled by sqrt()
-
-    // Compute 1 / sqrt(1/x² - 1) = x / sqrt(1-x²)
-    reciprocal(R, R);  // R = 1 / sqrt(1/x² - 1); S0 = R via postCalc
-
-    // Compute atan in degrees
-    atanDeg(R, S0);
+    // General case
+    asinCore();
 
     // Apply sign (asin is odd function)
     R.sign = sign;

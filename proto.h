@@ -115,8 +115,9 @@ void asinDeg(BCD &R, BCD &S0);     // Arcsine, output in degrees
 void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
 void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
-// Dispatch function
+// Dispatch functions
 void tanDegRad(BCD &R, BCD &S0);
+void atanDegRad(BCD &R, BCD &S0);
 
 // Unified trig range reduction: reduces |angle| to [0, boundary) using q mod 4
 // Sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from quadrant

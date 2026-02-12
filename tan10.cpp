@@ -151,13 +151,22 @@ void atanDeg(BCD& R, BCD& S0)
     postCalc(R, S0, S1);
 }
 
-// Based on the unit, dispatch to the corresponding function
+// Based on the unit, dispatch to the corresponding tangent function
 void tanDegRad(BCD &R, BCD &S0)
 {
     if (FLAG_DEG)
         tanDeg(R, S0);
     else
         tanRad(R, S0);
+}
+
+// Based on the unit, dispatch to the corresponding arctangent function
+void atanDegRad(BCD &R, BCD &S0)
+{
+    if (FLAG_DEG)
+        atanDeg(R, S0);
+    else
+        atanRad(R, S0);
 }
 
 // IEEE operations for test runner (degrees)
