@@ -120,4 +120,28 @@ void constLoad(BCD& x, uint8_t which)
         x.exp[1] = 1;
         x.esign = true;
     }
+    else if (which == CONST_1_3) {
+        // 1/3 = 3.333333333333333e-1
+        mantCopy(x.mant.data(), mant_one_third);
+        x.exp[1] = 1;
+        x.esign = true;
+    }
+    else if (which == CONST_2_15) {
+        // 2/15 = 1.333333333333333e-1
+        mantCopy(x.mant.data(), mant_two_fifteenths);
+        x.exp[1] = 1;
+        x.esign = true;
+    }
+    else if (which == CONST_1_5) {
+        // 1/5 = 2.000000000000000e-1
+        mantCopy(x.mant.data(), mant_one_fifth);
+        x.exp[1] = 1;
+        x.esign = true;
+    }
+    else if (which == CONST_1_7) {
+        // 1/7 = 1.428571428571429e-1
+        mantCopy(x.mant.data(), mant_one_seventh);
+        x.exp[1] = 1;
+        x.esign = true;
+    }
 }

@@ -66,17 +66,21 @@ inline bool g_negateResult = false;   // Negate from range reduce → NEGATE_RES
 inline bool g_useReciprocal = false;  // Reciprocal flag          → USE_RECIP
 
 // Constant identifiers for constLoad()
-inline constexpr uint8_t CONST_1   = 0;   // Value 1.0
-inline constexpr uint8_t CONST_2   = 1;   // Value 2.0
-inline constexpr uint8_t CONST_45  = 2;   // Value 45.0
-inline constexpr uint8_t CONST_90  = 3;   // Value 90.0
-inline constexpr uint8_t CONST_180 = 4;   // Value 180.0
-inline constexpr uint8_t CONST_360 = 5;   // Value 360.0
+inline constexpr uint8_t CONST_1   = 0;
+inline constexpr uint8_t CONST_2   = 1;
+inline constexpr uint8_t CONST_45  = 2;
+inline constexpr uint8_t CONST_90  = 3;
+inline constexpr uint8_t CONST_180 = 4;
+inline constexpr uint8_t CONST_360 = 5;
 inline constexpr uint8_t CONST_PI_OVER_180 = 6;   // π/180 = 0.01745329251994329...
 inline constexpr uint8_t CONST_180_OVER_PI = 7;   // 180/π = 57.29577951308232...
 inline constexpr uint8_t CONST_PI_OVER_2   = 8;   // π/2 = 1.5707963267948966...
 inline constexpr uint8_t CONST_LN10        = 9;   // ln(10) = 2.302585092994046...
 inline constexpr uint8_t CONST_PI_OVER_4   = 10;  // π/4 = 0.7853981633974483...
+inline constexpr uint8_t CONST_1_3         = 11;  // 1/3 = 3.333333333333333e-1
+inline constexpr uint8_t CONST_2_15        = 12;  // 2/15 = 1.333333333333333e-1
+inline constexpr uint8_t CONST_1_5         = 13;  // 1/5 = 2.000000000000000e-1
+inline constexpr uint8_t CONST_1_7         = 14;  // 1/7 = 1.428571428571429e-1
 
 // Load a predefined constant into a BCD register
 void constLoad(BCD& x, uint8_t which);

@@ -18,10 +18,6 @@
 #include <cmath>
 
 #if SMALL_TAN_TAYLOR
-// Taylor series constants defined in const.cpp
-extern const uint8_t mant_one_third[MAX_MANT];
-extern const uint8_t mant_two_fifteenths[MAX_MANT];
-
 // Small-angle tangent via Horner form: tan(x) = x·(1 + x²·(1/3 + x²·2/15))
 // Avoids normalizeToZeroExp which destroys digits for small angles.
 //
@@ -68,17 +64,11 @@ static void taylorTan(BCD& R, BCD& S0)
     regCopy(S3, R);                // Save x²
 
     // Horner inner: x² * 2/15
-    regClear(S1);
-    mantCopy(S1.mant.data(), mant_two_fifteenths);
-    S1.exp[1] = 1;
-    S1.esign = true;               // S1 = 1.333333333333333e-1
+    constLoad(S1, CONST_2_15);
     mul(R, S0, S1);                // R = x²·2/15; S0 = result via postCalc
 
     // + 1/3
-    regClear(S1);
-    mantCopy(S1.mant.data(), mant_one_third);
-    S1.exp[1] = 1;
-    S1.esign = true;               // S1 = 3.333333333333333e-1
+    constLoad(S1, CONST_1_3);
     add(R, S0, S1);                // R = 1/3 + x²·2/15; S0 = result via postCalc
 
     // * x²
@@ -96,11 +86,6 @@ static void taylorTan(BCD& R, BCD& S0)
 #endif
 
 #if SMALL_ATAN_TAYLOR
-// Taylor series constants defined in const.cpp
-extern const uint8_t mant_one_third[MAX_MANT];
-extern const uint8_t mant_one_fifth[MAX_MANT];
-extern const uint8_t mant_one_seventh[MAX_MANT];
-
 // Small-angle arctangent via Horner form: atan(x) = x·(1 - x²·(1/3 - x²·(1/5 - x²/7)))
 // Avoids normalizeToZeroExp which destroys digits for small values.
 //
@@ -145,18 +130,11 @@ static void taylorAtan(BCD& R, BCD& S0)
     regCopy(S3, R);                // Save x²
 
     // Horner innermost: x² / 7
-    regClear(S1);
-    mantCopy(S1.mant.data(), mant_one_seventh);
-    S1.exp[1] = 1;
-    S1.esign = true;               // S1 = 1.428571428571429e-1
+    constLoad(S1, CONST_1_7);
     mul(R, S0, S1);                // R = x²/7; S0 = result via postCalc
 
     // 1/5 - x²/7
-    regCopy(S1, S0);               // S1 = x²/7
-    regClear(S0);
-    mantCopy(S0.mant.data(), mant_one_fifth);
-    S0.exp[1] = 1;
-    S0.esign = true;               // S0 = 2.000000000000000e-1
+    constLoad(S0, CONST_1_5);
     sub(R, S0, S1);                // R = 1/5 - x²/7; S0 = R via postCalc
 
     // * x²
@@ -164,11 +142,7 @@ static void taylorAtan(BCD& R, BCD& S0)
     mul(R, S0, S1);                // R = x²·(1/5 - x²/7); S0 = result via postCalc
 
     // 1/3 - x²·(1/5 - x²/7)
-    regCopy(S1, S0);               // S1 = previous result
-    regClear(S0);
-    mantCopy(S0.mant.data(), mant_one_third);
-    S0.exp[1] = 1;
-    S0.esign = true;               // S0 = 3.333333333333333e-1
+    constLoad(S0, CONST_1_3);
     sub(R, S0, S1);                // R = 1/3 - ...; S0 = R via postCalc
 
     // * x²
@@ -176,7 +150,6 @@ static void taylorAtan(BCD& R, BCD& S0)
     mul(R, S0, S1);                // R = x²·(1/3 - ...); S0 = result via postCalc
 
     // 1 - x²·(1/3 - ...)
-    regCopy(S1, S0);               // S1 = previous result
     constLoad(S0, CONST_1);
     sub(R, S0, S1);                // R = 1 - x²·(...); S0 = R via postCalc
 
@@ -361,7 +334,7 @@ void cordicAtan(BCD& R, BCD& S0)
     // Part 2: CORDIC vectoring using full BCD arithmetic
     // y = S0, x = S1; rotate vector (x,y) toward x-axis, counting rotations
     regClear(S2);                    // Digit counters
-    constLoad(S1, CONST_1);         // x = 1.0
+    constLoad(S1, CONST_1);          // x = 1.0
 
     for (uint j = 0; j < K; j++) {
         while (true) {
