@@ -89,7 +89,6 @@ void cosRad(BCD& _R, BCD& _S0)
     // Convert radians to degrees: S0 = S0 * (180/π), then delegate to cosDeg
     // No zero check needed here — cosDeg handles it
     preCalc(R, S0, S1);
-    S0.sign = false;                   // cos is even
     constLoad(S1, CONST_180_OVER_PI);
     mul(R, S0, S1);                    // S0 = |degrees| via postCalc
     cosDeg(R, S0);
