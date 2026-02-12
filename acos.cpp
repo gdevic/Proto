@@ -64,8 +64,9 @@ void acosDeg(BCD& R, BCD& S0)
     asinDeg(R, S0);
 
     // Check for domain error from asin
-    if (FLAG_INV_ERR)
-        return;  // postCalc: handled by asinDeg()
+    // May not be needed since the error code sticks and any result is ignored
+    //if (FLAG_INV_ERR)
+    //    return;  // postCalc: handled by asinDeg()
 
     // Compute 90 - asin(x): S1 = R via postCalc
     constLoad(S0, CONST_90);
@@ -86,8 +87,10 @@ void acosRad(BCD& R, BCD& S0)
     acosDeg(R, S0);
 
     // If error or zero, return as-is
-    if (FLAG_INV_ERR || isMantZero(R.mant.data()))
-        return;
+    // May not be needed: if zero, multiplying with PI/180 will also return zero
+    //                    on error, the error sticks and any result is ignored
+    //if (FLAG_INV_ERR || isMantZero(R.mant.data()))
+    //    return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
     // S0 = R via postCalc

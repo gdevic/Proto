@@ -105,14 +105,16 @@ void asinRad(BCD& R, BCD& S0)
     asinDeg(R, S0);
 
     // If error or zero, return as-is
-    if (FLAG_INV_ERR || isMantZero(R.mant.data()))
-        return;
+    // May not be needed: if zero, multiplying with PI/180 will also return zero
+    //                    on error, the error sticks into postCalc and any result is ignored
+    //if (FLAG_INV_ERR || isMantZero(R.mant.data()))
+    //    return;
 
     // Convert degrees to radians: radians = degrees * (PI/180)
     // S0 already equals R (with correct sign) from asinDeg's postCalc
     constLoad(S1, CONST_PI_OVER_180);
     mul(R, S0, S1);
-    postCalc(R, S0, S1);
+    // postCalc: handled by mul()
 }
 
 // IEEE operations for test runner
