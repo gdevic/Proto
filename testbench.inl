@@ -182,7 +182,8 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     }
 
     // In dev mode, skip PASS results and matching error cases (only show NEAR/MISS/mismatch)
-    if (!g_traceAll && (level == MatchLevel::PASS || ieeeOk))
+    // In verbose dev mode (-v), show everything
+    if (!g_traceAll && !g_verbose && (level == MatchLevel::PASS || ieeeOk))
         return false;
 
     // Print op name and input(s)
@@ -195,7 +196,7 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
         // On error, result register is undefined - output zeros for consistent formatting
         std::cout << (err.empty() ? formatBCD(result) : "+0.000000000000000e+00")
                   << " " << (err.empty() ? "OK" : err);
-        if (g_verbose)
+        if (g_showIeee)
             std::cout << " " << std::scientific << std::setprecision(15) << ieee;
         std::cout << "\n";
         g_vectorCount++;
@@ -220,7 +221,7 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     switch (level) {
         case MatchLevel::PASS:
             std::cout << formatBCD(result) << " PASS";
-            if (g_verbose)
+            if (g_showIeee)
                 std::cout << " " << std::scientific << std::setprecision(15) << ieee;
             break;
         case MatchLevel::NEAR:

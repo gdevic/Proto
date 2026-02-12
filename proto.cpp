@@ -13,9 +13,11 @@
 #include "testbench.h"
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <cstring>
+#include <cctype>
 
-// Valid test function names
+// Valid test function names (all lowercase)
 static const char* validFunctions[] = {
     "add", "sub", "mul", "div", "sqrt",
     "ln", "exp",
@@ -23,12 +25,22 @@ static const char* validFunctions[] = {
     "sindeg", "cosdeg", "tandeg", "asindeg", "acosdeg", "atandeg"
 };
 
-// Checks if a function name is valid
+// Convert a string to lowercase in place
+// Returns: the lowercased string
+static std::string toLower(const char* s)
+{
+    std::string result(s);
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return result;
+}
+
+// Checks if a function name is valid (case-insensitive)
 // Returns true if valid, false otherwise
-static bool isValidFunction(const char* name)
+static bool isValidFunction(const std::string& name)
 {
     for (const auto& f : validFunctions)
-        if (strcmp(f, name) == 0)
+        if (name == f)
             return true;
     return false;
 }
@@ -73,7 +85,7 @@ static void printHelp(const char* prog)
               << "\n"
               << "Common options:\n"
               << "  -a       Run all tests\n"
-              << "  -f NAME  Run only specified test(s); can repeat\n"
+              << "  -f NAME  Run only specified test(s); can repeat (case-insensitive)\n"
               << "  -l       List available test functions\n"
               << "  -r NUM   Number of random tests (default: 10)\n"
               << "  -h       Show this help\n"
@@ -83,12 +95,13 @@ static void printHelp(const char* prog)
               << "  -c       Use ANSI colors to highlight mismatched digits\n"
               << "  -d NUM   FIX mode: round to NUM decimal places (0-15)\n"
               << "  -e       Stop on first error (MISS)\n"
-              << "  -T       Skip round-trip tests\n"
+              << "  -v       Verbose: show all tests including PASS\n"
+              << "  -R       Skip round-trip tests\n"
               << "\n"
               << "HW vectors mode (-t):\n"
               << "  Generate test vectors for hardware. Prints all lines. Skips round-trip tests.\n"
               << "  -t       Enable HW vectors mode\n"
-              << "  -v       Append IEEE reference values\n"
+              << "  -i       Append IEEE reference values\n"
               << "\n"
               << "Examples (dev mode):\n"
               << "  " << prog << " -a            # Run all tests, show only problems\n"
@@ -98,7 +111,7 @@ static void printHelp(const char* prog)
               << "Examples (HW vectors mode):\n"
               << "  " << prog << " -t -a > hw.txt      # Generate all test vectors\n"
               << "  " << prog << " -t -f sqrt -r 1000  # 1000 random sqrt vectors\n"
-              << "  " << prog << " -t -v -f add        # Add vectors with IEEE values\n";
+              << "  " << prog << " -t -i -f add        # Add vectors with IEEE values\n";
 }
 
 int main(int argc, char* argv[])
@@ -142,7 +155,7 @@ int main(int argc, char* argv[])
                 std::cerr << "Error: -f requires a test name. Use -l to list available functions.\n";
                 return 1;
             }
-            const char* name = argv[++i];
+            std::string name = toLower(argv[++i]);
             if (!isValidFunction(name)) {
                 std::cerr << "Error: unknown function '" << name << "'. Use -l to list available functions.\n";
                 return 1;
@@ -158,11 +171,13 @@ int main(int argc, char* argv[])
             if (g_randomCount < 0)
                 g_randomCount = 0;
         }
+        else if (strcmp(argv[i], "-i") == 0)
+            g_showIeee = true;
         else if (strcmp(argv[i], "-v") == 0)
             g_verbose = true;
         else if (strcmp(argv[i], "-t") == 0)
             g_traceAll = true;
-        else if (strcmp(argv[i], "-T") == 0)
+        else if (strcmp(argv[i], "-R") == 0)
             g_skipRoundTrip = true;
         else {
             std::cerr << "Unknown option: " << argv[i] << "\n";
@@ -186,7 +201,11 @@ int main(int argc, char* argv[])
             return 1;
         }
         if (g_skipRoundTrip) {
-            std::cerr << "Error: -T is redundant with -t (HW mode already skips round-trip tests)\n";
+            std::cerr << "Error: -R is redundant with -t (HW mode already skips round-trip tests)\n";
+            return 1;
+        }
+        if (g_verbose) {
+            std::cerr << "Error: -v (verbose) is a dev mode option, not valid with -t\n";
             return 1;
         }
     }
@@ -201,13 +220,14 @@ int main(int argc, char* argv[])
 #else
         std::cerr << "Verification: using double\n";
 #endif
-        if (g_useColor || g_stopOnError || g_skipRoundTrip || g_verbose || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
+        if (g_useColor || g_stopOnError || g_skipRoundTrip || g_verbose || g_showIeee || !g_testFilters.empty() || (g_randomCount != 10) || (g_roundDigits >= 0)) {
             std::cerr << "Flags:";
             if (g_useColor) std::cerr << " -c";
             if (g_roundDigits >= 0) std::cerr << " -d " << g_roundDigits;
             if (g_stopOnError) std::cerr << " -e";
-            if (g_skipRoundTrip) std::cerr << " -T";
             if (g_verbose) std::cerr << " -v";
+            if (g_skipRoundTrip) std::cerr << " -R";
+            if (g_showIeee) std::cerr << " -i";
             for (const auto& f : g_testFilters) std::cerr << " -f " << f;
             if (g_randomCount != 10) std::cerr << " -r " << g_randomCount;
             std::cerr << "\n";

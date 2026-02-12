@@ -94,7 +94,7 @@ The tool operates in two modes: **Dev mode** (default) for debugging and **HW ve
 | Flag | Description |
 |------|-------------|
 | `-a` | Run all tests (ignored if `-f` is specified) |
-| `-f NAME` | Run only specified test(s); can repeat |
+| `-f NAME` | Run only specified test(s); can repeat (case-insensitive) |
 | `-l` | List available test functions |
 | `-r NUM` | Number of random tests (default: 10) |
 | `-h` | Show help |
@@ -108,7 +108,8 @@ Compare BCD results against IEEE long double. Only prints NEAR/MISS lines. Inclu
 | `-c` | Use ANSI colors to highlight mismatched digits |
 | `-d NUM` | FIX mode: round to NUM decimal places (0-15) |
 | `-e` | Stop on first error (MISS) |
-| `-T` | Skip round-trip tests |
+| `-v` | Verbose: show all tests including PASS |
+| `-R` | Skip round-trip tests |
 
 ```bash
 ./proto -a            # Run all tests, show only problems
@@ -124,19 +125,19 @@ Generate test vectors for hardware verification. Prints all test lines to stdout
 | Flag | Description |
 |------|-------------|
 | `-t` | Enable HW vectors mode |
-| `-v` | Append IEEE reference values |
+| `-i` | Append IEEE reference values |
 
 ```bash
 ./proto -t -a > hw.txt      # Generate all test vectors
 ./proto -t -f sqrt -r 1000  # 1000 random sqrt vectors
-./proto -t -v -f add        # Add vectors with IEEE values
+./proto -t -i -f add        # Add vectors with IEEE values
 ```
 
 ### Invalid Combinations
 
 The following combinations are rejected with an error:
-- `-t` with `-c`, `-e`, or `-d` (dev mode options not valid in HW vectors mode)
-- `-t` with `-T` (redundant, HW mode already skips round-trip tests)
+- `-t` with `-c`, `-d`, `-e`, or `-v` (dev mode options not valid in HW vectors mode)
+- `-t` with `-R` (redundant, HW mode already skips round-trip tests)
 
 ## Output Format
 
@@ -153,7 +154,7 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |
 | Status | 2-4 | Dev: PASS, NEAR, or MISS. HW: OK |
-| IEEE/err/dig | var | Only on NEAR/MISS (or PASS with -v). err=absolute error, dig=correct significant digits |
+| IEEE/err/dig | var | Only on NEAR/MISS (or PASS with -i). err=absolute error, dig=correct significant digits |
 
 ### Example Output
 
