@@ -410,13 +410,6 @@ void tanRad(BCD& R, BCD& S0)
     assert((&R == &::R) && (&S0 == &::S0));
 
 #if TAN_RAD_VIA_DEG
-    // Disabled: unlike sin/cos (bounded output), tan amplifies errors near asymptotes.
-    // The degree detour does two irrational multiplications (rad→deg on input, deg→rad
-    // inside tanDeg before CORDIC) vs one irrational division (÷π/4) in the native path.
-    // Worse, π/2 radians doesn't map to exactly 90.0 in BCD, so the asymptote guard
-    // (reduced angle ≈ 0 with doReciprocal) becomes misaligned — producing dig=3 garbage
-    // at x=1.5708. The big wins (62x at 1e4, 20x at 1e6) only matter for inputs beyond
-    // ~10000 radians, which are unrealistic for a calculator.
     // Convert radians to degrees: S0 = S0 * (180/π), then delegate to tanDeg
     preCalc(R, S0, S1);
     if (FLAG_S0_ZERO) {

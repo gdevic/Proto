@@ -13,18 +13,6 @@
 
 #include "bcd.h"
 
-// Near-asymptote cot shortcut for tanDeg and tanRad.
-// When the reduced angle ε has exponent ≤ -13, bypasses CORDIC and computes
-// cot(ε) directly: (180/π)/ε for degrees, 1/ε for radians. Exact to 30+ digits
-// since tan(x)≈x for tiny x. Replaces OVERFLOW with a computed result.
-//
-// Disabled (0): unreachable on the real calculator. The 14-digit input limit
-// means the closest a user can type to an asymptote is ε≈1e-12 (exp=-12),
-// below the exp≥13 threshold. Internal callers (sinCore) pass
-// arguments in [0°,45°)/[0,π/4), never near an asymptote. Only test vectors
-// with 15+ significant digits can trigger this path.
-#define TAN_HANDLE_LARGE_X 0
-
 // Small-angle Taylor series bypass in cordicTan.
 // For |x| < 0.001 rad (exp ≤ -3), uses tan(x) = x·(1 + x²·(1/3 + x²·2/15))
 // instead of CORDIC. Avoids normalizeToZeroExp which destroys digits proportional
@@ -37,6 +25,27 @@
 // instead of CORDIC. Same normalizeToZeroExp digit-loss problem as cordicTan.
 // Four Horner terms keep truncation error (x⁹/9) below 1e-15 at the threshold.
 #define SMALL_ATAN_TAYLOR 1
+
+// Route tanRad through degree conversion: rad→deg, then tanDeg.
+// Disabled (0): unlike sin/cos (bounded output), tan amplifies errors near asymptotes.
+// The degree detour does two irrational multiplications (rad→deg on input, deg→rad
+// inside tanDeg before CORDIC) vs one irrational division (÷π/4) in the native path.
+// Worse, π/2 radians doesn't map to exactly 90.0 in BCD, so the asymptote guard
+// (reduced angle ≈ 0 with doReciprocal) becomes misaligned — producing dig=3 garbage
+// at x=1.5708. The big wins (62x at 1e4, 20x at 1e6) only matter for inputs beyond
+// ~10000 radians, which are unrealistic for a calculator.
+#define TAN_RAD_VIA_DEG 0
+
+// Near-asymptote cot shortcut for tanDeg and tanRad.
+// When the reduced angle ε has exponent ≤ -13, bypasses CORDIC and computes
+// cot(ε) directly: (180/π)/ε for degrees, 1/ε for radians. Exact to 30+ digits
+// since tan(x)≈x for tiny x. Replaces OVERFLOW with a computed result.
+// Disabled (0): unreachable on the real calculator. The 14-digit input limit
+// means the closest a user can type to an asymptote is ε≈1e-12 (exp=-12),
+// below the exp≥13 threshold. Internal callers (sinCore) pass
+// arguments in [0°,45°)/[0,π/4), never near an asymptote. Only test vectors
+// with 15+ significant digits can trigger this path.
+#define TAN_HANDLE_LARGE_X 0
 
 // User Registers
 inline BCD X;
