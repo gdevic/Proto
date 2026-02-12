@@ -64,14 +64,11 @@ void trigRangeReduce(uint8_t constId)
 
 // Internal helper: compute sin from reduced angle using half-angle formula
 // sin(x) = 2t / (1 + t²) where t = tan(x/2)
-// isDeg: true = angle in (0, 90) degrees, calls tanDeg
-//        false = angle in (0, π/2) radians, calls tanRad
-// In microcode, isDeg is passed via a register and conditionally branches to tanDeg or tanRad.
 // Input: angle in S0 (will be modified), g_negateResult and g_inputSign for final sign
 // Output: result in R
 // Uses: all registers
 // Note: mul uses S2 as accumulator, so only S3, S4 are safe across mul calls
-static void sinCore(bool isDeg)
+void sinCore()
 {
     // ---------- Compute tan(x/2) ----------
     // First divide angle by 2: S0 = S0 / 2
@@ -83,10 +80,7 @@ static void sinCore(bool isDeg)
     bool savedNegate = g_negateResult;
 
     // Compute tan(x/2) — dispatch by unit
-    if (isDeg)
-        tanDeg(R, S0);
-    else
-        tanRad(R, S0);
+    tanDegRad(R, S0); // Call common tangent which dispatches by unit
 
     // Restore globals after tan (pop in microcode)
     g_inputSign = savedInputSign;
@@ -121,10 +115,6 @@ static void sinCore(bool isDeg)
     R.sign = g_negateResult ^ g_inputSign;
 }
 
-// Wrappers matching the declarations in proto.h
-void sinDegCore() { sinCore(true); }
-void sinRadCore() { sinCore(false); }
-
 // Compute sine in degrees: R = sinDeg(S0)
 // Input in degrees, output is the sine value
 // Uses half-angle formula: sin(x) = 2*tan(x/2) / (1 + tan²(x/2))
@@ -133,6 +123,7 @@ void sinRadCore() { sinCore(false); }
 // Reads from S0, stores result in R
 void sinDeg(BCD& _R, BCD& _S0)
 {
+    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -170,7 +161,7 @@ void sinDeg(BCD& _R, BCD& _S0)
 
     // Now S0 is in (0, 90) - compute sin using half-angle formula
     // tan(S0/2) will be in (0, 1) - optimal range for CORDIC
-    sinDegCore();
+    sinCore();
     postCalc(R, S0, S1);
 }
 
@@ -180,6 +171,7 @@ void sinDeg(BCD& _R, BCD& _S0)
 // Reads from S0, stores result in R
 void sinRad(BCD& _R, BCD& _S0)
 {
+    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
 #if RAD_VIA_DEG

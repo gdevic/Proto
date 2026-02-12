@@ -24,6 +24,7 @@
 // Reads from S0, stores result in R
 void acosDeg(BCD& R, BCD& S0)
 {
+    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -78,6 +79,7 @@ void acosDeg(BCD& R, BCD& S0)
 // Reads from S0, stores result in R
 void acosRad(BCD& R, BCD& S0)
 {
+    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     // Compute acos in degrees first

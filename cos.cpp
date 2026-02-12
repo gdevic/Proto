@@ -24,6 +24,7 @@
 // Reads from S0, stores result in R
 void cosDeg(BCD& _R, BCD& _S0)
 {
+    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -43,9 +44,8 @@ void cosDeg(BCD& _R, BCD& _S0)
     trigRangeReduce(CONST_90);
 
     // Shift quadrant by +1: cos(x) = sin(x + 90°)
-    // Increment 2-bit counter {g_negateResult, g_useReciprocal}
+    // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
     g_negateResult ^= g_useReciprocal;
-    g_useReciprocal = !g_useReciprocal;
 
     // Toggle complement for the shifted quadrant: S0 = 90 - S0
     // This is exact in decimal (90 is an exact BCD constant)
@@ -70,7 +70,7 @@ void cosDeg(BCD& _R, BCD& _S0)
     }
 
     // S0 is in (0, 90) — compute sin using half-angle formula
-    sinDegCore();
+    sinCore();
     postCalc(R, S0, S1);
 }
 
@@ -81,6 +81,7 @@ void cosDeg(BCD& _R, BCD& _S0)
 // Reads from S0, stores result in R
 void cosRad(BCD& _R, BCD& _S0)
 {
+    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&_R == &::R) && (&_S0 == &::S0));
 
 #if RAD_VIA_DEG
@@ -112,8 +113,8 @@ void cosRad(BCD& _R, BCD& _S0)
     trigRangeReduce(CONST_PI_OVER_2);
 
     // Shift quadrant by +1: cos(x) = sin(x + π/2)
+    // Only the carry into g_negateResult matters; the new g_useReciprocal is never read
     g_negateResult ^= g_useReciprocal;
-    g_useReciprocal = !g_useReciprocal;
 
     // Toggle complement for the shifted quadrant: S0 = π/2 - S0
     regCopy(S1, S0);
@@ -137,7 +138,7 @@ void cosRad(BCD& _R, BCD& _S0)
     }
 
     // S0 is in (0, π/2) — compute sin using half-angle formula
-    sinRadCore();
+    sinCore();
     postCalc(R, S0, S1);
 #endif
 }

@@ -59,6 +59,7 @@ inline bool FLAG_OF_ERR = false;    // Overflow error: result too large to repre
 inline bool FLAG_DIV0_ERR = false;  // Division by zero error
 inline bool FLAG_S0_ZERO = false;   // S0 is zero (set by preCalc)
 inline bool FLAG_S1_ZERO = false;   // S1 is zero (set by preCalc)
+inline bool FLAG_DEG = false;       // Angles are in degrees, not radians
 
 // Trig globals (map to microcode nibbles)
 inline bool g_inputSign = false;      // Original input sign      → ARG_SIGN
@@ -114,14 +115,15 @@ void asinDeg(BCD &R, BCD &S0);     // Arcsine, output in degrees
 void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
 void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
+// Dispatch function
+void tanDegRad(BCD &R, BCD &S0);
 
 // Unified trig range reduction: reduces |angle| to [0, boundary) using q mod 4
 // Sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from quadrant
 void trigRangeReduce(uint8_t constId);
 
-// Internal helpers shared between sin.cpp and cos.cpp
-void sinDegCore();                 // Half-angle core for angle in (0, 90) deg, uses globals
-void sinRadCore();                 // Half-angle core for angle in (0, π/2) rad, uses globals
+// Internal helper shared between sin.cpp and cos.cpp
+void sinCore();                    // Half-angle core, dispatches tanDeg/tanRad via FLAG_DEG
 
 // Test functions
 void testAddition();

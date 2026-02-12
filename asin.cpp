@@ -23,6 +23,7 @@
 // Reads from S0, stores result in R
 void asinDeg(BCD& R, BCD& S0)
 {
+    FLAG_DEG = true; // Angles are in degrees on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     preCalc(R, S0, S1);
@@ -93,6 +94,7 @@ void asinDeg(BCD& R, BCD& S0)
 // Reads from S0, stores result in R
 void asinRad(BCD& R, BCD& S0)
 {
+    FLAG_DEG = false; // Angles are in radians on this code path
     assert((&R == &::R) && (&S0 == &::S0));
 
     // Compute asin in degrees first
