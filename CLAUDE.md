@@ -39,12 +39,15 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 - **Cosine** (`cos.cpp`): cosDeg uses `trigRangeReduce(90)` + quadrant shift (2-bit increment of {g_negateResult, g_useReciprocal}) + complement (90 - S0) + `sinCore()`. cosRad converts to degrees (×180/π) and delegates to cosDeg. See `docs/sincos-algorithm-research.md`.
 - **Arcsine** (`asin.cpp`): Identity asin(x) = atan(1/sqrt(1/x²-1)). Restructured formula avoids register clobbering by sqrt. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
 - **Arccosine** (`acos.cpp`): Simple identity acos(x) = 90° - asin(x). Exact special cases for 0, ±1. Precision ~5-10e-14. See `docs/sincos-algorithm-research.md`.
+- **Atan2** (`atan2.cpp`): Two-argument arctangent atan2(y,x) with full quadrant handling. Returns angle in (-180°,180°] or (-π,π]. Six cases: x>0→atan(y/x), x<0 y≥0→atan(y/x)+180, x<0 y<0→atan(y/x)-180, x=0 y>0→90, x=0 y<0→-90, x=0 y=0→0. atan2Rad delegates to atan2Deg then converts.
+- **P→R** (`r2p.cpp`): Polar to rectangular conversion. p2rDeg(S0=r, S1=θ°) → R=r·cos(θ), Y=r·sin(θ). Dual output: primary in R, secondary in Y. p2rRad converts θ to degrees first.
+- **R→P** (`r2p.cpp`): Rectangular to polar conversion. r2pDeg(S0=y, S1=x) → R=sqrt(x²+y²), Y=atan2(y,x)°. Uses atan2Deg for full quadrant handling. r2pRad delegates to r2pDeg then converts θ to radians.
 
 ### Calculator Lifecycle (`calculator.cpp`)
 - Every top-level function follows `preCalc` → compute → `postCalc` pattern (mirrors microcode)
 - `preCalc(R, S0, S1)`: Sets zero flags, clears R
 - `postCalc(R, S0, S1)`: Canonicalizes zero (regClear when mantissa zero), copies R to S0 and S1
-- `postCalc` is called before every `return` in all 18 functions that call `preCalc`
+- `postCalc` is called before every `return` in all 24 functions that call `preCalc`
 - Functions that delegate (e.g., `asinRad` → `asinDeg`, `acosRad` → `acosDeg`, `atanRad` → `cordicAtan`) do NOT independently call preCalc/postCalc
 
 **postCalc contract — do NOT skip it for zero-result early returns:**
@@ -54,13 +57,15 @@ Software BCD (Binary-Coded Decimal) arithmetic as a golden reference for hardwar
 One test per line, fixed columns for HW parsing:
 ```
 ADD +1.234567890123456e+15 +9.876543210987654e+10 +1.234567890123456e+15 OK
+R2PDEG +3.000000000000000e+00 +4.000000000000000e+00 +5.000000000000000e+00 +3.686938680574733e+01 OK
 ```
+Dual-output operations (P2R, R2P) have two result columns (R and Y).
 
 ### Tolerance System
 Per-class tolerances set via `setTolerance()` in each test function:
 - **Strict** (add/sub/mul/div): PASS ≤1e-15, NEAR ≤1e-14, MISS >1e-14
 - **Standard** (sqrt/ln/exp): PASS ≤1e-14, NEAR ≤1e-13, MISS >1e-13
-- **Relaxed** (all 12 trig): PASS ≤1e-13, NEAR ≤1e-12, MISS >1e-12
+- **Relaxed** (all 12 trig, atan2, P→R, R→P): PASS ≤1e-13, NEAR ≤1e-12, MISS >1e-12
 
 ### Trig Globals (Microcode Nibble Mapping)
 Three global bools map to microcode nibble-sized RAM variables:
@@ -87,6 +92,9 @@ Three global bools map to microcode nibble-sized RAM variables:
 - Radian: cosRad → (×180/π) → cosDeg (degree path)
 - Radian: tanRad → trigRangeReduce(π/4) → cordicTan (stays in radians)
 - Atan: asinDeg → atanDeg → cordicAtan
+- Atan2: atan2Deg → div + atanDeg + quadrant correction
+- P→R: p2rDeg → cosDeg + mul + sinDeg + mul → R=x, Y=y
+- R→P: r2pDeg → atan2Deg + mul + mul + add + sqrt → R=r, Y=θ
 
 ### Error Flags
 - `FLAG_INV_ERR` → "INVALID": Input invalid for function (e.g., sqrt(-1), ln(-1), asin(2))
@@ -111,6 +119,10 @@ Domain constraints for different operations:
 - OPTS_ATANDEG, OPTS_ATANRAD (maxExp=99, any value)
 - OPTS_SQRT (positiveOnly)
 - OPTS_ASINCOS (unitRange, |x| in [0.01, 1))
+- OPTS_ATAN2 (maxExp=50, any quadrant)
+- OPTS_R2P (maxExp=50, any quadrant for y and x)
+- OPTS_P2R_R (maxExp=50, positiveOnly for radius)
+- OPTS_P2R_TH (maxExp=3, ±999° for angle)
 
 ## Build
 ```bash

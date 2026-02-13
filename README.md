@@ -51,6 +51,12 @@ The tool operates in two modes:
 | Arcsine (rad) | `asinRad(R, S0)` | Calls asinDeg, converts |
 | Arccosine (deg) | `acosDeg(R, S0)` | 90 - asin(x) identity |
 | Arccosine (rad) | `acosRad(R, S0)` | Calls acosDeg, converts |
+| Atan2 (deg) | `atan2Deg(R, S0, S1)` | Full quadrant atan2(y,x) in degrees |
+| Atan2 (rad) | `atan2Rad(R, S0, S1)` | Delegates to atan2Deg, converts |
+| P→R (deg) | `p2rDeg(R, S0, S1)` | r,θ→x,y via cos/sin/mul (dual output: R=x, Y=y) |
+| P→R (rad) | `p2rRad(R, S0, S1)` | Converts θ to degrees, delegates to p2rDeg |
+| R→P (deg) | `r2pDeg(R, S0, S1)` | y,x→r,θ via atan2/sqrt (dual output: R=r, Y=θ) |
+| R→P (rad) | `r2pRad(R, S0, S1)` | Delegates to r2pDeg, converts θ to radians |
 
 ### Calculator Lifecycle
 
@@ -149,12 +155,17 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 
 | Field | Width | Description |
 |-------|-------|-------------|
-| OP | var | Operation: ADD, SUB, MUL, DIV, LN, EXP, SQRT, TANRAD, ATANRAD, TANDEG, ATANDEG, SINDEG, SINRAD, COSDEG, COSRAD, ASINDEG, ASINRAD, ACOSDEG, ACOSRAD |
+| OP | var | Operation: ADD, SUB, MUL, DIV, LN, EXP, SQRT, TANRAD, ATANRAD, TANDEG, ATANDEG, SINDEG, SINRAD, COSDEG, COSRAD, ASINDEG, ASINRAD, ACOSDEG, ACOSRAD, ATAN2DEG, ATAN2RAD, P2RDEG, P2RRAD, R2PDEG, R2PRAD |
 | Operand A | 22 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE (16 digits) |
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |
 | Status | 2-4 | Dev: PASS, NEAR, or MISS. HW: OK |
 | IEEE/err/dig | var | Only on NEAR/MISS (or PASS with -i). err=absolute error, dig=correct significant digits |
+
+Dual-output operations (P2R, R2P) have two result columns:
+```
+OP  ±input1±EE ±input2±EE ±result1±EE ±result2±EE STATUS
+```
 
 ### Example Output
 
@@ -164,6 +175,7 @@ SUB +1.000000000000000e+00 +9.999999999999999e-01 +9.999999999999800e-16 NEAR 1e
 DIV +1.000000000000000e+00 +0.000000000000000e+00 DIV0 inf
 SQRT -1.000000000000000e+00 INVALID nan
 EXP +1.000000000000000e+03 OVERFLOW inf
+R2PDEG +3.000000000000000e+00 +4.000000000000000e+00 +5.000000000000000e+00 +3.686938680574733e+01 PASS
 ```
 
 ### Error Flags
@@ -220,6 +232,18 @@ ACOSDEG [Relaxed] tests: 26 PASS, 0 NEAR, 1 MISS
 ACOSDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
 ACOSRAD [Relaxed] tests: 14 PASS, 0 NEAR, 0 MISS
 ACOSRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+ATAN2DEG [Relaxed] comb: 528 PASS, 1 NEAR, 0 MISS
+ATAN2DEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+ATAN2RAD [Relaxed] comb: 168 PASS, 1 NEAR, 0 MISS
+ATAN2RAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+P2RDEG [Relaxed] comb: 436 PASS, 21 NEAR, 27 MISS
+P2RDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+P2RRAD [Relaxed] comb: 196 PASS, 0 NEAR, 0 MISS
+P2RRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+R2PDEG [Relaxed] comb: 398 PASS, 2 NEAR, 0 MISS
+R2PDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+R2PRAD [Relaxed] comb: 144 PASS, 0 NEAR, 0 MISS
+R2PRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).

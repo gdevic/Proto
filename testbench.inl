@@ -242,6 +242,99 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     return (level == MatchLevel::MISS) && g_stopOnError;
 }
 
+// Dual-output result printer for BinaryDual operations (R = primary, Y = secondary)
+// Checks tolerance on both outputs, reports worst match level
+// Returns true if should stop execution
+inline bool printDualResult(const char* op, const BCD& a, const BCD& b,
+                            const BCD& result1, const BCD& result2,
+                            MatchLevel level, Real ieee1, Real ieee2)
+{
+    // Check for error flags
+    std::string err;
+    if (FLAG_INV_ERR) err = "INVALID";
+    else if (FLAG_OF_ERR) err = "OVERFLOW";
+    else if (FLAG_DIV0_ERR) err = "DIV0";
+
+    // Validate IEEE matches BCD error condition (same logic as single-output)
+    bool ieeeOk = false;
+    if (!err.empty()) {
+        Real ieeeMax = std::max(std::fabs(ieee1), std::fabs(ieee2));
+        if (FLAG_INV_ERR)
+            ieeeOk = std::isnan(ieee1) || std::isinf(ieee1) || std::isnan(ieee2) || std::isinf(ieee2);
+        else if (FLAG_OF_ERR)
+            ieeeOk = std::isinf(ieee1) || std::isinf(ieee2) || ieeeMax > 1e13L;
+        else if (FLAG_DIV0_ERR)
+            ieeeOk = std::isinf(ieee1) || std::isnan(ieee1) || std::isinf(ieee2) || std::isnan(ieee2);
+
+        if (!ieeeOk) {
+            std::cout << "MISMATCH: BCD=" << err << " but IEEE=(" << ieee1 << ", " << ieee2 << ")\n";
+            return true;
+        }
+    }
+
+    // In dev mode, skip PASS results and matching error cases
+    if (!g_traceAll && !g_verbose && (level == MatchLevel::PASS || ieeeOk))
+        return false;
+
+    // Print op name and inputs
+    std::cout << op << " " << formatBCD(a) << " " << formatBCD(b) << " ";
+
+    // HW vectors mode (-t): clean output for hardware parsing
+    if (g_traceAll) {
+        std::string zero = "+0.000000000000000e+00";
+        std::cout << (err.empty() ? formatBCD(result1) : zero) << " "
+                  << (err.empty() ? formatBCD(result2) : zero) << " "
+                  << (err.empty() ? "OK" : err);
+        if (g_showIeee)
+            std::cout << " " << std::scientific << std::setprecision(15) << ieee1 << " " << ieee2;
+        std::cout << "\n";
+        g_vectorCount++;
+        return false;
+    }
+
+    // Dev mode: detailed output with error diagnostics
+    if (!err.empty()) {
+        std::cout << err << " (" << std::scientific << std::setprecision(15) << ieee1 << ", " << ieee2 << ")\n";
+        return false;
+    }
+
+    // Compute correct significant digits for the worse of the two outputs
+    auto correctDigits = [](const BCD& res, Real ieee) -> int {
+        Real absErr = std::fabs(res.toReal() - ieee);
+        Real maxAbs = std::max(std::fabs(res.toReal()), std::fabs(ieee));
+        if (absErr == 0 || maxAbs == 0) return 16;
+        Real relErr = absErr / maxAbs;
+        return int(-std::log10(relErr));
+    };
+
+    int dig = std::min(correctDigits(result1, ieee1), correctDigits(result2, ieee2));
+
+    switch (level) {
+        case MatchLevel::PASS:
+            std::cout << formatBCD(result1) << " " << formatBCD(result2) << " PASS";
+            if (g_showIeee)
+                std::cout << " " << std::scientific << std::setprecision(15) << ieee1 << " " << ieee2;
+            break;
+        case MatchLevel::NEAR:
+            printWithMismatchHighlight(formatBCD(result1), ieee1);
+            std::cout << " ";
+            printWithMismatchHighlight(formatBCD(result2), ieee2);
+            std::cout << " NEAR " << std::scientific << std::setprecision(15) << ieee1 << " " << ieee2
+                      << " dig=" << dig;
+            break;
+        case MatchLevel::MISS:
+            printWithMismatchHighlight(formatBCD(result1), ieee1);
+            std::cout << " ";
+            printWithMismatchHighlight(formatBCD(result2), ieee2);
+            std::cout << " MISS " << std::scientific << std::setprecision(15) << ieee1 << " " << ieee2
+                      << " dig=" << dig;
+            break;
+    }
+    std::cout << "\n";
+
+    return (level == MatchLevel::MISS) && g_stopOnError;
+}
+
 } // namespace detail
 
 // ---------------------------------------------------------------------------
@@ -253,7 +346,33 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 {
     int ok = 0, approx = 0, fail = 0;
 
-    if constexpr (arity == Arity::Binary) {
+    if constexpr (arity == Arity::BinaryDual) {
+        // BinaryDual: test all pairs, check both R and Y outputs
+        for (size_t i = 0; i < count; i++) {
+            for (size_t j = 0; j < count; j++) {
+                S0 = BCD(values[i]);
+                S1 = BCD(values[j]);
+                auto ieeePair = ieeeOp(S0.value, S1.value);
+                Real ieee1 = detail::clampUnderflow(ieeePair.first);
+                Real ieee2 = detail::clampUnderflow(ieeePair.second);
+                FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+                bcdOp(R, S0, S1);
+                BCD resultY = Y;  // Capture Y before any further operations
+
+                MatchLevel level1 = checkTolerance(ieee1, R.toReal(), R);
+                MatchLevel level2 = checkTolerance(ieee2, resultY.toReal(), resultY);
+                MatchLevel level = std::max(level1, level2);  // Worst of the two
+
+                if (detail::printDualResult(opName, BCD(values[i]), BCD(values[j]), R, resultY, level, ieee1, ieee2))
+                    return false;
+                if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+                    ok++;
+                else
+                    detail::recordResult(level, ok, approx, fail);
+            }
+        }
+        detail::printSummary(opName, "comb", ok, approx, fail);
+    } else if constexpr (arity == Arity::Binary) {
         // Binary: test all pairs
         for (size_t i = 0; i < count; i++) {
             for (size_t j = 0; j < count; j++) {
@@ -330,7 +449,27 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         BCD inputB;  // For binary ops or dummy for unary
 
         FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
-        if constexpr (arity == Arity::Binary) {
+        if constexpr (arity == Arity::BinaryDual) {
+            std::string strB = generateRandomBCD(rng, opts);
+            S1 = BCD(strB);
+            inputB = BCD(strB);
+            auto ieeePair = ieeeOp(S0.value, S1.value);
+            bcdOp(R, S0, S1);
+            BCD resultY = Y;
+
+            Real ieee1 = detail::clampUnderflow(ieeePair.first);
+            Real ieee2 = detail::clampUnderflow(ieeePair.second);
+            MatchLevel level1 = checkTolerance(ieee1, R.toReal(), R);
+            MatchLevel level2 = checkTolerance(ieee2, resultY.toReal(), resultY);
+            MatchLevel level = std::max(level1, level2);
+
+            if (detail::printDualResult(opName, BCD(strA), inputB, R, resultY, level, ieee1, ieee2))
+                return false;
+            if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+                ok++;
+            else
+                detail::recordResult(level, ok, approx, fail);
+        } else if constexpr (arity == Arity::Binary) {
             std::string strB = generateRandomBCD(rng, opts);
             S1 = BCD(strB);
             inputB = BCD(strB);
@@ -341,6 +480,7 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
             bcdOp(R, S0);
         }
 
+        if constexpr (arity != Arity::BinaryDual) {
         // Apply FIX mode rounding if enabled
         if (g_roundDigits >= 0) {
             regCopy(S0, R);
@@ -351,6 +491,49 @@ bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const Random
         MatchLevel level = checkTolerance(ieee, R.toReal(), R);
 
         if (detail::printResult<arity>(opName, BCD(strA), inputB, R, level, ieee))
+            return false;
+        if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
+            ok++;
+        else
+            detail::recordResult(level, ok, approx, fail);
+        }
+    }
+
+    detail::printSummary(opName, "rand", ok, approx, fail);
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Random test runner with separate opts for each operand (BinaryDual)
+// ---------------------------------------------------------------------------
+
+template<Arity arity, typename BcdOp, typename IeeeOp>
+bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp,
+                    const RandomBCDOptions& optsA, const RandomBCDOptions& optsB)
+{
+    static_assert(arity == Arity::BinaryDual, "Two-opts overload only for BinaryDual");
+    int ok = 0, approx = 0, fail = 0;
+    std::mt19937 rng(detail::seedFromName(opName));
+
+    for (int i = 0; i < g_randomCount; i++) {
+        std::string strA = generateRandomBCD(rng, optsA);
+        std::string strB = generateRandomBCD(rng, optsB);
+        S0 = BCD(strA);
+        S1 = BCD(strB);
+        BCD inputB = BCD(strB);
+
+        auto ieeePair = ieeeOp(S0.value, S1.value);
+        FLAG_INV_ERR = FLAG_OF_ERR = FLAG_DIV0_ERR = false;
+        bcdOp(R, S0, S1);
+        BCD resultY = Y;
+
+        Real ieee1 = detail::clampUnderflow(ieeePair.first);
+        Real ieee2 = detail::clampUnderflow(ieeePair.second);
+        MatchLevel level1 = checkTolerance(ieee1, R.toReal(), R);
+        MatchLevel level2 = checkTolerance(ieee2, resultY.toReal(), resultY);
+        MatchLevel level = std::max(level1, level2);
+
+        if (detail::printDualResult(opName, BCD(strA), inputB, R, resultY, level, ieee1, ieee2))
             return false;
         if (FLAG_INV_ERR || FLAG_OF_ERR || FLAG_DIV0_ERR)
             ok++;

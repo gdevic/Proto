@@ -22,7 +22,9 @@ static const char* validFunctions[] = {
     "add", "sub", "mul", "div", "sqrt",
     "ln", "exp",
     "sinrad", "cosrad", "tanrad", "asinrad", "acosrad", "atanrad",
-    "sindeg", "cosdeg", "tandeg", "asindeg", "acosdeg", "atandeg"
+    "sindeg", "cosdeg", "tandeg", "asindeg", "acosdeg", "atandeg",
+    "atan2deg", "atan2rad",
+    "p2rdeg", "p2rrad", "r2pdeg", "r2prad"
 };
 
 // Convert a string to lowercase in place
@@ -75,6 +77,16 @@ static void printFunctions()
     std::cerr << "    asindeg    Arcsine\n";
     std::cerr << "    acosdeg    Arccosine\n";
     std::cerr << "    atandeg    Arctangent\n";
+    std::cerr << "\n";
+    std::cerr << "  Two-argument arctangent:\n";
+    std::cerr << "    atan2deg   atan2(y,x) in degrees\n";
+    std::cerr << "    atan2rad   atan2(y,x) in radians\n";
+    std::cerr << "\n";
+    std::cerr << "  Coordinate conversion:\n";
+    std::cerr << "    p2rdeg     Polar to rectangular (degrees)\n";
+    std::cerr << "    p2rrad     Polar to rectangular (radians)\n";
+    std::cerr << "    r2pdeg     Rectangular to polar (degrees)\n";
+    std::cerr << "    r2prad     Rectangular to polar (radians)\n";
 }
 
 static void printHelp(const char* prog)
@@ -264,6 +276,12 @@ int main(int argc, char* argv[])
     if (shouldRun("asinrad")) testAsinRad();
     if (shouldRun("acosdeg")) testAcosDeg();
     if (shouldRun("acosrad")) testAcosRad();
+    if (shouldRun("atan2deg")) testAtan2Deg();
+    if (shouldRun("atan2rad")) testAtan2Rad();
+    if (shouldRun("p2rdeg"))  testP2RDeg();
+    if (shouldRun("p2rrad"))  testP2RRad();
+    if (shouldRun("r2pdeg"))  testR2PDeg();
+    if (shouldRun("r2prad"))  testR2PRad();
 
     // In HW vectors mode, print count of vectors generated
     if (g_traceAll)

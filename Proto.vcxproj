@@ -167,6 +167,8 @@
     <ClCompile Include="testbench.cpp" />
     <ClCompile Include="const.cpp" />
     <ClCompile Include="calculator.cpp" />
+    <ClCompile Include="atan2.cpp" />
+    <ClCompile Include="r2p.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />

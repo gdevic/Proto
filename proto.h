@@ -119,6 +119,16 @@ void asinRad(BCD &R, BCD &S0);     // Arcsine, output in radians
 void acosDeg(BCD &R, BCD &S0);     // Arccosine, output in degrees
 void acosRad(BCD &R, BCD &S0);     // Arccosine, output in radians
 
+// Two-argument arctangent: read from S0 (y) and S1 (x), write angle to R
+void atan2Deg(BCD &R, BCD &S0, BCD &S1);  // atan2 in degrees (-180, 180]
+void atan2Rad(BCD &R, BCD &S0, BCD &S1);  // atan2 in radians (-π, π]
+
+// Coordinate conversions: dual-output (R = primary, Y = secondary)
+void p2rDeg(BCD &R, BCD &S0, BCD &S1);    // P→R degrees: S0=r, S1=θ → R=x, Y=y
+void p2rRad(BCD &R, BCD &S0, BCD &S1);    // P→R radians: S0=r, S1=θ → R=x, Y=y
+void r2pDeg(BCD &R, BCD &S0, BCD &S1);    // R→P degrees: S0=y, S1=x → R=r, Y=θ
+void r2pRad(BCD &R, BCD &S0, BCD &S1);    // R→P radians: S0=y, S1=x → R=r, Y=θ
+
 // Unified trig range reduction: reduces |angle| to [0, boundary) using q mod 4
 // Sets g_negateResult (bit 1) and g_useReciprocal (bit 0) from quadrant
 // Caller must load boundary constant into S1 before calling
@@ -147,3 +157,9 @@ void testAsinDeg();
 void testAsinRad();
 void testAcosDeg();
 void testAcosRad();
+void testAtan2Deg();
+void testAtan2Rad();
+void testP2RDeg();
+void testP2RRad();
+void testR2PDeg();
+void testR2PRad();

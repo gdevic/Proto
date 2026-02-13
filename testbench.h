@@ -15,6 +15,7 @@
 #include "bcd.h"
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Output control flags (set from command line)
@@ -43,7 +44,7 @@ void setTolerance(Tolerance t);
 enum class MatchLevel { PASS, NEAR, MISS };
 
 // Arity tag for compile-time dispatch (C++17 if constexpr)
-enum class Arity { Unary, Binary };
+enum class Arity { Unary, Binary, BinaryDual };
 
 // Check tolerance with IEEE noise detection
 // Returns MatchLevel indicating accuracy classification
@@ -77,6 +78,10 @@ constexpr RandomBCDOptions OPTS_TANRAD  = { 2,  false, true,  false };  // radia
 constexpr RandomBCDOptions OPTS_ATANRAD = { 99, false, false, false };  // any value
 constexpr RandomBCDOptions OPTS_TANDEG  = { 3,  false, false, false };  // degrees up to ~999
 constexpr RandomBCDOptions OPTS_ATANDEG = { 99, false, false, false };  // any value
+constexpr RandomBCDOptions OPTS_ATAN2   = { 50, false, false, false };  // any quadrant
+constexpr RandomBCDOptions OPTS_R2P     = { 50, false, false, false };  // any quadrant (y, x)
+constexpr RandomBCDOptions OPTS_P2R_R   = { 50, true,  false, false };  // r >= 0 (radius)
+constexpr RandomBCDOptions OPTS_P2R_TH  = { 3,  false, false, false };  // theta in degrees ±999
 
 // Generate a random BCD string with configurable domain constraints
 // Returns format: ±D.DDDDDDDDDDDDDDDDeN (parseable by BCD constructor)
@@ -87,6 +92,11 @@ using BcdBinaryOp = void (*)(BCD&, BCD&, BCD&);
 using IeeeBinaryOp = Real (*)(Real, Real);
 using BcdUnaryOp = void (*)(BCD&, BCD&);
 using IeeeUnaryOp = Real (*)(Real);
+
+// Dual-output function pointer types (R = primary, Y = secondary)
+// BCD op has same signature as binary; caller reads Y after the call
+using BcdBinaryDualOp = void (*)(BCD&, BCD&, BCD&);
+using IeeeBinaryDualOp = std::pair<Real,Real> (*)(Real, Real);
 
 // ---------------------------------------------------------------------------
 // Unified test runners using C++17 if constexpr
@@ -103,6 +113,12 @@ bool runTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const std::string*
 // Returns: false if stopped early (MISS with -e flag)
 template<Arity arity, typename BcdOp, typename IeeeOp>
 bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp, const RandomBCDOptions& opts);
+
+// Random test runner for BinaryDual with separate opts for each operand
+// Returns: false if stopped early (MISS with -e flag)
+template<Arity arity, typename BcdOp, typename IeeeOp>
+bool runRandomTests(const char* opName, BcdOp bcdOp, IeeeOp ieeeOp,
+                    const RandomBCDOptions& optsA, const RandomBCDOptions& optsB);
 
 // Round-trip test runner - tests forward(inverse(x)) = x
 // Returns: false if stopped early (MISS with -e flag)

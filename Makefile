@@ -4,7 +4,7 @@ MAKEFLAGS += -j$(shell nproc)
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -DUSE_LONG_DOUBLE
 TARGET = proto
-SRCS = proto.cpp bcd.cpp addsub.cpp testbench.cpp exponent.cpp mantissa.cpp register.cpp calculator.cpp mult.cpp div.cpp log.cpp sqrt_dd.cpp sqrt_nr.cpp tan.cpp tan10.cpp sin.cpp cos.cpp asin.cpp acos.cpp const.cpp
+SRCS = proto.cpp bcd.cpp addsub.cpp testbench.cpp exponent.cpp mantissa.cpp register.cpp calculator.cpp mult.cpp div.cpp log.cpp sqrt_dd.cpp sqrt_nr.cpp tan.cpp tan10.cpp sin.cpp cos.cpp asin.cpp acos.cpp const.cpp atan2.cpp r2p.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 .PHONY: all clean double
