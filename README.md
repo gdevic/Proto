@@ -161,6 +161,7 @@ A CLI-based RPN calculator with a 4-level stack (T, Z, Y, X) using full BCD arit
 | Category | Commands | Notes |
 |----------|----------|-------|
 | Numbers | Any decimal (e.g., `3.14`, `-2.5e10`, `42`) | Range: ±9.999...e±99 |
+| Constants | `pi` `e` | Computed from BCD constants/functions |
 | Stack entry | `enter` | Duplicate X into Y, lift stack |
 | Arithmetic | `+` `-` `*` `/` | Binary: Y op X |
 | Functions | `sqrt` `ln` `exp` | Unary: f(X) |

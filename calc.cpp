@@ -27,6 +27,13 @@
 #include <cctype>
 
 // ---------------------------------------------------------------------------
+// ANSI color codes
+// ---------------------------------------------------------------------------
+
+static constexpr const char* C_RESET = "\033[0m";
+static constexpr const char* C_INV   = "\033[7m";    // Inverse video
+
+// ---------------------------------------------------------------------------
 // Calculator stack (separate from global S0/S1/R used by BCD functions)
 // ---------------------------------------------------------------------------
 
@@ -125,9 +132,10 @@ static std::string autoFormat(const BCD& x)
     return result;
 }
 
-// Print all four stack registers
+// Print mode banner and all four stack registers
 static void printStack()
 {
+    std::cout << C_INV << " " << (angleDeg ? "DEG" : "RAD") << " | ? for help " << C_RESET << "\n";
     std::cout << "T= " << autoFormat(stkT) << "\n";
     std::cout << "Z= " << autoFormat(stkZ) << "\n";
     std::cout << "Y= " << autoFormat(stkY) << "\n";
@@ -263,6 +271,8 @@ static void printHelp()
     std::cout << "\nBCD RPN Calculator (" << MAX_MANT << "-digit precision, range 1e-99 to 9.9..e+99)\n"
               << "Enter numbers or commands one per line. Stack: T, Z, Y, X (X = display).\n\n"
               << "  Numbers     Any decimal: 3.14  -2.5e10  42  .001  7E3\n"
+              << "  pi          Pi (computed from BCD constants)\n"
+              << "  e           Euler's number (computed as exp(1))\n"
               << "  enter       Duplicate X into Y, lift stack\n\n"
               << "  Operations & functions:\n"
               << "    +         Add:        X = Y + X, drop stack\n"
@@ -311,8 +321,7 @@ int runCalculator()
     needLift = false;
     angleDeg = true;
 
-    std::cout << "BCD RPN Calculator (" << MAX_MANT << "-digit precision)\n";
-    std::cout << "Mode: DEG | Type 'help' for commands, 'quit' to exit\n\n";
+    std::cout << "BCD RPN Calculator (" << MAX_MANT << "-digit precision)\n\n";
     printStack();
 
     std::string line;
@@ -356,6 +365,34 @@ int runCalculator()
         if (cmd == "rad") {
             angleDeg = false;
             std::cout << "Mode: RAD\n";
+            continue;
+        }
+
+        // ---- Constants ----
+        if (cmd == "pi") {
+            if (needLift)
+                stackLift();
+            // pi = (pi/2) * 2, using existing BCD constants
+            constLoad(::S0, CONST_PI_OVER_2);
+            constLoad(::S1, CONST_2);
+            clearFlags();
+            mul(::R, ::S0, ::S1);
+            regCopy(stkX, ::R);
+            needLift = true;
+            printStack();
+            continue;
+        }
+        if (cmd == "e") {
+            if (needLift)
+                stackLift();
+            // e = exp(1), using existing BCD functions
+            constLoad(::S0, CONST_1);
+            regClear(::S1);
+            clearFlags();
+            exp(::R, ::S0);
+            regCopy(stkX, ::R);
+            needLift = true;
+            printStack();
             continue;
         }
 

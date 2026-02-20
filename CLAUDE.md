@@ -146,4 +146,16 @@ make              # Linux, long double
 ./proto -t -v -f add        # With IEEE values
 ```
 
+**Interactive RPN calculator (-?)**: CLI-based 4-level stack (T, Z, Y, X) calculator.
+```bash
+./proto -?                  # Start interactive calculator
+```
+- Simplified HP-style stack: ENTER lifts/duplicates, binary ops drop, unary ops replace X
+- Arithmetic: `+` `-` `*` `/`, functions: `sqrt` `ln` `exp`
+- Trig: `sin` `cos` `tan` `asin` `acos` `atan` (respects `deg`/`rad` mode)
+- Two-arg: `atan2` (Y=y, X=x), dual-output: `p2r` (X=r, Y=θ→X=x, Y=y), `r2p` (X=x, Y=y→X=r, Y=θ)
+- Constants: `pi` (computed as π/2 × 2), `e` (computed as exp(1))
+- Stack ops: `swap`, `roll` (down), `lastx`, `clr`
+- Uses global registers S0/S1/R internally; own stack is separate static BCD array
+
 Note: `-f` takes precedence over `-a`. Invalid combinations (e.g., `-t -c`) are rejected.
