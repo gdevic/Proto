@@ -10,6 +10,7 @@
  *****************************************************************************/
 
 #include "proto.h"
+#include "calc.h"
 #include "testbench.h"
 #include <iostream>
 #include <iomanip>
@@ -100,6 +101,7 @@ static void printHelp(const char* prog)
               << "  -f NAME  Run only specified test(s); can repeat (case-insensitive)\n"
               << "  -l       List available test functions\n"
               << "  -r NUM   Number of random tests (default: 10)\n"
+              << "  -?       Start interactive RPN calculator\n"
               << "  -h       Show this help\n"
               << "\n"
               << "Dev mode (default):\n"
@@ -191,6 +193,8 @@ int main(int argc, char* argv[])
             g_traceAll = true;
         else if (strcmp(argv[i], "-R") == 0)
             g_skipRoundTrip = true;
+        else if (strcmp(argv[i], "-?") == 0)
+            return runCalculator();
         else {
             std::cerr << "Unknown option: " << argv[i] << "\n";
             std::cerr << "Use -h for help.\n";

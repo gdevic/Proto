@@ -169,6 +169,7 @@
     <ClCompile Include="calculator.cpp" />
     <ClCompile Include="atan2.cpp" />
     <ClCompile Include="r2p.cpp" />
+    <ClCompile Include="calc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />
@@ -179,6 +180,7 @@
     <ClInclude Include="proto.h" />
     <ClInclude Include="testbench.h" />
     <ClInclude Include="testbench.inl" />
+    <ClInclude Include="calc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

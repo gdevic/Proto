@@ -8,9 +8,10 @@ This code accompanies the Calculator project described here: https://baltazarstu
 
 BCD arithmetic with a configurable mantissa size (4-16 digits, default 16) and 2-digit exponent. Change `MAX_MANT` in `bcd.h` to experiment with different precision levels. Basic operations (add/sub/mul/div) achieve full MAX_MANT-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically MAX_MANT-3 to MAX_MANT-2 digits).
 
-The tool operates in two modes:
+The tool operates in three modes:
 - **Dev mode**: Compare BCD results against IEEE long double to validate algorithms
 - **HW vectors mode**: Generate test vectors for hardware verification
+- **Interactive RPN calculator**: CLI-based 4-level stack calculator using BCD arithmetic (`-?`)
 
 ## Documentation
 
@@ -93,12 +94,13 @@ msbuild Proto.vcxproj /p:Configuration=Release /p:Platform=x64
 
 ## Command Line Options
 
-The tool operates in two modes: **Dev mode** (default) for debugging and **HW vectors mode** for generating hardware test vectors.
+The tool operates in three modes: **Dev mode** (default) for debugging, **HW vectors mode** for generating hardware test vectors, and **Interactive RPN calculator** for hands-on BCD arithmetic.
 
 ### Common Options
 
 | Flag | Description |
 |------|-------------|
+| `-?` | Start interactive RPN calculator |
 | `-a` | Run all tests (ignored if `-f` is specified) |
 | `-f NAME` | Run only specified test(s); can repeat (case-insensitive) |
 | `-l` | List available test functions |
@@ -137,6 +139,50 @@ Generate test vectors for hardware verification. Prints all test lines to stdout
 ./proto -t -a > hw.txt      # Generate all test vectors
 ./proto -t -f sqrt -r 1000  # 1000 random sqrt vectors
 ./proto -t -i -f add        # Add vectors with IEEE values
+```
+
+### Interactive RPN Calculator (-?)
+
+A CLI-based RPN calculator with a 4-level stack (T, Z, Y, X) using full BCD arithmetic precision.
+
+```bash
+./proto -?              # Start the calculator
+```
+
+**Stack behavior** (simplified HP-style):
+- **ENTER**: Lifts stack (T=Z, Z=Y, Y=X), disables lift for next number entry
+- **Number**: Lifts stack if enabled, places value in X
+- **Binary op**: X = Y op X, stack drops (Y=Z, Z=T, T=0)
+- **Unary op**: X = f(X), stack unchanged
+- **Dual output** (p2r, r2p): Replaces X and Y, Z and T unchanged
+
+**Commands**:
+
+| Category | Commands | Notes |
+|----------|----------|-------|
+| Numbers | Any decimal (e.g., `3.14`, `-2.5e10`, `42`) | Range: ±9.999...e±99 |
+| Stack entry | `enter` | Duplicate X into Y, lift stack |
+| Arithmetic | `+` `-` `*` `/` | Binary: Y op X |
+| Functions | `sqrt` `ln` `exp` | Unary: f(X) |
+| Trig | `sin` `cos` `tan` `asin` `acos` `atan` | Uses current angle mode |
+| Two-arg | `atan2` | Y=y, X=x; drops stack |
+| Coords | `p2r` | X=r, Y=theta -> X=x, Y=y |
+| | `r2p` | X=x, Y=y -> X=r, Y=theta |
+| Angle mode | `deg` `rad` | Default: DEG |
+| Stack ops | `swap` `roll` `lastx` `clr` | swap X/Y, roll down, recall last X, clear all |
+| Exit | `quit` `exit` `q` | |
+
+**Example session** (compute sqrt(3^2 + 4^2) = 5):
+```
+> 3
+> enter
+> *
+> 4
+> enter
+> *
+> +
+> sqrt
+X= 5
 ```
 
 ### Invalid Combinations
@@ -192,58 +238,13 @@ R2PDEG +3.000000000000000e+00 +4.000000000000000e+00 +5.000000000000000e+00 +3.6
 
 ### Test Summary
 
-Summary is printed to stderr (doesn't interfere with stdout redirection). Each line shows the active tolerance class:
+Summary is printed to stderr (doesn't interfere with stdout redirection). Each line shows the active tolerance class.
 ```
 ADD [Strict] comb: 961 PASS, 0 NEAR, 0 MISS
-ADD [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
-SUB [Strict] comb: 196 PASS, 0 NEAR, 0 MISS
-SUB [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
-MUL [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
-MUL [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
-DIV [Strict] comb: 1089 PASS, 0 NEAR, 0 MISS
-DIV [Strict] rand: 500 PASS, 0 NEAR, 0 MISS
+...
 SQRT [Standard] tests: 45 PASS, 0 NEAR, 0 MISS
-SQRT [Standard] rand: 500 PASS, 0 NEAR, 0 MISS
-LN [Standard] tests: 16 PASS, 12 NEAR, 3 MISS
-LN [Standard] rand: 458 PASS, 41 NEAR, 1 MISS
-EXP [Standard] tests: 21 PASS, 12 NEAR, 0 MISS
-EXP [Standard] rand: 294 PASS, 206 NEAR, 0 MISS
-TANRAD [Relaxed] tests: 47 PASS, 17 NEAR, 23 MISS
-TANRAD [Relaxed] rand: 374 PASS, 119 NEAR, 7 MISS
-ATANRAD [Relaxed] tests: 20 PASS, 0 NEAR, 0 MISS
-ATANRAD [Relaxed] rand: 499 PASS, 0 NEAR, 1 MISS
-TANDEG [Relaxed] tests: 57 PASS, 37 NEAR, 10 MISS
-TANDEG [Relaxed] rand: 403 PASS, 86 NEAR, 11 MISS
-ATANDEG [Relaxed] tests: 24 PASS, 0 NEAR, 0 MISS
-ATANDEG [Relaxed] rand: 499 PASS, 1 NEAR, 0 MISS
-SINDEG [Relaxed] tests: 96 PASS, 0 NEAR, 0 MISS
-SINDEG [Relaxed] rand: 388 PASS, 105 NEAR, 7 MISS
-SINRAD [Relaxed] tests: 39 PASS, 8 NEAR, 0 MISS
-SINRAD [Relaxed] rand: 433 PASS, 62 NEAR, 5 MISS
-COSDEG [Relaxed] tests: 92 PASS, 1 NEAR, 0 MISS
-COSDEG [Relaxed] rand: 473 PASS, 27 NEAR, 0 MISS
-COSRAD [Relaxed] tests: 41 PASS, 14 NEAR, 1 MISS
-COSRAD [Relaxed] rand: 432 PASS, 63 NEAR, 5 MISS
-ASINDEG [Relaxed] tests: 23 PASS, 4 NEAR, 0 MISS
-ASINDEG [Relaxed] rand: 372 PASS, 126 NEAR, 2 MISS
-ASINRAD [Relaxed] tests: 13 PASS, 2 NEAR, 0 MISS
-ASINRAD [Relaxed] rand: 375 PASS, 125 NEAR, 0 MISS
-ACOSDEG [Relaxed] tests: 26 PASS, 0 NEAR, 1 MISS
-ACOSDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-ACOSRAD [Relaxed] tests: 14 PASS, 0 NEAR, 0 MISS
-ACOSRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-ATAN2DEG [Relaxed] comb: 528 PASS, 1 NEAR, 0 MISS
-ATAN2DEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-ATAN2RAD [Relaxed] comb: 168 PASS, 1 NEAR, 0 MISS
-ATAN2RAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
+...
 P2RDEG [Relaxed] comb: 436 PASS, 21 NEAR, 27 MISS
-P2RDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-P2RRAD [Relaxed] comb: 196 PASS, 0 NEAR, 0 MISS
-P2RRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-R2PDEG [Relaxed] comb: 398 PASS, 2 NEAR, 0 MISS
-R2PDEG [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
-R2PRAD [Relaxed] comb: 144 PASS, 0 NEAR, 0 MISS
-R2PRAD [Relaxed] rand: 500 PASS, 0 NEAR, 0 MISS
 ```
 
 Tests are split into combinatorial (fixed test values) and random (generated values with domain-appropriate constraints).
