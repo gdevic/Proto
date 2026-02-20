@@ -105,7 +105,7 @@ static void printHelp(const char* prog)
               << "Dev mode (default):\n"
               << "  Compare BCD vs IEEE long double. Only prints NEAR/MISS. Includes round-trip tests.\n"
               << "  -c       Use ANSI colors to highlight mismatched digits\n"
-              << "  -d NUM   FIX mode: round to NUM decimal places (0-15)\n"
+              << "  -d NUM   FIX mode: round to NUM decimal places (0-" << MAX_MANT - 1 << ")\n"
               << "  -e       Stop on first error (MISS)\n"
               << "  -v       Verbose: show all tests including PASS\n"
               << "  -R       Skip round-trip tests\n"
@@ -151,12 +151,12 @@ int main(int argc, char* argv[])
             g_useColor = true;
         else if (strcmp(argv[i], "-d") == 0) {
             if (i + 1 >= argc) {
-                std::cerr << "-d requires a number (0-15)\n";
+                std::cerr << "-d requires a number (0-" << MAX_MANT - 1 << ")\n";
                 return 1;
             }
             g_roundDigits = std::atoi(argv[++i]);
-            if (g_roundDigits < 0 || g_roundDigits > 15) {
-                std::cerr << "-d value must be 0-15\n";
+            if (g_roundDigits < 0 || g_roundDigits > int(MAX_MANT) - 1) {
+                std::cerr << "-d value must be 0-" << MAX_MANT - 1 << "\n";
                 return 1;
             }
         }

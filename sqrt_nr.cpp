@@ -83,7 +83,7 @@ void sqrt_nr(BCD& R, BCD& S0)
         // Convergence check: compare R with S3 for first 14 digits (indices 0-13)
         // Microcode checks from index 13 down to 0, exits on first mismatch
         bool converged = true;
-        for (int i = 13; i >= 0; i--) {
+        for (int i = int(MAX_MANT) - 3; i >= 0; i--) {
             if (R.mant[i] != S3.mant[i]) {
                 converged = false;
                 break;

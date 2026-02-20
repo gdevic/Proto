@@ -1,7 +1,7 @@
 /******************************************************************************
  * mantissa.h - BCD mantissa operation declarations
  *
- * Declares 16-digit mantissa primitives: add, subtract, shift,
+ * Declares MAX_MANT-digit mantissa primitives: add, subtract, shift,
  * copy, clear, compare. All operations maintain nibble-safe
  * intermediates (0-9 range) for hardware compatibility.
  *
@@ -13,7 +13,7 @@
 
 #include "bcd.h"
 
-// Check if mantissa is zero (checks all 16 positions)
+// Check if mantissa is zero (checks all MAX_MANT positions)
 // Returns true if all mantissa digits are zero
 bool isMantZero(const uint8_t* mant);
 
@@ -51,7 +51,7 @@ int mantInc(uint8_t* mant);
 // Returns borrow (0 or 1)
 int mantDec(uint8_t* mant);
 
-// Add magnitudes of two aligned mantissas (all 16 positions): r = a + b
+// Add magnitudes of two aligned mantissas (all MAX_MANT positions): r = a + b
 // Returns carry (0 or 1)
 int mantAdd(uint8_t* r, const uint8_t* a, const uint8_t* b);
 

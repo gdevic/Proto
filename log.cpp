@@ -21,11 +21,11 @@
 #include <cmath>
 
 // CORDIC constants for natural logarithm (Meggitt's digit-by-digit method)
-// ln_const[j] = ln(1 + 10^-j) for j = 0..7, stored as 16-digit BCD mantissa
+// ln_const[j] = ln(1 + 10^-j) for j = 0..7, stored as BCD mantissa (16 source digits)
 // Format: d1.d2d3...d16, so 0.693... is stored as {0,6,9,3,...}
 // For j >= 8, ln(1 + 10^-j) ≈ 10^-j, which is j leading zeros followed by 9s
 constexpr uint K = 8;  // Table size; entries 8-15 are generated dynamically
-static const uint8_t ln_const[K][MAX_MANT] = {
+static const uint8_t ln_const[K][16] = {
     {0,6,9,3,1,4,7,1,8,0,5,5,9,9,4,5},  // ln(2)         = 0.6931471805599453
     {0,0,9,5,3,1,0,1,7,9,8,0,4,3,2,5},  // ln(1.1)       = 0.0953101798043249
     {0,0,0,9,9,5,0,3,3,0,8,5,3,1,6,8},  // ln(1.01)      = 0.0099503308531681

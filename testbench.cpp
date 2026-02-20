@@ -22,22 +22,24 @@ Real roundFixIEEE(Real value, int d)
     return std::round(value * scale) / scale;
 }
 
-// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, fixed width for HW parsing)
-// Internal format: d₁.d₂d₃...d₁₆ × 10^exp (16 significant digits)
+// Format BCD as ±D.DDD...De±EE (MAX_MANT+6 chars, fixed width for HW parsing)
+// Internal format: d₁.d₂d₃...d_N × 10^exp (MAX_MANT significant digits)
 // Returns formatted string representation
 std::string formatBCD(const BCD& x)
 {
-    //               0123456789012345678901
-    std::string s = "+0.000000000000000e+00";
+    // Format: ±D.DDD...De±EE  (MAX_MANT+6 chars total)
+    // Indices: 0=sign, 1=d0, 2='.', 3..MAX_MANT+1=d1..dN-1, MAX_MANT+2='e', MAX_MANT+3=esign, MAX_MANT+4=e0, MAX_MANT+5=e1
+    std::string s(MAX_MANT + 6, '0');
+    s[0] = '+'; s[2] = '.'; s[MAX_MANT + 2] = 'e'; s[MAX_MANT + 3] = '+';
 
     if (x.sign) s[0] = '-';
     s[1] = char('0' + x.mant[0]);
     for (uint i = 1; i < MAX_MANT; i++)
         s[2 + i] = char('0' + x.mant[i]);
 
-    if (x.esign) s[19] = '-';
-    s[20] = char('0' + (x.exp[0]));
-    s[21] = char('0' + (x.exp[1]));
+    if (x.esign) s[MAX_MANT + 3] = '-';
+    s[MAX_MANT + 4] = char('0' + (x.exp[0]));
+    s[MAX_MANT + 5] = char('0' + (x.exp[1]));
 
     return s;
 }
@@ -153,23 +155,24 @@ static bool isIeeeNoise(const BCD& bcdResult, Real ieee)
 }
 
 // Set tolerance thresholds for an operation class
-// Strict: add/sub/mul/div (15/14 digits), Standard: sqrt/ln/exp (14/13 digits),
-// Relaxed: trig functions (13/12 digits)
+// Strict: add/sub/mul/div (MAX_MANT-1/MAX_MANT-2 digits)
+// Standard: sqrt/ln/exp (MAX_MANT-2/MAX_MANT-3 digits)
+// Relaxed: trig functions (MAX_MANT-3/MAX_MANT-4 digits)
 void setTolerance(Tolerance t)
 {
     g_toleranceClass = t;
     switch (t) {
         case Tolerance::Strict:
-            g_tightTol = REAL_LITERAL(1e-15);
-            g_looseTol = REAL_LITERAL(1e-14);
+            g_tightTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 1));
+            g_looseTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 2));
             break;
         case Tolerance::Standard:
-            g_tightTol = REAL_LITERAL(1e-14);
-            g_looseTol = REAL_LITERAL(1e-13);
+            g_tightTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 2));
+            g_looseTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 3));
             break;
         case Tolerance::Relaxed:
-            g_tightTol = REAL_LITERAL(1e-13);
-            g_looseTol = REAL_LITERAL(1e-12);
+            g_tightTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 3));
+            g_looseTol = std::pow(REAL_LITERAL(10.0), -Real(MAX_MANT - 4));
             break;
     }
 }

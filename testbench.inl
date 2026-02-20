@@ -31,7 +31,7 @@ inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
 
     // Format IEEE in same format as BCD: ±D.DDDDDDDDDDDDDDDe±EE
     std::ostringstream oss;
-    oss << std::scientific << std::setprecision(15) << ieee;
+    oss << std::scientific << std::setprecision(int(MAX_MANT) - 1) << ieee;
     std::string ieeeStr = oss.str();
 
     // Normalize IEEE format to match BCD (22 chars: +D.DDDDDDDDDDDDDDDe+EE)
@@ -47,8 +47,8 @@ inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
         Real relErr = err / std::fabs(ieee);
         int correctDigits = int(-std::log10(relErr));
         if (correctDigits < 0) correctDigits = 0;
-        if (correctDigits > 15) correctDigits = 15;
-        sourceDigits = 16 - correctDigits;
+        if (correctDigits > int(MAX_MANT) - 1) correctDigits = int(MAX_MANT) - 1;
+        sourceDigits = int(MAX_MANT) - correctDigits;
     }
 
     // Find 'e' position
@@ -68,7 +68,7 @@ inline void printWithMismatchHighlight(const std::string& bcd, Real ieee)
 
     // A position is "source" if it's in the last sourceDigits of mantissa
     auto isSource = [sourceDigits](int mpos) -> bool {
-        return mpos >= 0 && mpos >= (16 - sourceDigits);
+        return mpos >= 0 && mpos >= (int(MAX_MANT) - sourceDigits);
     };
 
     // Print with appropriate colors
@@ -194,7 +194,7 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     // HW vectors mode (-t): clean output for hardware parsing
     if (g_traceAll) {
         // On error, result register is undefined - output zeros for consistent formatting
-        std::cout << (err.empty() ? formatBCD(result) : "+0.000000000000000e+00")
+        std::cout << (err.empty() ? formatBCD(result) : formatBCD(BCD{}))
                   << " " << (err.empty() ? "OK" : err);
         if (g_showIeee)
             std::cout << " " << std::scientific << std::setprecision(15) << ieee;
@@ -213,7 +213,7 @@ bool printResult(const char* op, const BCD& a, const BCD& b, const BCD& result, 
     auto correctDigits = [&]() -> int {
         Real absErr = std::fabs(result.toReal() - ieee);
         Real maxAbs = std::max(std::fabs(result.toReal()), std::fabs(ieee));
-        if (absErr == 0 || maxAbs == 0) return 16;
+        if (absErr == 0 || maxAbs == 0) return int(MAX_MANT);
         Real relErr = absErr / maxAbs;
         return int(-std::log10(relErr));
     };
@@ -281,7 +281,7 @@ inline bool printDualResult(const char* op, const BCD& a, const BCD& b,
 
     // HW vectors mode (-t): clean output for hardware parsing
     if (g_traceAll) {
-        std::string zero = "+0.000000000000000e+00";
+        std::string zero = formatBCD(BCD{});
         std::cout << (err.empty() ? formatBCD(result1) : zero) << " "
                   << (err.empty() ? formatBCD(result2) : zero) << " "
                   << (err.empty() ? "OK" : err);
@@ -302,7 +302,7 @@ inline bool printDualResult(const char* op, const BCD& a, const BCD& b,
     auto correctDigits = [](const BCD& res, Real ieee) -> int {
         Real absErr = std::fabs(res.toReal() - ieee);
         Real maxAbs = std::max(std::fabs(res.toReal()), std::fabs(ieee));
-        if (absErr == 0 || maxAbs == 0) return 16;
+        if (absErr == 0 || maxAbs == 0) return int(MAX_MANT);
         Real relErr = absErr / maxAbs;
         return int(-std::log10(relErr));
     };

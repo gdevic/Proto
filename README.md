@@ -6,7 +6,7 @@ This code accompanies the Calculator project described here: https://baltazarstu
 
 ## Overview
 
-BCD arithmetic with a 16-digit mantissa and 2-digit exponent. Basic operations (add/sub/mul/div) achieve full 16-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically 13-14 digits).
+BCD arithmetic with a configurable mantissa size (4-16 digits, default 16) and 2-digit exponent. Change `MAX_MANT` in `bcd.h` to experiment with different precision levels. Basic operations (add/sub/mul/div) achieve full MAX_MANT-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically MAX_MANT-3 to MAX_MANT-2 digits).
 
 The tool operates in two modes:
 - **Dev mode**: Compare BCD results against IEEE long double to validate algorithms
@@ -112,7 +112,7 @@ Compare BCD results against IEEE long double. Only prints NEAR/MISS lines. Inclu
 | Flag | Description |
 |------|-------------|
 | `-c` | Use ANSI colors to highlight mismatched digits |
-| `-d NUM` | FIX mode: round to NUM decimal places (0-15) |
+| `-d NUM` | FIX mode: round to NUM decimal places (0 to MAX_MANT-1) |
 | `-e` | Stop on first error (MISS) |
 | `-v` | Verbose: show all tests including PASS |
 | `-R` | Skip round-trip tests |
@@ -156,7 +156,7 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 | Field | Width | Description |
 |-------|-------|-------------|
 | OP | var | Operation: ADD, SUB, MUL, DIV, LN, EXP, SQRT, TANRAD, ATANRAD, TANDEG, ATANDEG, SINDEG, SINRAD, COSDEG, COSRAD, ASINDEG, ASINRAD, ACOSDEG, ACOSRAD, ATAN2DEG, ATAN2RAD, P2RDEG, P2RRAD, R2PDEG, R2PRAD |
-| Operand A | 22 | BCD format: ±D.DDDDDDDDDDDDDDDe±EE (16 digits) |
+| Operand A | MAX_MANT+6 | BCD format: ±D.DDD...De±EE (MAX_MANT digits) |
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |
 | Status | 2-4 | Dev: PASS, NEAR, or MISS. HW: OK |

@@ -1,8 +1,8 @@
 /******************************************************************************
  * bcd.h - BCD register structure definition
  *
- * Defines the BCD struct representing a 16-digit decimal number with
- * 2-digit exponent. Internal format: d₁.d₂d₃...d₁₆ × 10^exp.
+ * Defines the BCD struct representing a MAX_MANT-digit decimal number with
+ * 2-digit exponent. Internal format: d₁.d₂d₃...d_N × 10^exp.
  * Includes string parsing constructor and Real conversion for verification.
  *
  * Copyright (c) 2025 Goran Devic
@@ -29,6 +29,7 @@ using std::size_t;
 typedef unsigned int uint;
 
 constexpr uint MAX_MANT = 16;
+static_assert(MAX_MANT >= 4 && MAX_MANT <= 16, "MAX_MANT must be 4..16");
 constexpr uint MAX_EXP = 2;
 
 struct BCD

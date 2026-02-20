@@ -54,7 +54,7 @@ MatchLevel checkTolerance(Real expected, Real actual, const BCD& bcdResult);
 // Returns rounded value
 Real roundFixIEEE(Real value, int d);
 
-// Format BCD as ±D.DDDDDDDDDDDDDDDe±EE (22 chars, 16 significant digits)
+// Format BCD as ±D.DDD...De±EE (MAX_MANT+6 chars, MAX_MANT significant digits)
 // Returns formatted string representation
 std::string formatBCD(const BCD& x);
 

@@ -160,10 +160,11 @@ static void taylorAtan(BCD& R, BCD& S0)
 #endif
 
 // CORDIC constants for tangent/arctangent (Meggitt's digit-by-digit method)
-// atan_const[j] = atan(10^-j) for j = 0..7, stored as 16-digit BCD mantissa
+// atan_const[j] = atan(10^-j) for j = 0..7, stored as BCD mantissa (16 source digits)
 // Format: d1.d2d3...d16, so 0.785... is stored as {0,7,8,5,...}
 constexpr uint K = 8;  // Number of CORDIC iterations (matches table size)
-static const uint8_t atan_const[K][MAX_MANT] = {
+constexpr uint CORDIC_ITERS = (K < MAX_MANT - 1) ? K : MAX_MANT - 1;
+static const uint8_t atan_const[K][16] = {
     {0,7,8,5,3,9,8,1,6,3,3,9,7,4,4,8},  // atan(1)       = 0.7853981633974483
     {0,0,9,9,6,6,8,6,5,2,4,9,1,1,6,2},  // atan(0.1)     = 0.0996686524911620
     {0,0,0,9,9,9,9,6,6,6,6,8,6,6,6,5},  // atan(0.01)    = 0.0099996666866665
@@ -203,7 +204,7 @@ void cordicTan(BCD& R, BCD& S0)
     // S0.mant = angle, S1.mant = atan constants, S2 = digit counters
     regClear(S2);
 
-    for (uint j = 0; j < K; j++) {
+    for (uint j = 0; j < CORDIC_ITERS; j++) {
         mantCopy(S1.mant.data(), atan_const[j]);
 
         while (true) {
@@ -236,7 +237,7 @@ void cordicTan(BCD& R, BCD& S0)
     regClearExpSign(S0);
     constLoad(S1, CONST_1);
 
-    for (int j = int(K) - 1; j >= 0; j--) {
+    for (int j = int(CORDIC_ITERS) - 1; j >= 0; j--) {
         for (uint8_t k = 0; k < S2.mant[j]; k++) {
             regCopy(S3, S0);         // Save y
             regCopy(S4, S1);         // Save x
@@ -336,7 +337,7 @@ void cordicAtan(BCD& R, BCD& S0)
     regClear(S2);                    // Digit counters
     constLoad(S1, CONST_1);          // x = 1.0
 
-    for (uint j = 0; j < K; j++) {
+    for (uint j = 0; j < CORDIC_ITERS; j++) {
         while (true) {
             regCopy(S3, S0);         // Save y
             regCopy(S4, S1);         // Save x
@@ -377,8 +378,8 @@ void cordicAtan(BCD& R, BCD& S0)
     // Part 3: Compute residual = y / x
     div(R, S0, S1);
 
-    // Part 4: Accumulate atan constants (from K-1 down to 0)
-    for (int j = int(K) - 1; j >= 0; j--) {
+    // Part 4: Accumulate atan constants (from CORDIC_ITERS-1 down to 0)
+    for (int j = int(CORDIC_ITERS) - 1; j >= 0; j--) {
         for (uint8_t k = 0; k < S2.mant[j]; k++) {
             // Load atan constant as normalized BCD
             mantCopy(S0.mant.data(), atan_const[j]);

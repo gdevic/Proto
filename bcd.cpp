@@ -2,7 +2,7 @@
  * bcd.cpp - BCD number construction from string
  *
  * Implements BCD(string) constructor parsing decimal strings into
- * 16-digit mantissa with 2-digit exponent. Handles scientific notation,
+ * MAX_MANT-digit mantissa with 2-digit exponent. Handles scientific notation,
  * signs, and stores original value for verification.
  *
  * Copyright (c) 2025 Goran Devic
@@ -87,8 +87,10 @@ BCD::BCD(std::string_view str)
                 continue;
             }
             seen_nonzero = true;
-            if (uint(digit_count) >= MAX_MANT)
-                throw std::invalid_argument("BCD: more than 16 mantissa digits");
+            if (uint(digit_count) >= MAX_MANT) {
+                pos++;
+                continue;
+            }
             digits[digit_count++] = uint8_t(d);
         }
         pos++;
