@@ -23,6 +23,8 @@
 #include "testbench.h"
 #include <iostream>
 #include <string>
+#include <vector>
+#include <sstream>
 #include <algorithm>
 #include <cctype>
 
@@ -269,7 +271,7 @@ static bool checkErrors()
 static void printHelp()
 {
     std::cout << "\nBCD RPN Calculator (" << MAX_MANT << "-digit precision, range 1e-99 to 9.9..e+99)\n"
-              << "Enter numbers or commands one per line. Stack: T, Z, Y, X (X = display).\n\n"
+              << "Enter numbers and commands separated by spaces. Stack: T, Z, Y, X (X = display).\n\n"
               << "  Numbers     Any decimal: 3.14  -2.5e10  42  .001  7E3\n"
               << "  pi          Pi (computed from BCD constants)\n"
               << "  e           Euler's number (computed as exp(1))\n"
@@ -341,236 +343,270 @@ int runCalculator()
         if (line.empty())
             continue;
 
-        // Lowercase copy for command matching
-        std::string cmd = line;
-        std::transform(cmd.begin(), cmd.end(), cmd.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+        // Tokenize the line by whitespace
+        std::vector<std::string> tokens;
+        std::istringstream iss(line);
+        std::string token;
+        while (iss >> token)
+            tokens.push_back(token);
 
-        // ---- Exit ----
-        if (cmd == "quit" || cmd == "exit" || cmd == "q")
-            break;
+        bool shouldQuit = false;
+        bool showStack = false;
 
-        // ---- Help ----
-        if (cmd == "help" || cmd == "?") {
-            printHelp();
-            continue;
-        }
+        for (const auto& tok : tokens) {
+            // Lowercase copy for command matching
+            std::string cmd = tok;
+            std::transform(cmd.begin(), cmd.end(), cmd.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
 
-        // ---- Angle mode ----
-        if (cmd == "deg") {
-            angleDeg = true;
-            std::cout << "Mode: DEG\n";
-            continue;
-        }
-        if (cmd == "rad") {
-            angleDeg = false;
-            std::cout << "Mode: RAD\n";
-            continue;
-        }
+            // ---- Exit ----
+            if (cmd == "quit" || cmd == "exit" || cmd == "q") {
+                shouldQuit = true;
+                break;
+            }
 
-        // ---- Constants ----
-        if (cmd == "pi") {
-            if (needLift)
-                stackLift();
-            // pi = (pi/2) * 2, using existing BCD constants
-            constLoad(::S0, CONST_PI_OVER_2);
-            constLoad(::S1, CONST_2);
-            clearFlags();
-            mul(::R, ::S0, ::S1);
-            regCopy(stkX, ::R);
-            needLift = true;
-            printStack();
-            continue;
-        }
-        if (cmd == "e") {
-            if (needLift)
-                stackLift();
-            // e = exp(1), using existing BCD functions
-            constLoad(::S0, CONST_1);
-            regClear(::S1);
-            clearFlags();
-            exp(::R, ::S0);
-            regCopy(stkX, ::R);
-            needLift = true;
-            printStack();
-            continue;
-        }
+            // ---- Help ----
+            if (cmd == "help" || cmd == "?") {
+                printHelp();
+                break;
+            }
 
-        // ---- Number entry ----
-        if (isNumber(line)) {
-            if (!validateRange(line))
+            // ---- Angle mode ----
+            if (cmd == "deg") {
+                angleDeg = true;
+                std::cout << "Mode: DEG\n";
+                showStack = true;
                 continue;
-            if (needLift)
+            }
+            if (cmd == "rad") {
+                angleDeg = false;
+                std::cout << "Mode: RAD\n";
+                showStack = true;
+                continue;
+            }
+
+            // ---- Constants ----
+            if (cmd == "pi") {
+                if (needLift)
+                    stackLift();
+                // pi = (pi/2) * 2, using existing BCD constants
+                constLoad(::S0, CONST_PI_OVER_2);
+                constLoad(::S1, CONST_2);
+                clearFlags();
+                mul(::R, ::S0, ::S1);
+                regCopy(stkX, ::R);
+                needLift = true;
+                showStack = true;
+                continue;
+            }
+            if (cmd == "e") {
+                if (needLift)
+                    stackLift();
+                // e = exp(1), using existing BCD functions
+                constLoad(::S0, CONST_1);
+                regClear(::S1);
+                clearFlags();
+                exp(::R, ::S0);
+                regCopy(stkX, ::R);
+                needLift = true;
+                showStack = true;
+                continue;
+            }
+
+            // ---- Number entry ----
+            if (isNumber(tok)) {
+                if (!validateRange(tok)) {
+                    showStack = true;
+                    break;
+                }
+                if (needLift)
+                    stackLift();
+                stkX = BCD(tok);
+                needLift = true;
+                showStack = true;
+                continue;
+            }
+
+            // ---- Enter (duplicate X, lift stack) ----
+            if (cmd == "enter") {
                 stackLift();
-            stkX = BCD(line);
-            needLift = true;
-            printStack();
-            continue;
-        }
+                needLift = false;
+                showStack = true;
+                continue;
+            }
 
-        // ---- Enter (duplicate X, lift stack) ----
-        if (cmd == "enter") {
-            stackLift();
-            needLift = false;
-            printStack();
-            continue;
-        }
+            // ---- Stack operations ----
+            if (cmd == "swap") {
+                BCD tmp;
+                regCopy(tmp, stkX);
+                regCopy(stkX, stkY);
+                regCopy(stkY, tmp);
+                showStack = true;
+                continue;
+            }
+            if (cmd == "roll") {
+                // Roll down: Y->X, Z->Y, T->Z, X->T
+                BCD tmp;
+                regCopy(tmp, stkX);
+                regCopy(stkX, stkY);
+                regCopy(stkY, stkZ);
+                regCopy(stkZ, stkT);
+                regCopy(stkT, tmp);
+                showStack = true;
+                continue;
+            }
+            if (cmd == "lastx") {
+                if (needLift)
+                    stackLift();
+                regCopy(stkX, stkLastX);
+                needLift = true;
+                showStack = true;
+                continue;
+            }
+            if (cmd == "clr" || cmd == "clear") {
+                regClear(stkX);
+                regClear(stkY);
+                regClear(stkZ);
+                regClear(stkT);
+                needLift = false;
+                showStack = true;
+                continue;
+            }
 
-        // ---- Stack operations ----
-        if (cmd == "swap") {
-            BCD tmp;
-            regCopy(tmp, stkX);
-            regCopy(stkX, stkY);
-            regCopy(stkY, tmp);
-            printStack();
-            continue;
-        }
-        if (cmd == "roll") {
-            // Roll down: Y->X, Z->Y, T->Z, X->T
-            BCD tmp;
-            regCopy(tmp, stkX);
-            regCopy(stkX, stkY);
-            regCopy(stkY, stkZ);
-            regCopy(stkZ, stkT);
-            regCopy(stkT, tmp);
-            printStack();
-            continue;
-        }
-        if (cmd == "lastx") {
-            if (needLift)
-                stackLift();
-            regCopy(stkX, stkLastX);
-            needLift = true;
-            printStack();
-            continue;
-        }
-        if (cmd == "clr" || cmd == "clear") {
-            regClear(stkX);
-            regClear(stkY);
-            regClear(stkZ);
-            regClear(stkT);
-            needLift = false;
-            printStack();
-            continue;
-        }
+            // ---- Binary arithmetic (+, -, *, /) ----
+            if (cmd == "+" || cmd == "-" || cmd == "*" || cmd == "/") {
+                regCopy(stkLastX, stkX);
+                // S0 = Y (first operand), S1 = X (second operand)
+                regCopy(::S0, stkY);
+                regCopy(::S1, stkX);
+                clearFlags();
 
-        // ---- Binary arithmetic (+, -, *, /) ----
-        if (cmd == "+" || cmd == "-" || cmd == "*" || cmd == "/") {
-            regCopy(stkLastX, stkX);
-            // S0 = Y (first operand), S1 = X (second operand)
-            regCopy(::S0, stkY);
-            regCopy(::S1, stkX);
-            clearFlags();
+                if (cmd == "+")      add(::R, ::S0, ::S1);
+                else if (cmd == "-") sub(::R, ::S0, ::S1);
+                else if (cmd == "*") mul(::R, ::S0, ::S1);
+                else                 div(::R, ::S0, ::S1);
 
-            if (cmd == "+")      add(::R, ::S0, ::S1);
-            else if (cmd == "-") sub(::R, ::S0, ::S1);
-            else if (cmd == "*") mul(::R, ::S0, ::S1);
-            else                 div(::R, ::S0, ::S1);
-
-            if (!checkErrors()) {
+                if (checkErrors()) {
+                    showStack = true;
+                    break;
+                }
                 regCopy(stkX, ::R);
                 stackDrop();
+                needLift = true;
+                showStack = true;
+                continue;
             }
-            needLift = true;
-            printStack();
-            continue;
-        }
 
-        // ---- Unary operations (sqrt, ln, exp, trig) ----
-        if (cmd == "sqrt" || cmd == "ln" || cmd == "exp" ||
-            cmd == "sin" || cmd == "cos" || cmd == "tan" ||
-            cmd == "asin" || cmd == "acos" || cmd == "atan") {
-            regCopy(stkLastX, stkX);
-            regCopy(::S0, stkX);
-            regClear(::S1);
-            clearFlags();
+            // ---- Unary operations (sqrt, ln, exp, trig) ----
+            if (cmd == "sqrt" || cmd == "ln" || cmd == "exp" ||
+                cmd == "sin" || cmd == "cos" || cmd == "tan" ||
+                cmd == "asin" || cmd == "acos" || cmd == "atan") {
+                regCopy(stkLastX, stkX);
+                regCopy(::S0, stkX);
+                regClear(::S1);
+                clearFlags();
 
-            if (cmd == "sqrt")      sqrt(::R, ::S0);
-            else if (cmd == "ln")   ln(::R, ::S0);
-            else if (cmd == "exp")  exp(::R, ::S0);
-            else if (cmd == "sin")  { if (angleDeg) sinDeg(::R, ::S0);  else sinRad(::R, ::S0); }
-            else if (cmd == "cos")  { if (angleDeg) cosDeg(::R, ::S0);  else cosRad(::R, ::S0); }
-            else if (cmd == "tan")  { if (angleDeg) tanDeg(::R, ::S0);  else tanRad(::R, ::S0); }
-            else if (cmd == "asin") { if (angleDeg) asinDeg(::R, ::S0); else asinRad(::R, ::S0); }
-            else if (cmd == "acos") { if (angleDeg) acosDeg(::R, ::S0); else acosRad(::R, ::S0); }
-            else if (cmd == "atan") { if (angleDeg) atanDeg(::R, ::S0); else atanRad(::R, ::S0); }
+                if (cmd == "sqrt")      sqrt(::R, ::S0);
+                else if (cmd == "ln")   ln(::R, ::S0);
+                else if (cmd == "exp")  exp(::R, ::S0);
+                else if (cmd == "sin")  { if (angleDeg) sinDeg(::R, ::S0);  else sinRad(::R, ::S0); }
+                else if (cmd == "cos")  { if (angleDeg) cosDeg(::R, ::S0);  else cosRad(::R, ::S0); }
+                else if (cmd == "tan")  { if (angleDeg) tanDeg(::R, ::S0);  else tanRad(::R, ::S0); }
+                else if (cmd == "asin") { if (angleDeg) asinDeg(::R, ::S0); else asinRad(::R, ::S0); }
+                else if (cmd == "acos") { if (angleDeg) acosDeg(::R, ::S0); else acosRad(::R, ::S0); }
+                else if (cmd == "atan") { if (angleDeg) atanDeg(::R, ::S0); else atanRad(::R, ::S0); }
 
-            if (!checkErrors())
+                if (checkErrors()) {
+                    showStack = true;
+                    break;
+                }
                 regCopy(stkX, ::R);
-            needLift = true;
-            printStack();
-            continue;
-        }
+                needLift = true;
+                showStack = true;
+                continue;
+            }
 
-        // ---- atan2: Y=y, X=x -> angle (binary, drops stack) ----
-        if (cmd == "atan2") {
-            regCopy(stkLastX, stkX);
-            // S0 = y (from stack Y), S1 = x (from stack X)
-            regCopy(::S0, stkY);
-            regCopy(::S1, stkX);
-            clearFlags();
+            // ---- atan2: Y=y, X=x -> angle (binary, drops stack) ----
+            if (cmd == "atan2") {
+                regCopy(stkLastX, stkX);
+                // S0 = y (from stack Y), S1 = x (from stack X)
+                regCopy(::S0, stkY);
+                regCopy(::S1, stkX);
+                clearFlags();
 
-            if (angleDeg)
-                atan2Deg(::R, ::S0, ::S1);
-            else
-                atan2Rad(::R, ::S0, ::S1);
+                if (angleDeg)
+                    atan2Deg(::R, ::S0, ::S1);
+                else
+                    atan2Rad(::R, ::S0, ::S1);
 
-            if (!checkErrors()) {
+                if (checkErrors()) {
+                    showStack = true;
+                    break;
+                }
                 regCopy(stkX, ::R);
                 stackDrop();
+                needLift = true;
+                showStack = true;
+                continue;
             }
-            needLift = true;
-            printStack();
-            continue;
-        }
 
-        // ---- p2r: X=r, Y=theta -> X=x, Y=y (dual output, no stack drop) ----
-        if (cmd == "p2r") {
-            regCopy(stkLastX, stkX);
-            // p2rDeg(R, S0=r, S1=theta): S0=r (stack X), S1=theta (stack Y)
-            regCopy(::S0, stkX);
-            regCopy(::S1, stkY);
-            clearFlags();
+            // ---- p2r: X=r, Y=theta -> X=x, Y=y (dual output, no stack drop) ----
+            if (cmd == "p2r") {
+                regCopy(stkLastX, stkX);
+                // p2rDeg(R, S0=r, S1=theta): S0=r (stack X), S1=theta (stack Y)
+                regCopy(::S0, stkX);
+                regCopy(::S1, stkY);
+                clearFlags();
 
-            if (angleDeg)
-                p2rDeg(::R, ::S0, ::S1);
-            else
-                p2rRad(::R, ::S0, ::S1);
+                if (angleDeg)
+                    p2rDeg(::R, ::S0, ::S1);
+                else
+                    p2rRad(::R, ::S0, ::S1);
 
-            if (!checkErrors()) {
+                if (checkErrors()) {
+                    showStack = true;
+                    break;
+                }
                 regCopy(stkX, ::R);   // x (primary result)
                 regCopy(stkY, ::Y);   // y (secondary result)
+                needLift = true;
+                showStack = true;
+                continue;
             }
-            needLift = true;
-            printStack();
-            continue;
-        }
 
-        // ---- r2p: X=x, Y=y -> X=r, Y=theta (dual output, no stack drop) ----
-        if (cmd == "r2p") {
-            regCopy(stkLastX, stkX);
-            // r2pDeg(R, S0=y, S1=x): S0=y (stack Y), S1=x (stack X)
-            regCopy(::S0, stkY);
-            regCopy(::S1, stkX);
-            clearFlags();
+            // ---- r2p: X=x, Y=y -> X=r, Y=theta (dual output, no stack drop) ----
+            if (cmd == "r2p") {
+                regCopy(stkLastX, stkX);
+                // r2pDeg(R, S0=y, S1=x): S0=y (stack Y), S1=x (stack X)
+                regCopy(::S0, stkY);
+                regCopy(::S1, stkX);
+                clearFlags();
 
-            if (angleDeg)
-                r2pDeg(::R, ::S0, ::S1);
-            else
-                r2pRad(::R, ::S0, ::S1);
+                if (angleDeg)
+                    r2pDeg(::R, ::S0, ::S1);
+                else
+                    r2pRad(::R, ::S0, ::S1);
 
-            if (!checkErrors()) {
+                if (checkErrors()) {
+                    showStack = true;
+                    break;
+                }
                 regCopy(stkX, ::R);   // r (primary result)
                 regCopy(stkY, ::Y);   // theta (secondary result)
+                needLift = true;
+                showStack = true;
+                continue;
             }
-            needLift = true;
-            printStack();
-            continue;
+
+            // ---- Unknown command (skip and continue with remaining tokens) ----
+            std::cout << "  Unknown command: " << tok << "\n";
+            std::cout << "  Type 'help' for available commands\n";
         }
 
-        // ---- Unknown command ----
-        std::cout << "  Unknown command: " << line << "\n";
-        std::cout << "  Type 'help' for available commands\n";
+        if (showStack)
+            printStack();
+        if (shouldQuit)
+            break;
     }
 
     std::cout << "\n";
