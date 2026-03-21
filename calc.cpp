@@ -284,6 +284,12 @@ static void printHelp()
               << "    sqrt      Square root of X\n"
               << "    ln        Natural logarithm of X\n"
               << "    exp       Exponential e^X\n"
+              << "    sinh      Hyperbolic sine of X\n"
+              << "    cosh      Hyperbolic cosine of X\n"
+              << "    tanh      Hyperbolic tangent of X\n"
+              << "    asinh     Inverse hyperbolic sine of X\n"
+              << "    acosh     Inverse hyperbolic cosine of X\n"
+              << "    atanh     Inverse hyperbolic tangent of X\n"
               << "    sin       Sine of X\n"
               << "    cos       Cosine of X\n"
               << "    tan       Tangent of X\n"
@@ -497,10 +503,12 @@ int runCalculator()
                 continue;
             }
 
-            // ---- Unary operations (sqrt, ln, exp, trig) ----
+            // ---- Unary operations (sqrt, ln, exp, trig, hyperbolic) ----
             if (cmd == "sqrt" || cmd == "ln" || cmd == "exp" ||
                 cmd == "sin" || cmd == "cos" || cmd == "tan" ||
-                cmd == "asin" || cmd == "acos" || cmd == "atan") {
+                cmd == "asin" || cmd == "acos" || cmd == "atan" ||
+                cmd == "sinh" || cmd == "cosh" || cmd == "tanh" ||
+                cmd == "asinh" || cmd == "acosh" || cmd == "atanh") {
                 regCopy(stkLastX, stkX);
                 regCopy(::S0, stkX);
                 regClear(::S1);
@@ -515,6 +523,12 @@ int runCalculator()
                 else if (cmd == "asin") { if (angleDeg) asinDeg(::R, ::S0); else asinRad(::R, ::S0); }
                 else if (cmd == "acos") { if (angleDeg) acosDeg(::R, ::S0); else acosRad(::R, ::S0); }
                 else if (cmd == "atan") { if (angleDeg) atanDeg(::R, ::S0); else atanRad(::R, ::S0); }
+                else if (cmd == "sinh")  sinhHyp(::R, ::S0);
+                else if (cmd == "cosh")  coshHyp(::R, ::S0);
+                else if (cmd == "tanh")  tanhHyp(::R, ::S0);
+                else if (cmd == "asinh") asinhHyp(::R, ::S0);
+                else if (cmd == "acosh") acoshHyp(::R, ::S0);
+                else if (cmd == "atanh") atanhHyp(::R, ::S0);
 
                 if (checkErrors()) {
                     showStack = true;

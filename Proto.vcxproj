@@ -170,6 +170,7 @@
     <ClCompile Include="atan2.cpp" />
     <ClCompile Include="r2p.cpp" />
     <ClCompile Include="calc.cpp" />
+    <ClCompile Include="hyp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bcd.h" />

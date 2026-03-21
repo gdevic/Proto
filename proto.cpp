@@ -21,7 +21,7 @@
 // Valid test function names (all lowercase)
 static const char* validFunctions[] = {
     "add", "sub", "mul", "div", "sqrt",
-    "ln", "exp",
+    "ln", "exp", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
     "sinrad", "cosrad", "tanrad", "asinrad", "acosrad", "atanrad",
     "sindeg", "cosdeg", "tandeg", "asindeg", "acosdeg", "atandeg",
     "atan2deg", "atan2rad",
@@ -62,6 +62,12 @@ static void printFunctions()
     std::cerr << "  Transcendental:\n";
     std::cerr << "    ln         Natural logarithm\n";
     std::cerr << "    exp        Exponential (e^x)\n";
+    std::cerr << "    sinh       Hyperbolic sine\n";
+    std::cerr << "    cosh       Hyperbolic cosine\n";
+    std::cerr << "    tanh       Hyperbolic tangent\n";
+    std::cerr << "    asinh      Inverse hyperbolic sine\n";
+    std::cerr << "    acosh      Inverse hyperbolic cosine\n";
+    std::cerr << "    atanh      Inverse hyperbolic tangent\n";
     std::cerr << "\n";
     std::cerr << "  Trigonometric (radians):\n";
     std::cerr << "    sinrad     Sine\n";
@@ -268,6 +274,12 @@ int main(int argc, char* argv[])
     if (shouldRun("sqrt"))    testSqrt();
     if (shouldRun("ln"))      testLn();
     if (shouldRun("exp"))     testExp();
+    if (shouldRun("sinh"))    testSinh();
+    if (shouldRun("cosh"))    testCosh();
+    if (shouldRun("tanh"))    testTanh();
+    if (shouldRun("asinh"))   testAsinh();
+    if (shouldRun("acosh"))   testAcosh();
+    if (shouldRun("atanh"))   testAtanh();
     if (shouldRun("tanrad"))  testTanRad();
     if (shouldRun("atanrad")) testAtanRad();
     if (shouldRun("tandeg"))  testTanDeg();

@@ -44,6 +44,12 @@ The tool operates in three modes:
 | Arctangent (deg) | `atanDeg(R, S0)` | CORDIC + deg conversion (degrees) |
 | Square Root | `sqrt(R, S0)` | Newton-Raphson iteration |
 | Exponential | `exp(R, S0)` | CORDIC digit-by-digit (inverse of ln) |
+| Sinh | `sinhHyp(R, S0)` | (e^x − e^−x) / 2 via exp |
+| Cosh | `coshHyp(R, S0)` | (e^x + e^−x) / 2 via exp |
+| Tanh | `tanhHyp(R, S0)` | (e^2x − 1) / (e^2x + 1) via exp |
+| Asinh | `asinhHyp(R, S0)` | ln(x + √(x²+1)) via ln, sqrt |
+| Acosh | `acoshHyp(R, S0)` | ln(x + √(x²−1)) via ln, sqrt |
+| Atanh | `atanhHyp(R, S0)` | ln((1+x)/(1−x)) / 2 via ln |
 | Sine (deg) | `sinDeg(R, S0)` | Half-angle formula via tanDeg |
 | Sine (rad) | `sinRad(R, S0)` | Converts to degrees via sinDeg |
 | Cosine (deg) | `cosDeg(R, S0)` | Quadrant-shifted range reduction + sinCore |
@@ -165,6 +171,7 @@ A CLI-based RPN calculator with a 4-level stack (T, Z, Y, X) using full BCD arit
 | Stack entry | `enter` | Duplicate X into Y, lift stack |
 | Arithmetic | `+` `-` `*` `/` | Binary: Y op X |
 | Functions | `sqrt` `ln` `exp` | Unary: f(X) |
+| Hyperbolic | `sinh` `cosh` `tanh` `asinh` `acosh` `atanh` | |
 | Trig | `sin` `cos` `tan` `asin` `acos` `atan` | Uses current angle mode |
 | Two-arg | `atan2` | Y=y, X=x; drops stack |
 | Coords | `p2r` | X=r, Y=theta -> X=x, Y=y |
@@ -202,7 +209,7 @@ OP  ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE ±D.DDDDDDDDDDDDDDDe±EE S
 
 | Field | Width | Description |
 |-------|-------|-------------|
-| OP | var | Operation: ADD, SUB, MUL, DIV, LN, EXP, SQRT, TANRAD, ATANRAD, TANDEG, ATANDEG, SINDEG, SINRAD, COSDEG, COSRAD, ASINDEG, ASINRAD, ACOSDEG, ACOSRAD, ATAN2DEG, ATAN2RAD, P2RDEG, P2RRAD, R2PDEG, R2PRAD |
+| OP | var | Operation: ADD, SUB, MUL, DIV, LN, EXP, SINH, COSH, TANH, ASINH, ACOSH, ATANH, SQRT, TANRAD, ATANRAD, TANDEG, ATANDEG, SINDEG, SINRAD, COSDEG, COSRAD, ASINDEG, ASINRAD, ACOSDEG, ACOSRAD, ATAN2DEG, ATAN2RAD, P2RDEG, P2RRAD, R2PDEG, R2PRAD |
 | Operand A | MAX_MANT+6 | BCD format: ±D.DDD...De±EE (MAX_MANT digits) |
 | Operand B | 22 | Same format (zeros for unary ops) |
 | Result | 22 | Same format |

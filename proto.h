@@ -104,6 +104,12 @@ inline void sqrt(BCD &R, BCD &S0) { sqrt_nr(R, S0); }
 // Transcendental operations: read from S0, write result to R
 void ln(BCD &R, BCD &S0);
 void exp(BCD &R, BCD &S0);
+void sinhHyp(BCD &R, BCD &S0);     // Hyperbolic sine
+void coshHyp(BCD &R, BCD &S0);     // Hyperbolic cosine
+void tanhHyp(BCD &R, BCD &S0);     // Hyperbolic tangent
+void asinhHyp(BCD &R, BCD &S0);    // Inverse hyperbolic sine
+void acoshHyp(BCD &R, BCD &S0);    // Inverse hyperbolic cosine
+void atanhHyp(BCD &R, BCD &S0);    // Inverse hyperbolic tangent
 void tanRad(BCD &R, BCD &S0);      // Tangent, input in radians
 void atanRad(BCD &R, BCD &S0);     // Arctangent, output in radians
 void tanDeg(BCD &R, BCD &S0);      // Tangent, input in degrees
@@ -145,6 +151,12 @@ void testDivision();
 void testSqrt();
 void testLn();
 void testExp();
+void testSinh();
+void testCosh();
+void testTanh();
+void testAsinh();
+void testAcosh();
+void testAtanh();
 void testTanRad();
 void testAtanRad();
 void testTanDeg();
