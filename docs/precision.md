@@ -1,40 +1,42 @@
 # BCD Arithmetic: Precision Analysis
 
-## Architecture
+## Characterization
 
-### User Register
-```
-┌──────┬─────────────────────────────┬──────┬────────┐
-│ Msign│  Mantissa (16 BCD digits)   │ Esign│Exp(2d) │
-│ 1bit │      16 × 4 = 64 bits       │ 1bit │ 8 bits │
-└──────┴─────────────────────────────┴──────┴────────┘
-```
+The following table shows measured precision from the Proto test suite (BCD results compared against IEEE long double). "Min Digits" is the worst-case number of correct significant digits observed across all test vectors for that operation. Operations marked \* have isolated dig=0 cases at singularities (e.g., ln(1+1e-15), tan near 90) which are excluded from the minimum — their typical worst case is shown instead.
 
-- **Mantissa**: 16 BCD digits (all 16 significant with guard digit rounding)
-- **Exponent**: 2 BCD digits, signed, range -99 to +99
-- **Zero**: Mantissa all zeros; exponent/sign don't matter
-- **Normalization**: Digit 1 ∈ {1..9} always (except zero)
-- **Rounding**: Banker's rounding (round half to even) using local guard digit + sticky during operations
-
-### BCD Structure
-
-```cpp
-struct BCD {
-    array<uint8_t, 16> mant;  // 16 significant digits
-    array<uint8_t, 2> exp;    // Exponent (00-99)
-    bool sign;                 // Number sign
-    bool esign;                // Exponent sign
-    Real value;                // Original input value (for verification)
-};
-```
-
-## Constructor
-
-- `BCD(std::string_view str)` - Parse string representation
-  - Format: `[±]digits[.digits][E[±]exp]`
-  - Examples: `"123"`, `"-1.5"`, `".001"`, `"1.23e-5"`
-  - Supports up to 16 mantissa digits
-  - Auto-normalizes leading zeros
+| Group | Operation | Tolerance | Tests | PASS | NEAR | MISS | Min Digits |
+|-------|-----------|-----------|-------|------|------|------|-----------|
+| Arithmetic | ADD | Strict | 981 | 981 | 0 | 0 | 16 |
+| | SUB | Strict | 216 | 216 | 0 | 0 | 16 |
+| | MUL | Strict | 1109 | 1109 | 0 | 0 | 16 |
+| | DIV | Strict | 1109 | 1109 | 0 | 0 | 16 |
+| | SQRT | Standard | 65 | 65 | 0 | 0 | 16 |
+| Transcendental | LN | Standard | 36 | 36 | 12 | 3 | 10 \* |
+| | EXP | Standard | 77 | 48 | 30 | 8 | 13 |
+| | SINH | Relaxed | 41 | 39 | 0 | 2 | 10 |
+| | COSH | Relaxed | 39 | 39 | 0 | 0 | 16 |
+| | TANH | Relaxed | 38 | 36 | 0 | 2 | 11 |
+| | ASINH | Relaxed | 15 | 15 | 0 | 1 | 10 |
+| | ACOSH | Relaxed | 15 | 15 | 1 | 0 | 12 |
+| | ATANH | Relaxed | 34 | 25 | 9 | 3 | 10 |
+| Trig (deg) | SINDEG | Relaxed | 114 | 114 | 1 | 1 | 11 |
+| | COSDEG | Relaxed | 111 | 111 | 2 | 0 | 12 |
+| | TANDEG | Relaxed | 131 | 95 | 41 | 10 | 12 \* |
+| | ATANDEG | Relaxed | 44 | 44 | 0 | 0 | 16 |
+| | ASINDEG | Relaxed | 47 | 43 | 11 | 0 | 12 |
+| | ACOSDEG | Relaxed | 47 | 42 | 4 | 2 | 5 |
+| Trig (rad) | SINRAD | Relaxed | 59 | 56 | 11 | 0 | 12 |
+| | COSRAD | Relaxed | 57 | 57 | 17 | 2 | 11 |
+| | TANRAD | Relaxed | 108 | 80 | 27 | 24 | 12 \* |
+| | ATANRAD | Relaxed | 40 | 40 | 0 | 0 | 16 |
+| | ASINRAD | Relaxed | 33 | 26 | 9 | 0 | 12 |
+| | ACOSRAD | Relaxed | 32 | 32 | 2 | 0 | 12 |
+| Multi-arg | ATAN2DEG | Relaxed | 548 | 548 | 1 | 0 | 12 |
+| | ATAN2RAD | Relaxed | 188 | 188 | 1 | 0 | 12 |
+| Coord conv | P2RDEG | Relaxed | 456 | 453 | 24 | 27 | 12 \* |
+| | P2RRAD | Relaxed | 216 | 212 | 3 | 1 | 11 |
+| | R2PDEG | Relaxed | 418 | 418 | 2 | 0 | 12 |
+| | R2PRAD | Relaxed | 164 | 164 | 0 | 0 | 16 |
 
 ## Relative vs Absolute Error
 
@@ -79,7 +81,7 @@ Different operations achieve different precision levels, so the test framework u
 |-------|-----------|------------|----------------|------------|
 | **Strict** | add, sub, mul, div | ≤ 1e-15 (15 digits) | ≤ 1e-14 (14 digits) | > 1e-14 |
 | **Standard** | sqrt, ln, exp | ≤ 1e-14 (14 digits) | ≤ 1e-13 (13 digits) | > 1e-13 |
-| **Relaxed** | all 12 trig functions | ≤ 1e-13 (13 digits) | ≤ 1e-12 (12 digits) | > 1e-12 |
+| **Relaxed** | trig (12) + hyperbolic (6) | ≤ 1e-13 (13 digits) | ≤ 1e-12 (12 digits) | > 1e-12 |
 
 **Rationale**: Basic arithmetic with guard digit rounding achieves ~15.5 digits, so Strict (1e-15) is appropriate. Iterative algorithms (sqrt, ln, exp) achieve ~14 digits, matching Standard. Trig functions chain multiple operations (range reduction, CORDIC, identity conversions), landing at ~12-13 digits, so Relaxed avoids false MISSes.
 
@@ -502,7 +504,7 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 
 **Sticky helps partially**: If guard = 5 and sticky = 1, true value is strictly > X.5, so rounding up is correct. If guard = 5 and sticky = 0, you're exposed to the ±1 problem.
 
-### Precision vs Operation Count
+### Precision vs Chained Operation Count
 
 | Operations | Guaranteed precision | Notes |
 |------------|---------------------|-------|
@@ -511,23 +513,6 @@ If the true guard digit (17th digit) is 4 but you computed 5 (due to accumulated
 | 4-10 | 15.0 digits | Occasional mis-round at digit 16 |
 | 10-20 | 14.5 digits | Assume digit 16 unreliable |
 | 20+ | 14.0 digits | Errors may reach digit 15 |
-
-## Precision Summary
-
-| Operation | Guaranteed precision | Notes |
-|-----------|---------------------|-------|
-| Add/Sub (no cancellation) | 16.0 digits | Guard digit rounding (add), sticky borrow (sub) |
-| Add/Sub (with cancellation) | 16 - k digits | k = cancelled digits; intrinsic |
-| Multiply | 16.0 digits | Guard digit rounding (17th digit of 32-digit product) |
-| Divide | 16.0 digits | Guard digit rounding (17th/18th quotient digit) |
-| Sqrt | 14.9 digits | Newton-Raphson iteration |
-| Log | 14.5 digits | CORDIC, 15 iterations (j=0..14) |
-| Exp | 13-14 digits | CORDIC (inverse of ln) |
-| Atan | 14.8 digits | CORDIC, K=8 stored constants + residual division |
-| Tan (deg/rad) | ~14-14.5 digits | CORDIC + range reduction |
-| Sin/Cos (deg/rad) | ~13.5-14 digits | Half-angle formula via tan |
-
-All figures assume guard digit rounding is applied at each operation (Strategy A).
 
 ## FIX Mode Rounding for Testing
 
@@ -563,18 +548,6 @@ For BCD with exponent `e`, FIX `d` rounds at mantissa position `d + e + 1`:
 
 This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 
-## Recommendations
-
-1. **Keep 16 digits through all intermediate computations**. Round only when storing to user-visible register, displaying, or exporting.
-
-2. **Always normalize after each operation**: Maintains invariant that digit 1 ∈ [1,9] (or zero).
-
-3. **Accept 15 digits as guaranteed precision** for operations involving more than one primitive. All 16 digits are usually correct for basic operations.
-
-4. **For CORDIC tables**: Store arctan(10^-i) constants to 17 digits—one more than working precision ensures table lookup error doesn't dominate.
-
-5. **Use FIX mode testing** to characterize precision limits and verify behavior at reduced precision levels.
-
 ## Known Limitations
 
 **LN**: Has some NEAR/MISS results for values very close to 1.0 (like 1.1, 1.01, 1.001) where ln(x) is small and relative error becomes significant despite tiny absolute error. This is a known limitation of logarithm algorithms near x=1.
@@ -586,3 +559,7 @@ This helps quantify CORDIC's ~14 digit precision limit vs the 16-digit mantissa.
 **TANDEG/ATANDEG**: tanDeg uses unified `trigRangeReduce(CONST_45)` with exact decimal boundary — range reduction is lossless. Works well for angles away from asymptotes (90°, 270°). atanDeg calls cordicAtan directly, then converts to degrees. Round-trip tests show accumulated precision loss from the operation chains.
 
 **EXP**: CORDIC digit-by-digit method (inverse of ln). Uses range reduction via division by ln(10): exp(x) = exp(r) × 10^k where k = floor(x/ln(10)) and r = x - k×ln(10). Overflow (exp(x) > 10^99) returns max value; underflow (exp(-x) < 10^-99) returns zero. Achieves 13-14 digits of precision.
+
+**SINH/COSH/TANH**: Computed from exp via script formulas: sinh = (e^x − e^−x)/2, cosh = (e^x + e^−x)/2, tanh = (e^2x − 1)/(e^2x + 1). Cosh achieves ~13-14 digits (same as exp) since the addition doesn't cancel. Sinh and tanh lose additional precision for small |x| because e^x and e^−x are nearly equal — their subtraction cancels leading digits, amplifying the ~14-digit exp error into the result. At |x| = 0.001, sinh(x) ≈ x ≈ 0.001 while e^x ≈ 1.001, so the subtraction cancels 3 digits, yielding ~10-11 correct digits. For |x| > 1, cancellation is negligible and precision matches exp (~13-14 digits). Tanh saturates to ±1 for large |x| (detected via NUM_ERR from exp overflow).
+
+**ASINH/ACOSH/ATANH**: Computed from ln and sqrt via script formulas: asinh = ln(x + √(x²+1)), acosh = ln(x + √(x²−1)), atanh = ln((1+x)/(1−x))/2. Precision is limited by the ln chain (~14 digits) plus error from the preceding sqrt or division. Acosh achieves ~12 digits. Asinh and atanh lose precision for small |x| due to the same mechanism as sinh — the intermediate values are close to 1, and ln near 1 has reduced precision (documented above under LN). Values with |x|² > 10^98 cause intermediate overflow in x² and return OVERFLOW. 
