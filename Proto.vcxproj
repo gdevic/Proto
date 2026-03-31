@@ -147,41 +147,41 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="acos.cpp" />
-    <ClCompile Include="addsub.cpp" />
-    <ClCompile Include="asin.cpp" />
-    <ClCompile Include="bcd.cpp" />
-    <ClCompile Include="cos.cpp" />
-    <ClCompile Include="exponent.cpp" />
-    <ClCompile Include="mantissa.cpp" />
-    <ClCompile Include="register.cpp" />
-    <ClCompile Include="mult.cpp" />
-    <ClCompile Include="div.cpp" />
-    <ClCompile Include="log.cpp" />
-    <ClCompile Include="proto.cpp" />
-    <ClCompile Include="sin.cpp" />
-    <ClCompile Include="tan.cpp" />
-    <ClCompile Include="tan10.cpp" />
-    <ClCompile Include="sqrt_dd.cpp" />
-    <ClCompile Include="sqrt_nr.cpp" />
-    <ClCompile Include="testbench.cpp" />
-    <ClCompile Include="const.cpp" />
-    <ClCompile Include="calculator.cpp" />
-    <ClCompile Include="atan2.cpp" />
-    <ClCompile Include="r2p.cpp" />
-    <ClCompile Include="calc.cpp" />
-    <ClCompile Include="hyp.cpp" />
+    <ClCompile Include="src\acos.cpp" />
+    <ClCompile Include="src\addsub.cpp" />
+    <ClCompile Include="src\asin.cpp" />
+    <ClCompile Include="src\bcd.cpp" />
+    <ClCompile Include="src\cos.cpp" />
+    <ClCompile Include="src\exponent.cpp" />
+    <ClCompile Include="src\mantissa.cpp" />
+    <ClCompile Include="src\register.cpp" />
+    <ClCompile Include="src\mult.cpp" />
+    <ClCompile Include="src\div.cpp" />
+    <ClCompile Include="src\log.cpp" />
+    <ClCompile Include="src\proto.cpp" />
+    <ClCompile Include="src\sin.cpp" />
+    <ClCompile Include="src\tan.cpp" />
+    <ClCompile Include="src\tan10.cpp" />
+    <ClCompile Include="src\sqrt_dd.cpp" />
+    <ClCompile Include="src\sqrt_nr.cpp" />
+    <ClCompile Include="src\testbench.cpp" />
+    <ClCompile Include="src\const.cpp" />
+    <ClCompile Include="src\calculator.cpp" />
+    <ClCompile Include="src\atan2.cpp" />
+    <ClCompile Include="src\r2p.cpp" />
+    <ClCompile Include="src\calc.cpp" />
+    <ClCompile Include="src\hyp.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bcd.h" />
-    <ClInclude Include="calculator.h" />
-    <ClInclude Include="exponent.h" />
-    <ClInclude Include="mantissa.h" />
-    <ClInclude Include="register.h" />
-    <ClInclude Include="proto.h" />
-    <ClInclude Include="testbench.h" />
-    <ClInclude Include="testbench.inl" />
-    <ClInclude Include="calc.h" />
+    <ClInclude Include="src\bcd.h" />
+    <ClInclude Include="src\calculator.h" />
+    <ClInclude Include="src\exponent.h" />
+    <ClInclude Include="src\mantissa.h" />
+    <ClInclude Include="src\register.h" />
+    <ClInclude Include="src\proto.h" />
+    <ClInclude Include="src\testbench.h" />
+    <ClInclude Include="src\testbench.inl" />
+    <ClInclude Include="src\calc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

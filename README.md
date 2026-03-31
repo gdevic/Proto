@@ -6,7 +6,7 @@ This code accompanies the Calculator project described here: https://baltazarstu
 
 ## Overview
 
-BCD arithmetic with a configurable mantissa size (4-16 digits, default 16) and 2-digit exponent. Change `MAX_MANT` in `bcd.h` to experiment with different precision levels. Basic operations (add/sub/mul/div) achieve full MAX_MANT-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically MAX_MANT-3 to MAX_MANT-2 digits).
+BCD arithmetic with a configurable mantissa size (4-16 digits, default 16) and 2-digit exponent. Change `MAX_MANT` in `src/bcd.h` to experiment with different precision levels. All source files (.cpp, .h, .inl) are in the `src/` directory. Basic operations (add/sub/mul/div) achieve full MAX_MANT-digit precision. Transcendental functions (ln, exp, sqrt, trig) have documented precision limits (typically MAX_MANT-3 to MAX_MANT-2 digits).
 
 The tool operates in three modes:
 - **Dev mode**: Compare BCD results against IEEE long double to validate algorithms

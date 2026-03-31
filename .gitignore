@@ -1,5 +1,5 @@
 # Linux build artifacts
-*.o
+src/*.o
 proto
 
 # Windows/MSVC build artifacts
